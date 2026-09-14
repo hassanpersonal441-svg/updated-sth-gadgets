@@ -693,6 +693,14 @@ export default function OrderActionModal({
 
               <button
                 type="button"
+                onClick={() => setShowInvoiceModal(true)}
+                className="rounded-xl border border-[#00C4CC]/60 bg-[#00C4CC]/15 hover:bg-[#00C4CC]/25 px-4 py-2 text-xs font-bold text-[#00C4CC] shadow-sm transition"
+              >
+                📄 View / Print Invoice
+              </button>
+
+              <button
+                type="button"
                 onClick={onClose}
                 className="rounded-xl border border-slate-800 px-3.5 py-2 text-xs font-semibold text-silver-dim hover:text-white transition"
               >
