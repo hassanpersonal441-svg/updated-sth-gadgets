@@ -116,6 +116,7 @@ export interface OrderItem {
   product_id: string | null;
   product_name: string;
   variant_name?: string | null;
+  product_image?: string | null;
   unit_price: number;
   purchase_price?: number;
   quantity: number;

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import type { Order } from '@/types/database';
 import OrderActionModal from '@/components/admin/OrderActionModal';
+import InvoiceModal from '@/components/admin/InvoiceModal';
 import { useToast } from '@/context/ToastContext';
 
 const TABS = [
@@ -25,6 +26,9 @@ export default function AdminOrdersPage() {
   const [selectedTab, setSelectedTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // Invoice Modal State
+  const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
 
   // Direct table delete confirmation state
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
@@ -330,16 +334,25 @@ export default function AdminOrdersPage() {
                         onClick={() => setSelectedOrder(order)}
                         className="flex-1 rounded-xl bg-[#00C4CC] hover:bg-[#00b2b9] py-2 text-xs font-bold text-black text-center transition"
                       >
-                        Manage Order
+                        Manage
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInvoiceOrder(order)}
+                        className="rounded-xl border border-slate-700 bg-[#080D15] hover:border-[#00C4CC] px-3 py-2 text-xs font-bold text-[#00C4CC] transition"
+                        title="View Invoice"
+                      >
+                        📄 Invoice
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setOrderToDelete(order)}
-                        className="rounded-xl border border-rose-900/80 bg-rose-950/30 hover:bg-rose-900/50 px-3.5 py-2 text-xs font-semibold text-rose-300 transition"
+                        className="rounded-xl border border-rose-900/80 bg-rose-950/30 hover:bg-rose-900/50 px-3 py-2 text-xs font-semibold text-rose-300 transition"
                         title="Delete order"
                       >
-                        🗑️ Delete
+                        🗑️
                       </button>
                     </div>
                   </div>
@@ -463,6 +476,18 @@ export default function AdminOrdersPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setInvoiceOrder(order);
+                              }}
+                              className="rounded-lg border border-[#00C4CC]/40 bg-[#00C4CC]/10 px-2 py-1 text-xs font-bold text-[#00C4CC] hover:bg-[#00C4CC]/20 transition"
+                              title="View & Print Invoice"
+                            >
+                              📄 Invoice
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setOrderToDelete(order);
                               }}
                               className="rounded-lg border border-rose-900/60 bg-rose-950/20 px-2 py-1 text-xs font-semibold text-rose-400 hover:border-rose-600 hover:bg-rose-900/40 hover:text-rose-300 transition"
@@ -542,6 +567,11 @@ export default function AdminOrdersPage() {
             setSelectedOrder(null);
           }}
         />
+      )}
+
+      {/* Standalone Invoice Modal */}
+      {invoiceOrder && (
+        <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
       )}
     </div>
   );
