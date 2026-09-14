@@ -221,30 +221,32 @@ export async function POST(request: Request) {
     const itemsText = verifiedItems
       .map(
         (i) =>
-          `· ${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}\nQty: ${i.quantity} x PKR ${i.unit_price.toLocaleString('en-PK')} = PKR ${i.line_total.toLocaleString('en-PK')}`
+          `🔹 ${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}\n   🔢 Qty: ${i.quantity} x PKR ${i.unit_price.toLocaleString('en-PK')} = 💵 PKR ${i.line_total.toLocaleString('en-PK')}`
       )
       .join('\n\n');
 
     const whatsappMessage = [
-      '🛍️ STH GADGETS - NEW ORDER',
+      '🛍️ STH GADGETS - NEW ORDER 🛒',
       '=========================',
       `👤 Customer Name: ${customer_name}`,
       `📞 Phone Number: ${phone}`,
       `📱 WhatsApp Number: ${phone}`,
       `🏙️ City: ${city}`,
       `📍 Address: ${address}`,
+      '=========================',
       '📦 ORDER DETAILS',
       '=========================',
       '',
       itemsText,
       '',
+      '=========================',
       `💵 Subtotal: PKR ${subtotal.toLocaleString('en-PK')}`,
       ...(coupon_discount > 0 ? [`🎟️ Coupon Discount: PKR ${coupon_discount.toLocaleString('en-PK')}`] : []),
       ...(bundle_discount > 0 ? [`🎁 Bundle Discount: PKR ${bundle_discount.toLocaleString('en-PK')}`] : []),
       `🚚 Delivery Charges: PKR ${delivery_charges.toLocaleString('en-PK')}`,
       `💰 TOTAL AMOUNT: PKR ${total_amount.toLocaleString('en-PK')}`,
       '=========================',
-      'Please confirm my order and availability. Thank you!',
+      '🙏 Please confirm my order and availability. Thank you! ✨',
     ].join('\n');
 
     const whatsappUrl = `https://wa.me/${destPhone}?text=${encodeURIComponent(whatsappMessage)}`;

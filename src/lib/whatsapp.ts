@@ -43,16 +43,16 @@ export async function triggerAdminNewOrderNotification(
   const productsText = (order.order_items || [])
     .map(
       (item) =>
-        `• ${item.product_name}${item.variant_name ? ` (${item.variant_name})` : ''} x${item.quantity} (Rs. ${Number(item.line_total).toLocaleString('en-PK')})`
+        `🔹 ${item.product_name}${item.variant_name ? ` (${item.variant_name})` : ''} x${item.quantity} (Rs. ${Number(item.line_total).toLocaleString('en-PK')})`
     )
     .join('\n');
 
   const formattedAddress = `${order.address}, ${order.city}`;
 
   const messageText = [
-    '🛒 STH GADGETS — NEW ORDER',
+    '🛒 STH GADGETS — NEW ORDER 🛍️',
     '',
-    `Order: #${order.order_number || order.id.slice(0, 8)}`,
+    `🏷️ Order: #${order.order_number || order.id.slice(0, 8)}`,
     '',
     '👤 Customer:',
     order.customer_name,
@@ -70,9 +70,9 @@ export async function triggerAdminNewOrderNotification(
     formattedAddress,
     '',
     '⏳ Status:',
-    'PENDING',
+    'PENDING ⏳',
     '',
-    'Please open the STH Gadgets Admin Panel to review this order.',
+    '📲 Please open the STH Gadgets Admin Panel to review this order.',
   ].join('\n');
 
   const payload = {
