@@ -39,6 +39,7 @@ import { CartProvider } from '@/context/CartContext';
 const CartDrawer = dynamic(() => import('@/components/cart/CartDrawer'), { ssr: false });
 const CheckoutModal = dynamic(() => import('@/components/cart/CheckoutModal'), { ssr: false });
 const FloatingCartButton = dynamic(() => import('@/components/cart/FloatingCartButton'), { ssr: false });
+const StorefrontTour = dynamic(() => import('@/components/storefront/StorefrontTour'), { ssr: false });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CartDrawer />
           <CheckoutModal />
           <FloatingCartButton />
+          <StorefrontTour />
         </CartProvider>
       </body>
     </html>

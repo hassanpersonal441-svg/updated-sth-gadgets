@@ -17,6 +17,10 @@ export default function Navbar({ categories }: { categories: Category[] }) {
     setOpen(false);
   }
 
+  function triggerTour() {
+    window.dispatchEvent(new Event('open-sth-tour'));
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-base-border bg-base/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
@@ -40,6 +44,14 @@ export default function Navbar({ categories }: { categories: Category[] }) {
               {c.name}
             </Link>
           ))}
+          <button
+            onClick={triggerTour}
+            type="button"
+            className="flex items-center gap-1.5 rounded-full border border-electric/40 bg-electric/10 hover:bg-electric/20 px-3 py-1 text-xs font-bold text-electric-bright transition"
+          >
+            <span>✨</span>
+            <span>Website Tour</span>
+          </button>
         </nav>
 
         <form onSubmit={handleSearch} className="ml-auto hidden max-w-xs flex-1 items-center md:flex">
