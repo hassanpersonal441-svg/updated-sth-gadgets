@@ -77,7 +77,8 @@ export function buildWhatsAppOrderLink(params: {
     currencySymbol = 'Rs.',
   } = params;
 
-  const tpl = template && template.trim() ? template : DEFAULT_ORDER_TEMPLATE;
+  const rawTpl = template && template.trim() ? template : DEFAULT_ORDER_TEMPLATE;
+  const tpl = rawTpl.replace(/\\n/g, '\n');
 
   const message = tpl
     .replaceAll('{product_name}', productName)
