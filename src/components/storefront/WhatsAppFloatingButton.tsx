@@ -3,7 +3,7 @@
 export default function WhatsAppFloatingButton({ whatsappNumber }: { whatsappNumber: string | null }) {
   if (!whatsappNumber) return null;
   const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
-  const href = `https://wa.me/${cleanNumber}?text=${encodeURIComponent('Hello STH Gadgets! 👋 I have a question about products. 🛍️')}`;
+  const href = `https://wa.me/${cleanNumber}?text=${encodeURIComponent('Hello STH Gadgets! \u{1F44B} I have a question about products. \u{1F6CD}\u{FE0F}')}`;
 
   return (
     <a

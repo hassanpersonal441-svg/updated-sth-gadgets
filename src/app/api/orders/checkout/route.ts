@@ -221,32 +221,32 @@ export async function POST(request: Request) {
     const itemsText = verifiedItems
       .map(
         (i) =>
-          `🔹 ${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}\n   🔢 Qty: ${i.quantity} x PKR ${i.unit_price.toLocaleString('en-PK')} = 💵 PKR ${i.line_total.toLocaleString('en-PK')}`
+          `\u{1F539} ${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}\n   \u{1F522} Qty: ${i.quantity} x PKR ${i.unit_price.toLocaleString('en-PK')} = \u{1F4B5} PKR ${i.line_total.toLocaleString('en-PK')}`
       )
       .join('\n\n');
 
     const whatsappMessage = [
-      '🛍️ STH GADGETS - NEW ORDER 🛒',
+      '\u{1F6CD}\u{FE0F} STH GADGETS - NEW ORDER \u{1F6D2}',
       '=========================',
-      `👤 Customer Name: ${customer_name}`,
-      `📞 Phone Number: ${phone}`,
-      `📱 WhatsApp Number: ${phone}`,
-      `🏙️ City: ${city}`,
-      `📍 Address: ${address}`,
+      `\u{1F464} Customer Name: ${customer_name}`,
+      `\u{1F4DE} Phone Number: ${phone}`,
+      `\u{1F4F1} WhatsApp Number: ${phone}`,
+      `\u{1F3D9}\u{FE0F} City: ${city}`,
+      `\u{1F4CD} Address: ${address}`,
       '=========================',
-      '📦 ORDER DETAILS',
+      '\u{1F4E6} ORDER DETAILS',
       '=========================',
       '',
       itemsText,
       '',
       '=========================',
-      `💵 Subtotal: PKR ${subtotal.toLocaleString('en-PK')}`,
-      ...(coupon_discount > 0 ? [`🎟️ Coupon Discount: PKR ${coupon_discount.toLocaleString('en-PK')}`] : []),
-      ...(bundle_discount > 0 ? [`🎁 Bundle Discount: PKR ${bundle_discount.toLocaleString('en-PK')}`] : []),
-      `🚚 Delivery Charges: PKR ${delivery_charges.toLocaleString('en-PK')}`,
-      `💰 TOTAL AMOUNT: PKR ${total_amount.toLocaleString('en-PK')}`,
+      `\u{1F4B5} Subtotal: PKR ${subtotal.toLocaleString('en-PK')}`,
+      ...(coupon_discount > 0 ? [`\u{1F39F}\u{FE0F} Coupon Discount: PKR ${coupon_discount.toLocaleString('en-PK')}`] : []),
+      ...(bundle_discount > 0 ? [`\u{1F381} Bundle Discount: PKR ${bundle_discount.toLocaleString('en-PK')}`] : []),
+      `\u{1F69A} Delivery Charges: PKR ${delivery_charges.toLocaleString('en-PK')}`,
+      `\u{1F4B0} TOTAL AMOUNT: PKR ${total_amount.toLocaleString('en-PK')}`,
       '=========================',
-      '🙏 Please confirm my order and availability. Thank you! ✨',
+      '\u{1F64F} Please confirm my order and availability. Thank you! \u{2728}',
     ].join('\n');
 
     const whatsappUrl = `https://wa.me/${destPhone}?text=${encodeURIComponent(whatsappMessage)}`;
