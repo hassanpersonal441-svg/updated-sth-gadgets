@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import type { Order, Settings } from '@/types/database';
 
 interface InvoiceComponentProps {
@@ -71,10 +73,6 @@ export default function InvoiceComponent({
     setPdfGenerating(true);
 
     try {
-      // Dynamically import html2canvas and jspdf to keep client bundle clean
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-
       const element = invoiceRef.current;
       
       const canvas = await html2canvas(element, {
