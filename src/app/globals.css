@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #050608;
+  color: #C9D2DB;
+}
+
+::selection {
+  background: rgba(59, 180, 255, 0.35);
+  color: #F2F5F8;
+}
+
+/* Thin scrollbar, matches dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #050608;
+}
+::-webkit-scrollbar-thumb {
+  background: #1C222B;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2E9BFF;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #F2F5F8 0%, #5FC1FF 60%, #2E9BFF 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.card-hairline {
+  border: 1px solid #1C222B;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid #3BB4FF;
+  outline-offset: 2px;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

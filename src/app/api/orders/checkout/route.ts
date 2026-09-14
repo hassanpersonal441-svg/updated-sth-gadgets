@@ -1,0 +1,265 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { createServiceClient } from '@/lib/supabase/server';
+import { evaluateCoupon, normalizePhoneNumber } from '@/lib/utils';
+import type { Product } from '@/types/database';
+
+const checkoutSchema = z.object({
+  customer_name: z.string().min(1, 'Name is required').max(100),
+  phone: z.string().min(5, 'Valid phone is required').max(30),
+  city: z.string().min(1, 'City is required').max(100),
+  address: z.string().min(1, 'Address is required').max(300),
+  coupon_code: z.string().nullable().optional(),
+  items: z.array(
+    z.object({
+      product_id: z.string().uuid(),
+      quantity: z.number().int().min(1),
+      variant_name: z.string().nullable().optional(),
+    })
+  ).min(1, 'At least one item is required'),
+});
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => null);
+    const parsed = checkoutSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.issues[0]?.message || 'Invalid input data' },
+        { status: 400 }
+      );
+    }
+
+    const { customer_name, phone, city, address, coupon_code, items } = parsed.data;
+    const supabase = createServiceClient();
+
+    // 1. Fetch real product data from Supabase database to validate price & stock
+    const productIds = items.map((i) => i.product_id);
+    const { data: dbProducts, error: prodErr } = await supabase
+      .from('products')
+      .select('id, name, price, purchase_price, stock_status, active')
+      .in('id', productIds);
+
+    if (prodErr || !dbProducts || dbProducts.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Could not fetch products from database' },
+        { status: 400 }
+      );
+    }
+
+    const productMap = new Map<string, Product>();
+    dbProducts.forEach((p: any) => productMap.set(p.id, p));
+
+    // 2. Validate availability and build verified line items
+    let subtotal = 0;
+    let totalQuantity = 0;
+    const verifiedItems: {
+      product_id: string;
+      product_name: string;
+      variant_name?: string | null;
+      unit_price: number;
+      purchase_price: number;
+      quantity: number;
+      line_total: number;
+    }[] = [];
+
+    for (const item of items) {
+      const prod = productMap.get(item.product_id);
+      if (!prod || !prod.active) {
+        return NextResponse.json(
+          { success: false, error: `Product "${prod?.name || item.product_id}" is not available.` },
+          { status: 400 }
+        );
+      }
+
+      if (prod.stock_status === 'out_of_stock') {
+        return NextResponse.json(
+          { success: false, error: `Product "${prod.name}" is currently out of stock.` },
+          { status: 400 }
+        );
+      }
+
+      const unit_price = Number(prod.price);
+      const purchase_price = Number(prod.purchase_price) || 0;
+      const line_total = unit_price * item.quantity;
+      subtotal += line_total;
+      totalQuantity += item.quantity;
+
+      verifiedItems.push({
+        product_id: prod.id,
+        product_name: prod.name,
+        variant_name: item.variant_name,
+        unit_price,
+        purchase_price,
+        quantity: item.quantity,
+        line_total,
+      });
+    }
+
+    // 3. Validate coupon against Supabase database
+    let coupon_discount = 0;
+    if (coupon_code && coupon_code.trim()) {
+      const { data: coupon } = await supabase
+        .from('coupons')
+        .select('*')
+        .ilike('code', coupon_code.trim())
+        .maybeSingle();
+
+      if (coupon) {
+        const evaluation = evaluateCoupon(coupon as any, subtotal);
+        if (evaluation.valid) {
+          coupon_discount = evaluation.discountAmount;
+        }
+      }
+    }
+
+    // 4. Calculate bundle discount:
+    // 2 items: 5%
+    // 3+ items: 10%
+    let bundle_discount = 0;
+    if (totalQuantity >= 3) {
+      bundle_discount = Math.round((subtotal * 10) / 100);
+    } else if (totalQuantity === 2) {
+      bundle_discount = Math.round((subtotal * 5) / 100);
+    }
+
+    // 5. Calculate delivery charges: Free above PKR 5,000, else PKR 200
+    const delivery_charges = subtotal >= 5000 ? 0 : 200;
+
+    // 6. Calculate final total amount
+    const total_amount = Math.max(0, subtotal - coupon_discount - bundle_discount + delivery_charges);
+
+    // Normalize customer phone number for WhatsApp delivery
+    const normalizedPhone = normalizePhoneNumber(phone);
+
+    // 7. Insert Order into Supabase
+    // NOTE: order_number MUST be NULL because order is strictly PENDING!
+    const { data: insertedOrder, error: orderErr } = await supabase
+      .from('orders')
+      .insert({
+        order_number: null,
+        status: 'pending',
+        customer_name,
+        phone: normalizedPhone || phone,
+        city,
+        address,
+        subtotal,
+        delivery_charges,
+        coupon_discount,
+        bundle_discount,
+        total_amount,
+        payment_status: 'pending',
+        order_source: 'whatsapp',
+        admin_notification_sent: false,
+        customer_notification_sent: false,
+      })
+      .select()
+      .single();
+
+    if (orderErr || !insertedOrder) {
+      console.error('Error inserting order:', orderErr);
+      return NextResponse.json(
+        { success: false, error: 'Database error creating order. Please ensure the orders table is set up.' },
+        { status: 500 }
+      );
+    }
+
+    // 8. Insert Order Items into Supabase with snapshot purchase_price
+    const orderItemsToInsert = verifiedItems.map((v) => ({
+      order_id: insertedOrder.id,
+      product_id: v.product_id,
+      product_name: v.product_name,
+      variant_name: v.variant_name || null,
+      unit_price: v.unit_price,
+      purchase_price: v.purchase_price,
+      quantity: v.quantity,
+      line_total: v.line_total,
+    }));
+
+    await supabase.from('order_items').insert(orderItemsToInsert);
+
+    // 9. Record WhatsApp Click event (best-effort)
+    try {
+      await supabase.from('whatsapp_clicks').insert({
+        product_id: verifiedItems[0]?.product_id || null,
+      });
+    } catch {
+      // non-blocking
+    }
+
+    // 10. Fetch business settings for destination WhatsApp number
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('whatsapp_number')
+      .eq('id', 1)
+      .maybeSingle();
+
+    const destPhone = (settings?.whatsapp_number && settings.whatsapp_number.trim())
+      ? settings.whatsapp_number.replace(/[^0-9]/g, '')
+      : '923489593671';
+
+    // 11. Build Initial WhatsApp Message in exact required format
+    // Format:
+    // 🛍️ STH GADGETS - NEW ORDER
+    // 👤 Customer Name: {customer_name}
+    // 📱 WhatsApp Number: {phone}
+    // 🏙️ City: {city}
+    // 📍 Address: {address}
+    // 📦 ORDER DETAILS
+    // • {product_name}
+    // Qty: {quantity} x PKR {unit_price} = PKR {line_total}
+    // 💵 Subtotal: PKR {subtotal}
+    // 🎟️ Coupon Discount: PKR {coupon_discount}
+    // 🎁 Bundle Discount: PKR {bundle_discount}
+    // 🚚 Delivery Charges: PKR {delivery_charges}
+    // 💰 TOTAL AMOUNT: PKR {total_amount}
+    // =========================
+    // Thank you for ordering with STH Gadgets!
+    // We will confirm your order shortly.
+
+    const itemsText = verifiedItems
+      .map(
+        (i) =>
+          `· ${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}\nQty: ${i.quantity} x PKR ${i.unit_price.toLocaleString('en-PK')} = PKR ${i.line_total.toLocaleString('en-PK')}`
+      )
+      .join('\n\n');
+
+    const whatsappMessage = [
+      '🛍️ STH GADGETS - NEW ORDER',
+      '=========================',
+      `👤 Customer Name: ${customer_name}`,
+      `📞 Phone Number: ${phone}`,
+      `📱 WhatsApp Number: ${phone}`,
+      `🏙️ City: ${city}`,
+      `📍 Address: ${address}`,
+      '📦 ORDER DETAILS',
+      '=========================',
+      '',
+      itemsText,
+      '',
+      `💵 Subtotal: PKR ${subtotal.toLocaleString('en-PK')}`,
+      ...(coupon_discount > 0 ? [`🎟️ Coupon Discount: PKR ${coupon_discount.toLocaleString('en-PK')}`] : []),
+      ...(bundle_discount > 0 ? [`🎁 Bundle Discount: PKR ${bundle_discount.toLocaleString('en-PK')}`] : []),
+      `🚚 Delivery Charges: PKR ${delivery_charges.toLocaleString('en-PK')}`,
+      `💰 TOTAL AMOUNT: PKR ${total_amount.toLocaleString('en-PK')}`,
+      '=========================',
+      'Please confirm my order and availability. Thank you!',
+    ].join('\n');
+
+    const whatsappUrl = `https://wa.me/${destPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+
+    return NextResponse.json({
+      success: true,
+      orderId: insertedOrder.id,
+      whatsappUrl,
+      message: whatsappMessage,
+    });
+  } catch (error: any) {
+    console.error('Checkout error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Internal server error during checkout' },
+      { status: 500 }
+    );
+  }
+}
