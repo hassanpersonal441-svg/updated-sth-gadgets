@@ -231,7 +231,7 @@ export default function OrderActionModal({
   }
 
   const isPending = order.status === 'pending';
-  const isApproved = order.status === 'approved';
+  const isApprovedOrActive = order.status !== 'pending' && order.status !== 'cancelled' && order.status !== 'rejected';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-fadeIn">
@@ -662,7 +662,7 @@ export default function OrderActionModal({
                 </>
               )}
 
-              {isApproved && (
+              {isApprovedOrActive && (
                 <>
                   <button
                     type="button"

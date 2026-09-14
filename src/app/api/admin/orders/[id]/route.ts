@@ -2,6 +2,40 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 
+// GET: Fetch single order details with order_items for invoice/viewing
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const orderId = params.id;
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized: Admin login required' }, { status: 401 });
+    }
+
+    const service = createServiceClient();
+
+    const { data: order, error } = await service
+      .from('orders')
+      .select('*, order_items(*, product:products(*, product_images(*)))')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (error || !order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, order });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Error fetching order' }, { status: 500 });
+  }
+}
+
 const updateOrderSchema = z.object({
   customer_name: z.string().min(1, 'Name is required').max(100).optional(),
   phone: z.string().min(5, 'Valid phone is required').max(30).optional(),
