@@ -1,10 +1,13 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import type { Order } from '@/types/database';
 import OrderActionModal from '@/components/admin/OrderActionModal';
-import InvoiceModal from '@/components/admin/InvoiceModal';
 import { useToast } from '@/context/ToastContext';
+import { formatInvoiceDate, formatNumber } from '@/lib/utils';
 
 const TABS = [
   { id: 'all', label: 'All Orders' },
@@ -26,9 +29,6 @@ export default function AdminOrdersPage() {
   const [selectedTab, setSelectedTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-
-  // Invoice Modal State
-  const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
 
   // Direct table delete confirmation state
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
@@ -174,24 +174,48 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-5">
         <div>
           <h1 className="font-display text-2xl font-black text-silver-bright sm:text-3xl">
-            Orders Management
+            Orders & Invoices Management
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-silver-dim">
-            Review incoming WhatsApp orders, verify items, update statuses, and manage dispatch.
+            Review incoming orders, generate invoices, track payments, print & download digital invoices.
           </p>
         </div>
 
-        <button
-          onClick={() => fetchOrders(true)}
-          disabled={loading}
-          className="flex items-center justify-center gap-2 self-start rounded-xl border border-slate-800 bg-[#0C1420] px-4 py-2.5 text-xs font-semibold text-silver-bright hover:border-[#00C4CC] hover:text-[#00C4CC] transition shadow-sm"
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => fetchOrders(true)}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-[#0C1420] px-3.5 py-2 text-xs font-semibold text-silver-bright hover:border-[#00C4CC] hover:text-[#00C4CC] transition shadow-sm"
+          >
+            <span className={loading ? 'animate-spin' : ''}>↻</span>
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Module Switcher Bar (Orders vs Invoices vs Invoice) */}
+      <div className="flex flex-wrap items-center gap-2 bg-[#0C1420] p-1.5 rounded-2xl border border-slate-800">
+        <Link
+          href="/admin/orders"
+          className="px-4 py-2 rounded-xl text-xs font-bold bg-[#00C4CC] text-black shadow-sm"
         >
-          <span className={loading ? 'animate-spin' : ''}>↻</span>
-          <span>{loading ? 'Refreshing...' : 'Refresh Orders'}</span>
-        </button>
+          📦 Orders List
+        </Link>
+        <Link
+          href="/admin/invoices"
+          className="px-4 py-2 rounded-xl text-xs font-bold text-silver-dim hover:text-white hover:bg-slate-800 transition"
+        >
+          📄 Invoices List & Dashboard
+        </Link>
+        <Link
+          href="/admin/invoices/new"
+          className="px-4 py-2 rounded-xl text-xs font-bold text-silver-dim hover:text-white hover:bg-slate-800 transition"
+        >
+          📄 Invoice
+        </Link>
       </div>
 
       {/* Metrics Row */}
@@ -318,13 +342,13 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center justify-between text-xs text-silver-dim pt-1 border-t border-slate-800/60">
                       <div>
                         <span className="text-silver-bright font-semibold font-mono">
-                          PKR {Number(order.total_amount).toLocaleString('en-PK')}
+                          PKR {formatNumber(order.total_amount)}
                         </span>
                         <span className="ml-1.5 text-[11px]">
                           ({itemsCount} item{itemsCount > 1 ? 's' : ''})
                         </span>
                       </div>
-                      <span className="text-[11px]">{new Date(order.created_at).toLocaleDateString()}</span>
+                      <span className="text-[11px]" suppressHydrationWarning>{formatInvoiceDate(order.created_at)}</span>
                     </div>
 
                     {/* Mobile Card Action Buttons */}
@@ -335,15 +359,6 @@ export default function AdminOrdersPage() {
                         className="flex-1 rounded-xl bg-[#00C4CC] hover:bg-[#00b2b9] py-2 text-xs font-bold text-black text-center transition"
                       >
                         Manage
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setInvoiceOrder(order)}
-                        className="rounded-xl border border-slate-700 bg-[#080D15] hover:border-[#00C4CC] px-3 py-2 text-xs font-bold text-[#00C4CC] transition"
-                        title="View Invoice"
-                      >
-                        📄 Invoice
                       </button>
 
                       <button
@@ -409,13 +424,13 @@ export default function AdminOrdersPage() {
                         </td>
 
                         {/* Total */}
-                        <td className="px-4 py-3.5 font-bold font-mono text-silver-bright">
-                          PKR {Number(order.total_amount).toLocaleString('en-PK')}
+                        <td className="px-4 py-3.5 font-bold font-mono text-silver-bright" suppressHydrationWarning>
+                          PKR {formatNumber(order.total_amount)}
                         </td>
 
                         {/* Date */}
-                        <td className="px-4 py-3.5 text-silver-dim whitespace-nowrap">
-                          {new Date(order.created_at).toLocaleDateString()}
+                        <td className="px-4 py-3.5 text-silver-dim whitespace-nowrap" suppressHydrationWarning>
+                          {formatInvoiceDate(order.created_at)}
                         </td>
 
                         {/* Status */}
@@ -470,18 +485,6 @@ export default function AdminOrdersPage() {
                               className="rounded-lg border border-slate-700 bg-[#080D15] px-2.5 py-1 text-xs font-semibold text-silver-bright hover:border-[#00C4CC] hover:text-[#00C4CC] transition"
                             >
                               Manage
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setInvoiceOrder(order);
-                              }}
-                              className="rounded-lg border border-[#00C4CC]/40 bg-[#00C4CC]/10 px-2 py-1 text-xs font-bold text-[#00C4CC] hover:bg-[#00C4CC]/20 transition"
-                              title="View & Print Invoice"
-                            >
-                              📄 Invoice
                             </button>
 
                             <button
@@ -569,10 +572,6 @@ export default function AdminOrdersPage() {
         />
       )}
 
-      {/* Standalone Invoice Modal */}
-      {invoiceOrder && (
-        <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
-      )}
     </div>
   );
 }

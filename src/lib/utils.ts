@@ -1,10 +1,5 @@
 import type { Coupon, Settings } from '@/types/database';
 
-export function formatPrice(amount: number, settings?: Pick<Settings, 'currency_symbol'> | null) {
-  const symbol = settings?.currency_symbol ?? 'Rs.';
-  return `${symbol} ${Math.round(amount).toLocaleString('en-PK')}`;
-}
-
 export function slugify(text: string) {
   return text
     .toLowerCase()
@@ -32,7 +27,7 @@ export function evaluateCoupon(coupon: Coupon | null, orderAmount: number): Coup
   if (orderAmount < coupon.minimum_order) {
     return {
       valid: false,
-      reason: `Minimum order of Rs. ${coupon.minimum_order.toLocaleString('en-PK')} required`,
+      reason: `Minimum order of Rs. ${formatNumber(coupon.minimum_order)} required`,
       discountAmount: 0,
     };
   }
@@ -82,10 +77,10 @@ export function buildWhatsAppOrderLink(params: {
 
   const message = tpl
     .replaceAll('{product_name}', productName)
-    .replaceAll('{product_price}', `${price.toLocaleString('en-PK')}`)
+    .replaceAll('{product_price}', formatNumber(price))
     .replaceAll('{quantity}', String(quantity))
-    .replaceAll('{discount}', discount > 0 ? `${currencySymbol} ${discount.toLocaleString('en-PK')}` : 'None')
-    .replaceAll('{final_price}', finalPrice.toLocaleString('en-PK'))
+    .replaceAll('{discount}', discount > 0 ? `${currencySymbol} ${formatNumber(discount)}` : 'None')
+    .replaceAll('{final_price}', formatNumber(finalPrice))
     .replaceAll('{product_url}', productUrl)
     .replaceAll('{currency_symbol}', currencySymbol);
 
@@ -100,8 +95,6 @@ export function cn(...classes: (string | false | null | undefined)[]) {
 
 /**
  * Normalizes phone numbers for WhatsApp API delivery.
- * Converts Pakistan numbers (e.g. 03001234567 or +923001234567) to standard international format (923001234567).
- * Retains international numbers starting with country code without leading +.
  */
 export function normalizePhoneNumber(phone: string): string {
   if (!phone) return '';
@@ -111,17 +104,40 @@ export function normalizePhoneNumber(phone: string): string {
     cleaned = cleaned.substring(1);
   }
 
-  // Pakistan local format: 03XXXXXXXXX (11 digits starting with 03)
   if (/^03\d{9}$/.test(cleaned)) {
     return '92' + cleaned.substring(1);
   }
 
-  // Pakistan 0092 format: 00923XXXXXXXXX
   if (/^00923\d{9}$/.test(cleaned)) {
     return cleaned.substring(2);
   }
 
-  // Already clean digits
   return cleaned;
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+/** Deterministic UTC date formatter to prevent React Hydration Error between server & client */
+export function formatInvoiceDate(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const day = d.getUTCDate();
+  const month = MONTH_NAMES[d.getUTCMonth()];
+  const year = d.getUTCFullYear();
+  return `${month} ${day}, ${year}`;
+}
+
+/** Deterministic number formatter (comma separator) to prevent server/client locale mismatch */
+export function formatNumber(val: number | string | null | undefined): string {
+  const num = Math.round(Number(val) || 0);
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+export function formatPrice(amount: number, settings?: Pick<Settings, 'currency_symbol'> | null) {
+  const symbol = settings?.currency_symbol ?? 'Rs.';
+  return `${symbol} ${formatNumber(amount)}`;
+}

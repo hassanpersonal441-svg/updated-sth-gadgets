@@ -12,7 +12,7 @@ const checkoutSchema = z.object({
   coupon_code: z.string().nullable().optional(),
   items: z.array(
     z.object({
-      product_id: z.string().uuid(),
+      product_id: z.string().min(1, 'Product ID is required'),
       quantity: z.number().int().min(1),
       variant_name: z.string().nullable().optional(),
     })

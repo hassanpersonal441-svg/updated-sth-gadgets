@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { playOrderChime } from '@/lib/notification-sound';
+import { playNotificationSound, SoundTone } from '@/lib/notification-sound';
 import OrderActionModal from './OrderActionModal';
 import type { Order } from '@/types/database';
 
@@ -13,10 +13,12 @@ export interface AdminNotification {
   orderId: string;
   orderNumber: string | null;
   customerName: string;
+  customerPhone?: string;
   totalAmount: number;
   city: string;
   timestamp: string;
   read: boolean;
+  type?: 'new_order' | 'high_value' | 'low_stock';
   order?: Order;
 }
 
@@ -33,17 +35,25 @@ export default function AdminHeader({
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundTone, setSoundTone] = useState<SoundTone>('chime');
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
+  const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'high_value'>('all');
   const [floatingAlert, setFloatingAlert] = useState<AdminNotification | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const latestKnownOrderId = useRef<string | null>(null);
 
-  // Initialize sound preference & notifications from localStorage
+  // Initialize preferences & notifications from localStorage
   useEffect(() => {
     try {
       const savedSound = localStorage.getItem('sth_admin_sound_enabled');
       if (savedSound !== null) {
         setSoundEnabled(savedSound === 'true');
+      }
+
+      const savedTone = localStorage.getItem('sth_admin_sound_tone') as SoundTone;
+      if (savedTone && ['chime', 'cash', 'digital', 'alarm'].includes(savedTone)) {
+        setSoundTone(savedTone);
       }
 
       const savedNotifs = localStorage.getItem('sth_admin_notifications');
@@ -53,6 +63,10 @@ export default function AdminHeader({
           setNotifications(parsed);
           setUnreadCount(parsed.filter((n) => !n.read).length);
         }
+      }
+
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setNotifPermission(Notification.permission);
       }
     } catch {
       // ignore
@@ -64,13 +78,13 @@ export default function AdminHeader({
     setNotifications(items);
     setUnreadCount(items.filter((n) => !n.read).length);
     try {
-      localStorage.setItem('sth_admin_notifications', JSON.stringify(items.slice(0, 30)));
+      localStorage.setItem('sth_admin_notifications', JSON.stringify(items.slice(0, 50)));
     } catch {
       // ignore
     }
   };
 
-  // Sound toggle handler
+  // Sound toggle & tone selectors
   const toggleSound = () => {
     const next = !soundEnabled;
     setSoundEnabled(next);
@@ -80,48 +94,64 @@ export default function AdminHeader({
       // ignore
     }
     if (next) {
-      playOrderChime();
+      playNotificationSound(soundTone);
     }
+  };
+
+  const changeTone = (tone: SoundTone) => {
+    setSoundTone(tone);
+    try {
+      localStorage.setItem('sth_admin_sound_tone', tone);
+    } catch {
+      // ignore
+    }
+    playNotificationSound(tone);
   };
 
   // Request Desktop Notification Permission
   const requestNotificationPermission = async () => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        await Notification.requestPermission();
+      try {
+        const result = await Notification.requestPermission();
+        setNotifPermission(result);
+      } catch {
+        // ignore
       }
     }
   };
 
   // Trigger alert for new order
   const handleNewOrderAlert = (order: any) => {
+    const isHighValue = Number(order.total_amount || 0) >= 5000;
     const newNotif: AdminNotification = {
       id: Math.random().toString(36).substring(2, 9),
       orderId: order.id,
       orderNumber: order.order_number || null,
       customerName: order.customer_name || 'Customer',
+      customerPhone: order.customer_phone || order.phone || '',
       totalAmount: Number(order.total_amount || 0),
       city: order.city || 'Pakistan',
       timestamp: new Date().toISOString(),
       read: false,
+      type: isHighValue ? 'high_value' : 'new_order',
       order: order,
     };
 
     // Play chime sound
     if (soundEnabled) {
-      playOrderChime();
+      playNotificationSound(isHighValue ? 'cash' : soundTone);
     }
 
     // Display floating popup
     setFloatingAlert(newNotif);
     setTimeout(() => {
       setFloatingAlert((current) => (current?.id === newNotif.id ? null : current));
-    }, 8000);
+    }, 10000);
 
     // Desktop notification
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
-        new Notification('🔔 New STH Gadgets Order!', {
+        new Notification(`🔔 New STH Order ${isHighValue ? '💰 (High Value!)' : ''}`, {
           body: `${order.customer_name} from ${order.city} • PKR ${Number(order.total_amount).toLocaleString('en-PK')}`,
           icon: '/images/logo.png',
         });
@@ -131,7 +161,7 @@ export default function AdminHeader({
     }
 
     setNotifications((prev) => {
-      const updated = [newNotif, ...prev.filter((n) => n.orderId !== order.id)].slice(0, 30);
+      const updated = [newNotif, ...prev.filter((n) => n.orderId !== order.id)].slice(0, 50);
       setUnreadCount(updated.filter((n) => !n.read).length);
       try {
         localStorage.setItem('sth_admin_notifications', JSON.stringify(updated));
@@ -142,11 +172,30 @@ export default function AdminHeader({
     });
   };
 
-  // Realtime subscription + Polling
+  // Unlock audio context on click
+  useEffect(() => {
+    const handleFirstClick = () => {
+      requestNotificationPermission();
+      if (soundEnabled) {
+        playNotificationSound(soundTone);
+      }
+      window.removeEventListener('click', handleFirstClick);
+      window.removeEventListener('touchstart', handleFirstClick);
+    };
+
+    window.addEventListener('click', handleFirstClick);
+    window.addEventListener('touchstart', handleFirstClick);
+
+    return () => {
+      window.removeEventListener('click', handleFirstClick);
+      window.removeEventListener('touchstart', handleFirstClick);
+    };
+  }, [soundEnabled, soundTone]);
+
+  // Realtime subscription + Fast Polling (every 4s)
   useEffect(() => {
     const supabase = createClient();
 
-    // 1. Initial fetch of latest order to establish baseline
     async function checkLatestOrder() {
       try {
         const res = await fetch('/api/admin/orders?limit=1');
@@ -156,7 +205,6 @@ export default function AdminHeader({
           if (!latestKnownOrderId.current) {
             latestKnownOrderId.current = newest.id;
           } else if (latestKnownOrderId.current !== newest.id) {
-            // New order detected via polling!
             latestKnownOrderId.current = newest.id;
             handleNewOrderAlert(newest);
           }
@@ -168,7 +216,6 @@ export default function AdminHeader({
 
     checkLatestOrder();
 
-    // 2. Setup Supabase Realtime channel
     const channel = supabase
       .channel('admin_orders_channel')
       .on(
@@ -183,16 +230,15 @@ export default function AdminHeader({
       )
       .subscribe();
 
-    // 3. Fallback Polling every 30 seconds
     const interval = setInterval(() => {
       checkLatestOrder();
-    }, 30000);
+    }, 4000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [soundEnabled]);
+  }, [soundEnabled, soundTone]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -218,17 +264,14 @@ export default function AdminHeader({
     setIsDropdownOpen(false);
     setFloatingAlert(null);
 
-    // Mark as read
     const updated = notifications.map((n) => (n.id === notif.id ? { ...n, read: true } : n));
     saveNotifications(updated);
 
-    // If order object is already attached
     if (notif.order && notif.order.id) {
       setSelectedOrder(notif.order);
       return;
     }
 
-    // Otherwise fetch fresh from API
     try {
       const res = await fetch('/api/admin/orders');
       const data = await res.json();
@@ -241,12 +284,18 @@ export default function AdminHeader({
     }
   }
 
+  // Filtered notifications list
+  const filteredNotifs = notifications.filter((n) => {
+    if (filterTab === 'unread') return !n.read;
+    if (filterTab === 'high_value') return n.totalAmount >= 5000;
+    return true;
+  });
+
   return (
     <>
       <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-800/80 bg-[#080D15]/90 px-4 sm:px-6 backdrop-blur-xl">
-        {/* Left Side: Hamburger & Branding */}
+        {/* Left Side: Mobile Hamburger & Branding */}
         <div className="flex items-center gap-3">
-          {/* Mobile Hamburger Button */}
           <button
             type="button"
             onClick={onToggleMobileSidebar}
@@ -262,7 +311,6 @@ export default function AdminHeader({
             )}
           </button>
 
-          {/* Logo on Mobile */}
           <Link href="/admin/dashboard" className="flex items-center gap-2 lg:hidden">
             <div className="relative h-8 w-8 overflow-hidden rounded-full border border-[#00C4CC]">
               <Image src="/images/logo.png" alt="STH" fill className="object-cover" />
@@ -272,30 +320,48 @@ export default function AdminHeader({
             </span>
           </Link>
 
-          {/* Desktop Title */}
-          <div className="hidden lg:flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <div className="hidden lg:flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+            </span>
             <span className="font-display text-xs font-bold uppercase tracking-widest text-silver-dim">
-              Live Operations Dashboard
+              Live Operations Hub
             </span>
           </div>
         </div>
 
-        {/* Right Side Actions: Sound Toggle, Notifications Bell, Store Link */}
+        {/* Right Side Actions: Sound Controls & Notifications Bell */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Sound Alert Toggle */}
-          <button
-            type="button"
-            onClick={toggleSound}
-            title={soundEnabled ? 'Order sound alert enabled (Click to mute)' : 'Order sound alert muted (Click to enable)'}
-            className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border transition ${
-              soundEnabled
-                ? 'border-[#00C4CC]/40 bg-[#00C4CC]/10 text-[#00C4CC] hover:bg-[#00C4CC]/20'
-                : 'border-slate-800 bg-[#0C1420] text-silver-dim hover:text-white'
-            }`}
-          >
-            <span className="text-sm">{soundEnabled ? '🔔' : '🔕'}</span>
-          </button>
+          {/* Sound Alert Selector */}
+          <div className="hidden sm:flex items-center gap-1 rounded-xl border border-slate-800 bg-[#0C1420] p-1 text-xs">
+            <button
+              type="button"
+              onClick={toggleSound}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold transition ${
+                soundEnabled
+                  ? 'bg-[#00C4CC]/15 text-[#00C4CC] border border-[#00C4CC]/40'
+                  : 'text-silver-dim hover:text-white'
+              }`}
+              title={soundEnabled ? 'Mute sound' : 'Enable sound'}
+            >
+              <span>{soundEnabled ? '🔔' : '🔕'}</span>
+              <span>{soundEnabled ? 'Sound On' : 'Muted'}</span>
+            </button>
+            {soundEnabled && (
+              <select
+                value={soundTone}
+                onChange={(e) => changeTone(e.target.value as SoundTone)}
+                className="bg-transparent text-[11px] font-bold text-silver-bright focus:outline-none cursor-pointer pr-1"
+                title="Select Notification Alert Tone"
+              >
+                <option value="chime" className="bg-[#0C1420] text-silver-bright">Tone: Chime 🎵</option>
+                <option value="cash" className="bg-[#0C1420] text-silver-bright">Tone: Ka-Ching 💰</option>
+                <option value="digital" className="bg-[#0C1420] text-silver-bright">Tone: Digital ⚡</option>
+                <option value="alarm" className="bg-[#0C1420] text-silver-bright">Tone: Alarm 🚨</option>
+              </select>
+            )}
+          </div>
 
           {/* Notification Bell with Dropdown */}
           <div className="relative" ref={dropdownRef}>
@@ -307,7 +373,7 @@ export default function AdminHeader({
               }}
               className={`relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border transition ${
                 unreadCount > 0
-                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                  ? 'border-amber-500/60 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
                   : 'border-slate-800 bg-[#0C1420] text-silver-dim hover:border-slate-700 hover:text-silver-bright'
               }`}
               aria-label="Order notifications"
@@ -322,7 +388,7 @@ export default function AdminHeader({
               </svg>
 
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-lg animate-pulse">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-lg animate-bounce">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -330,20 +396,21 @@ export default function AdminHeader({
 
             {/* Notifications Dropdown Panel */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-slate-800 bg-[#080D15] p-4 shadow-2xl backdrop-blur-2xl z-50 animate-slideUp">
+              <div className="absolute right-0 mt-2 w-80 sm:w-[420px] rounded-2xl border border-slate-800 bg-[#080D15]/95 p-4 shadow-2xl backdrop-blur-2xl z-50 animate-slideUp">
+                {/* Panel Header */}
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="font-display text-xs sm:text-sm font-bold text-silver-bright">
-                      Order Alerts
+                      Order Alerts & Notifications
                     </span>
                     {unreadCount > 0 && (
-                      <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-2 py-0.2 text-[10px] font-black text-amber-400">
+                      <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black text-amber-400">
                         {unreadCount} new
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-xs">
                     {unreadCount > 0 && (
                       <button
                         type="button"
@@ -365,30 +432,92 @@ export default function AdminHeader({
                   </div>
                 </div>
 
-                <div className="mt-3 max-h-72 overflow-y-auto divide-y divide-slate-800/60">
-                  {notifications.length === 0 ? (
+                {/* Desktop Notification Status & Tone Tester Bar */}
+                <div className="mt-2.5 flex items-center justify-between rounded-xl bg-[#0C1420] border border-slate-800/80 px-3 py-1.5 text-[11px]">
+                  <div className="flex items-center gap-1.5 text-silver-dim">
+                    <span>Desktop Alerts:</span>
+                    {notifPermission === 'granted' ? (
+                      <span className="font-bold text-emerald-400">Active 🟢</span>
+                    ) : (
+                      <button
+                        onClick={requestNotificationPermission}
+                        className="font-bold text-amber-400 hover:underline"
+                      >
+                        Enable 🔔
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => playNotificationSound(soundTone)}
+                    className="flex items-center gap-1 font-bold text-[#00C4CC] hover:text-white transition"
+                  >
+                    <span>▶ Test Sound</span>
+                  </button>
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="mt-3 flex items-center gap-1.5 border-b border-slate-800/80 pb-2">
+                  <button
+                    onClick={() => setFilterTab('all')}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                      filterTab === 'all'
+                        ? 'bg-[#00C4CC] text-black'
+                        : 'text-silver-dim hover:text-white'
+                    }`}
+                  >
+                    All ({notifications.length})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('unread')}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                      filterTab === 'unread'
+                        ? 'bg-[#00C4CC] text-black'
+                        : 'text-silver-dim hover:text-white'
+                    }`}
+                  >
+                    Unread ({unreadCount})
+                  </button>
+                  <button
+                    onClick={() => setFilterTab('high_value')}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                      filterTab === 'high_value'
+                        ? 'bg-emerald-400 text-black'
+                        : 'text-silver-dim hover:text-white'
+                    }`}
+                  >
+                    💰 High Value ({notifications.filter((n) => n.totalAmount >= 5000).length})
+                  </button>
+                </div>
+
+                {/* Notifications List */}
+                <div className="mt-3 max-h-80 overflow-y-auto divide-y divide-slate-800/60">
+                  {filteredNotifs.length === 0 ? (
                     <div className="py-8 text-center text-xs text-silver-dim">
                       <span className="text-2xl block mb-1">📭</span>
-                      No recent order notifications.
+                      No notifications found for this filter.
                     </div>
                   ) : (
-                    notifications.map((n) => (
+                    filteredNotifs.map((n) => (
                       <div
                         key={n.id}
-                        onClick={() => openOrderDetails(n)}
-                        className={`group flex items-start justify-between gap-3 p-2.5 rounded-xl transition cursor-pointer ${
+                        className={`group flex items-start justify-between gap-3 p-3 rounded-xl transition ${
                           !n.read
-                            ? 'bg-[#00C4CC]/10 hover:bg-[#00C4CC]/15'
+                            ? 'bg-[#00C4CC]/10 border border-[#00C4CC]/20 hover:bg-[#00C4CC]/15'
                             : 'hover:bg-slate-800/50'
                         }`}
                       >
-                        <div className="space-y-1">
+                        <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-silver-bright">
+                            <span className="text-xs font-bold text-silver-bright truncate">
                               {n.customerName}
                             </span>
+                            {n.type === 'high_value' && (
+                              <span className="rounded bg-emerald-500/20 px-1.5 py-0.2 text-[9px] font-bold text-emerald-400 border border-emerald-500/30">
+                                High Value
+                              </span>
+                            )}
                             {n.orderNumber && (
-                              <span className="font-mono text-[10px] text-[#00C4CC]">
+                              <span className="font-mono text-[10px] text-[#00C4CC] shrink-0">
                                 {n.orderNumber}
                               </span>
                             )}
@@ -407,12 +536,30 @@ export default function AdminHeader({
                           </span>
                         </div>
 
-                        <button
-                          type="button"
-                          className="shrink-0 rounded-lg border border-slate-700 bg-[#0C1420] px-2.5 py-1 text-[11px] font-semibold text-silver-bright group-hover:border-[#00C4CC] group-hover:text-[#00C4CC] transition"
-                        >
-                          View
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {n.customerPhone && (
+                            <a
+                              href={`https://wa.me/${n.customerPhone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(
+                                `Hello ${n.customerName}! Re: Your STH Gadgets order ${n.orderNumber || ''}.`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg bg-[#25D366] hover:bg-[#20BD5A] p-1.5 text-white transition"
+                              title="Chat on WhatsApp"
+                            >
+                              <svg viewBox="0 0 32 32" className="h-3.5 w-3.5 fill-white">
+                                <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
+                              </svg>
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openOrderDetails(n)}
+                            className="rounded-lg border border-slate-700 bg-[#0C1420] px-2.5 py-1 text-[11px] font-bold text-silver-bright group-hover:border-[#00C4CC] group-hover:text-[#00C4CC] transition"
+                          >
+                            Manage
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -422,20 +569,15 @@ export default function AdminHeader({
                   <Link
                     href="/admin/orders"
                     onClick={() => setIsDropdownOpen(false)}
-                    className="font-semibold text-[#00C4CC] hover:underline"
+                    className="font-bold text-[#00C4CC] hover:underline"
                   >
-                    Go to All Orders →
+                    Go to Orders Dashboard →
                   </Link>
-
-                  <span className="text-[10px] text-silver-dim">
-                    Sound: {soundEnabled ? 'Active 🔔' : 'Muted 🔕'}
-                  </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Quick View Live Store Link */}
           <Link
             href="/"
             target="_blank"
@@ -496,13 +638,18 @@ export default function AdminHeader({
               >
                 🔍 View & Manage Order
               </button>
-              <button
-                type="button"
-                onClick={() => setFloatingAlert(null)}
-                className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-silver-dim hover:text-white transition"
-              >
-                Dismiss
-              </button>
+              {floatingAlert.customerPhone && (
+                <a
+                  href={`https://wa.me/${floatingAlert.customerPhone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(
+                    `Hello ${floatingAlert.customerName}! Thank you for your order on STH Gadgets (${floatingAlert.orderNumber || ''}).`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-3 py-2 text-xs font-bold text-white shadow-sm transition flex items-center gap-1"
+                >
+                  💬 WhatsApp
+                </a>
+              )}
             </div>
           </div>
         </div>

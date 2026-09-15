@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 export const dynamic = 'force-dynamic';
 
 async function getStats() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [
     { count: totalProducts },

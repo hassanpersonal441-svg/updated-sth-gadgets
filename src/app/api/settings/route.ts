@@ -8,8 +8,8 @@ const settingsSchema = z.object({
   business_name: z.string().min(1).optional(),
   logo_url: z.string().url().nullable().optional(),
   whatsapp_number: z.string().min(5).optional(),
-  email: z.string().email().nullable().optional(),
-  address: z.string().nullable().optional(),
+  email: z.string().nullable().optional().or(z.literal('')),
+  address: z.string().nullable().optional().or(z.literal('')),
   facebook: z.string().url().nullable().optional().or(z.literal('')),
   instagram: z.string().url().nullable().optional().or(z.literal('')),
   tiktok: z.string().url().nullable().optional().or(z.literal('')),
@@ -78,7 +78,7 @@ export async function PATCH(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  revalidateTag('settings');
+  (revalidateTag as any)('settings');
   revalidatePath('/', 'layout');
 
   return NextResponse.json({ settings: data });

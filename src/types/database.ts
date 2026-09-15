@@ -163,3 +163,113 @@ export interface CartItem {
   variantName?: string;
   stockStatus: StockStatus;
 }
+
+export type InvoiceStatus = 'Draft' | 'Pending' | 'Confirmed' | 'Paid' | 'Delivered' | 'Cancelled';
+export type InvoicePaymentStatus = 'Unpaid' | 'Partial' | 'Paid' | 'Refunded';
+export type InvoicePaymentMethod = 'Cash on Delivery' | 'Cash' | 'Bank Transfer' | 'Easypaisa' | 'JazzCash' | 'Other';
+
+export interface InvoiceItem {
+  id?: string;
+  invoice_id?: string;
+  product_id?: string | null;
+  product_name: string;
+  product_image?: string | null;
+  quantity: number;
+  unit_price: number;
+  discount: number;
+  total: number;
+  created_at?: string;
+  product?: Product | null;
+}
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_whatsapp?: string | null;
+  customer_email?: string | null;
+  customer_address: string;
+  customer_city: string;
+  invoice_date: string;
+  due_date?: string | null;
+  subtotal: number;
+  item_discount: number;
+  coupon_discount: number;
+  delivery_charges: number;
+  grand_total: number;
+  coupon_code?: string | null;
+  coupon_id?: string | null;
+  payment_method: InvoicePaymentMethod;
+  payment_status: InvoicePaymentStatus;
+  amount_paid: number;
+  remaining_amount: number;
+  invoice_status: InvoiceStatus;
+  notes?: string | null;
+  terms?: string | null;
+  created_at: string;
+  updated_at: string;
+  invoice_items?: InvoiceItem[];
+}
+
+export type BackupType = 'manual' | 'safety_prerestore' | 'automated';
+export type RestoreType = 'full' | 'selective';
+export type BackupStatus = 'success' | 'failed' | 'in_progress';
+export type RestoreStatus = 'in_progress' | 'success' | 'failed' | 'rolled_back';
+
+export type BackupModule =
+  | 'products'
+  | 'categories'
+  | 'product_images'
+  | 'coupons'
+  | 'coupon_usage'
+  | 'customers'
+  | 'orders'
+  | 'order_items'
+  | 'invoices'
+  | 'invoice_items'
+  | 'settings';
+
+export interface BackupRecord {
+  id: string;
+  backup_name: string;
+  backup_type: BackupType;
+  file_path: string;
+  file_size: number;
+  backup_version: string;
+  schema_version: string;
+  created_by?: string | null;
+  created_at: string;
+  status: BackupStatus;
+  record_counts: Record<string, number>;
+  checksum?: string | null;
+}
+
+export interface RestoreHistoryRecord {
+  id: string;
+  restore_number: string;
+  backup_id?: string | null;
+  restore_type: RestoreType;
+  selected_modules: BackupModule[];
+  safety_backup_id?: string | null;
+  started_at: string;
+  completed_at?: string | null;
+  status: RestoreStatus;
+  records_restored: Record<string, number>;
+  records_failed: Record<string, number>;
+  error_message?: string | null;
+  rollback_status: 'none' | 'pending' | 'success' | 'failed';
+  restored_by?: string | null;
+  backup?: BackupRecord | null;
+  safety_backup?: BackupRecord | null;
+}
+
+export interface RestorePreviewData {
+  backup: BackupRecord;
+  schemaVersion: string;
+  compatible: boolean;
+  moduleCounts: Record<string, number>;
+  totalRecords: number;
+}
+
+

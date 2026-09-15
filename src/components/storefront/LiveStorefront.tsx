@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Category, Product, Settings } from '@/types/database';
 import { formatPrice, buildWhatsAppOrderLink } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import ProductCard from './ProductCard';
 
 export default function LiveStorefront({
   initialProducts,
@@ -326,59 +327,62 @@ export default function LiveStorefront({
         {/* ============================================================ */}
         {/* STATS & FILTER CONTROLS */}
         {/* ============================================================ */}
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="text-xs sm:text-sm font-medium text-silver-dim">
-            Showing <span className="font-bold text-silver-bright">{filteredProducts.length}</span> products ·{' '}
-            <span className="font-bold text-silver-bright">{categories.length}</span> categories
-          </div>
+        {(() => {
+          const activeCategoriesCount = categories.filter((c) => (categoryCounts[c.slug] || 0) > 0).length;
+          return (
+            <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs sm:text-sm font-medium text-silver-dim">
+                Showing <span className="font-bold text-[#00C4CC]">{filteredProducts.length}</span> products ·{' '}
+                <span className="font-bold text-silver-bright">{activeCategoriesCount}</span> categories
+              </div>
 
-          <div className="flex items-center gap-3">
-            {/* In-Stock Only Toggle Pill */}
-            <button
-              onClick={() => setInStockOnly((prev) => !prev)}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
-                inStockOnly
-                  ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400 font-semibold'
-                  : 'border-slate-800 bg-[#0C1420] text-silver-dim hover:border-slate-700'
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${inStockOnly ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
-              <span>In-Stock Only</span>
-            </button>
+              <div className="flex items-center gap-2.5">
+                {/* In-Stock Only Toggle Pill */}
+                <button
+                  onClick={() => setInStockOnly((prev) => !prev)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                    inStockOnly
+                      ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
+                      : 'border-slate-800 bg-[#0C1420] text-silver-dim hover:border-slate-700'
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${inStockOnly ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></span>
+                  <span>In-Stock Only</span>
+                </button>
 
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className={`cursor-pointer rounded-lg border px-3 py-1 text-xs font-medium focus:border-[#00C4CC] focus:outline-none ${cardBg}`}
-              >
-                <option value="default">Sort: Default ▾</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="discount">Biggest Discount</option>
-                <option value="newest">Newest</option>
-              </select>
+                {/* Sort Dropdown */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className={`cursor-pointer rounded-lg border px-3 py-1 text-xs font-semibold focus:border-[#00C4CC] focus:outline-none ${cardBg}`}
+                >
+                  <option value="default">Sort: Default ▾</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="discount">Biggest Discount</option>
+                  <option value="newest">Newest</option>
+                </select>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* ============================================================ */}
-        {/* CYAN DIVIDER */}
+        {/* CYAN GLOW DIVIDER */}
         {/* ============================================================ */}
-        <div className="mt-3 h-[2px] w-full bg-[#00C4CC] shadow-[0_0_10px_rgba(0,196,204,0.65)]"></div>
+        <div className="mt-3.5 h-[2px] w-full bg-gradient-to-r from-transparent via-[#00C4CC] to-transparent shadow-[0_0_12px_rgba(0,196,204,0.7)]"></div>
 
         {/* ============================================================ */}
         {/* CATEGORY TABS + VIEW MODE SWITCHER */}
         {/* ============================================================ */}
         <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Category Tabs */}
+          {/* Category Tabs (Hides categories with 0 products) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <button
               onClick={() => setSelectedCategory('all')}
               className={`shrink-0 rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold transition shadow-sm ${
                 selectedCategory === 'all'
-                  ? 'bg-[#00C4CC] text-black'
+                  ? 'bg-[#00C4CC] text-black shadow-[0_0_12px_rgba(0,196,204,0.4)]'
                   : `border border-slate-800 text-silver-dim hover:text-silver-bright hover:border-[#00C4CC]/50 ${cardBg}`
               }`}
             >
@@ -386,14 +390,15 @@ export default function LiveStorefront({
             </button>
             {categories.map((c) => {
               const count = categoryCounts[c.slug] || 0;
+              if (count === 0) return null; // Hide 0-product categories completely
               const isSelected = selectedCategory === c.slug;
               return (
                 <button
                   key={c.id}
                   onClick={() => setSelectedCategory(c.slug)}
-                  className={`shrink-0 rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition ${
+                  className={`shrink-0 rounded-full px-4 py-1.5 text-xs sm:text-sm font-semibold transition ${
                     isSelected
-                      ? 'bg-[#00C4CC] text-black font-bold shadow-sm'
+                      ? 'bg-[#00C4CC] text-black font-bold shadow-[0_0_12px_rgba(0,196,204,0.4)]'
                       : `border border-slate-800 text-silver-dim hover:text-silver-bright hover:border-[#00C4CC]/50 ${cardBg}`
                   }`}
                 >
@@ -403,7 +408,7 @@ export default function LiveStorefront({
             })}
           </div>
 
-          {/* View Mode Switcher: Cards Grid vs Compact List */}
+          {/* View Mode Switcher */}
           <div className={`flex items-center self-end sm:self-auto shrink-0 rounded-lg border p-1 text-xs font-semibold ${cardBg}`}>
             <button
               onClick={() => setViewMode('grid')}
@@ -416,7 +421,7 @@ export default function LiveStorefront({
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z" />
               </svg>
-              <span>Cards Grid</span>
+              <span>Grid</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -429,7 +434,7 @@ export default function LiveStorefront({
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
               </svg>
-              <span>Compact List</span>
+              <span>List</span>
             </button>
           </div>
         </div>
@@ -460,218 +465,12 @@ export default function LiveStorefront({
             </div>
           ) : viewMode === 'grid' ? (
             /* ============================================================ */
-            /* CARDS GRID VIEW */
+            /* CARDS GRID VIEW (2 cols mobile, 3 tablet, 4 desktop) */
             /* ============================================================ */
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {displayedProducts.map((product) => {
-                const primaryImage =
-                  product.product_images?.find((i) => i.is_primary)?.image_url ||
-                  product.product_images?.[0]?.image_url ||
-                  '/images/logo.png';
-
-                return (
-                  <div
-                    key={product.id}
-                    className={`group relative flex flex-col overflow-hidden rounded-2xl border transition hover:border-[#00C4CC]/70 hover:shadow-[0_0_16px_rgba(0,196,204,0.25)] ${cardBg}`}
-                  >
-                    {/* Discount badge */}
-                    {product.discount > 0 && (
-                      <span className="absolute left-3 top-3 z-10 rounded-full bg-[#00C4CC] px-2.5 py-0.5 font-display text-xs font-extrabold text-black">
-                        -{Math.round(product.discount)}%
-                      </span>
-                    )}
-
-                    {/* Stock badge */}
-                    <span
-                      className={`absolute right-3 top-3 z-10 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                        product.stock_status === 'in_stock'
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : product.stock_status === 'low_stock'
-                          ? 'bg-amber-500/15 text-amber-400'
-                          : 'bg-red-500/15 text-red-400'
-                      }`}
-                    >
-                      {product.stock_status === 'in_stock'
-                        ? 'In Stock'
-                        : product.stock_status === 'low_stock'
-                        ? 'Low Stock'
-                        : 'Out of Stock'}
-                    </span>
-
-                    {/* Product Image Link */}
-                    <Link
-                      href={`/products/${product.slug}`}
-                      className="relative aspect-square w-full overflow-hidden bg-black/30"
-                    >
-                      <Image
-                        src={primaryImage}
-                        alt={product.name}
-                        fill
-                        className="object-contain p-6 transition duration-300 group-hover:scale-105"
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                      />
-                    </Link>
-
-                    {/* Content */}
-                    <div className="flex flex-1 flex-col gap-2 p-4">
-                      {product.category && (
-                        <span className="font-display text-[10px] uppercase tracking-wider text-[#00C4CC] font-bold">
-                          {product.category.name}
-                        </span>
-                      )}
-                      <Link href={`/products/${product.slug}`}>
-                        <h3 className="line-clamp-2 font-display text-sm font-semibold text-silver-bright hover:text-[#00C4CC] transition">
-                          {product.name}
-                        </h3>
-                      </Link>
-                      {product.short_description && (
-                        <p className="line-clamp-2 text-xs text-silver-dim">{product.short_description}</p>
-                      )}
-
-                      {/* Prices */}
-                      <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
-                        {appliedCoupons[product.id]?.status === 'valid' ? (
-                          <>
-                            <span className="font-display text-lg font-bold text-emerald-400">
-                              {formatPrice(appliedCoupons[product.id].finalPrice, settings)}
-                            </span>
-                            <span className="text-xs text-silver-dim line-through">
-                              {formatPrice(product.price, settings)}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-display text-lg font-bold text-[#00C4CC]">
-                              {formatPrice(product.price, settings)}
-                            </span>
-                            {product.old_price && product.old_price > product.price && (
-                              <span className="text-xs text-silver-dim line-through">
-                                {formatPrice(product.old_price, settings)}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
-
-                      {/* Coupon Info / Input on Card */}
-                      <div className="mt-1">
-                        {appliedCoupons[product.id]?.status === 'valid' ? (
-                          <div className="flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 text-[11px] text-emerald-400">
-                            <div className="flex items-center gap-1 truncate font-semibold">
-                              <span>🏷️</span>
-                              <span className="font-mono font-bold">{appliedCoupons[product.id].code}</span>
-                              <span className="text-[10px] opacity-80">
-                                (-{formatPrice(appliedCoupons[product.id].discount, settings)})
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveCoupon(product.id)}
-                              className="ml-1 text-emerald-400 hover:text-white font-bold px-1"
-                              title="Remove coupon"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="text"
-                                value={couponInputs[product.id] || ''}
-                                onChange={(e) =>
-                                  setCouponInputs((prev) => ({
-                                    ...prev,
-                                    [product.id]: e.target.value.toUpperCase(),
-                                  }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleApplyCoupon(product.id, product.price);
-                                  }
-                                }}
-                                placeholder="Promo code"
-                                className={`w-full min-w-0 rounded-lg border px-2 py-1 text-[11px] uppercase font-mono tracking-wider text-[#00C4CC] font-bold focus:border-[#00C4CC] focus:outline-none ${inputBg}`}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleApplyCoupon(product.id, product.price)}
-                                disabled={appliedCoupons[product.id]?.status === 'checking'}
-                                className="rounded-lg bg-[#00C4CC] hover:bg-[#00B2B9] px-2.5 py-1 text-[11px] font-bold text-black transition shrink-0 disabled:opacity-50"
-                              >
-                                {appliedCoupons[product.id]?.status === 'checking' ? '...' : 'Apply'}
-                              </button>
-                            </div>
-                            {appliedCoupons[product.id]?.status === 'invalid' && (
-                              <p className="text-[10px] font-medium text-rose-400 truncate">
-                                {appliedCoupons[product.id]?.message || 'Invalid coupon'}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action buttons */}
-                      {(() => {
-                        const applied = appliedCoupons[product.id];
-                        const isApplied = applied?.status === 'valid';
-                        const discount = isApplied ? applied.discount : 0;
-                        const finalPrice = isApplied ? applied.finalPrice : product.price;
-                        const productUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products/${product.slug}`;
-                        const phone =
-                          settings?.whatsapp_number && settings.whatsapp_number.trim()
-                            ? settings.whatsapp_number
-                            : '+92 348 9593671';
-
-                        const orderLink = buildWhatsAppOrderLink({
-                          whatsappNumber: phone,
-                          template: settings?.order_message_template || null,
-                          productName: product.name,
-                          price: product.price,
-                          quantity: 1,
-                          discount,
-                          finalPrice,
-                          productUrl,
-                          currencySymbol: settings?.currency_symbol || 'Rs.',
-                        });
-
-                        return (
-                          <div className="mt-2 flex flex-col gap-2">
-                            <a
-                              href={orderLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={() => trackWhatsAppClick(product.id)}
-                              className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-2 px-3 text-xs font-bold text-white shadow-sm transition hover:scale-[1.01]"
-                            >
-                              <svg viewBox="0 0 32 32" className="h-4 w-4 fill-white shrink-0">
-                                <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
-                              </svg>
-                              <span>Order on WhatsApp</span>
-                            </a>
-                            <div className="flex gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => addToCart(product, 1)}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] text-[#00C4CC] hover:text-black py-1.5 px-2 font-display text-xs font-bold transition"
-                              >
-                                <span>🛒</span>
-                                <span>Add to Cart</span>
-                              </button>
-                              <Link
-                                href={`/products/${product.slug}`}
-                                className="rounded-xl border border-slate-700/60 py-1.5 px-3 text-center font-display text-xs font-semibold text-silver-bright transition hover:border-[#00C4CC] hover:text-[#00C4CC]"
-                              >
-                                Details
-                              </Link>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-3 lg:grid-cols-4">
+              {displayedProducts.map((product) => (
+                <ProductCard key={product.id} product={product} settings={settings} />
+              ))}
             </div>
           ) : (
             /* ============================================================ */
@@ -687,13 +486,13 @@ export default function LiveStorefront({
                 return (
                   <div
                     key={product.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 hover:bg-[#00C4CC]/5 transition"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 hover:bg-[#00C4CC]/5 transition duration-200"
                   >
                     {/* Left: Thumbnail & Details */}
                     <div className="flex items-center gap-3 min-w-0">
                       <Link
                         href={`/products/${product.slug}`}
-                        className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 overflow-hidden rounded-xl border border-slate-800 bg-black/20 p-1"
+                        className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 overflow-hidden rounded-xl border border-slate-800 bg-black/30 p-1"
                       >
                         <Image
                           src={primaryImage}
@@ -706,7 +505,7 @@ export default function LiveStorefront({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <Link href={`/products/${product.slug}`}>
-                            <h4 className="font-display text-sm font-semibold text-silver-bright hover:text-[#00C4CC] transition truncate">
+                            <h4 className="font-display text-xs sm:text-sm font-bold text-silver-bright hover:text-[#00C4CC] transition truncate">
                               {product.name}
                             </h4>
                           </Link>
@@ -723,15 +522,15 @@ export default function LiveStorefront({
                     </div>
 
                     {/* Right: Stock + Price + WhatsApp button */}
-                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 pl-14 sm:pl-0">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-14 sm:pl-0">
                       {/* Stock badge */}
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${
                           product.stock_status === 'in_stock'
-                            ? 'bg-emerald-500/15 text-emerald-400'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             : product.stock_status === 'low_stock'
-                            ? 'bg-amber-500/15 text-amber-400'
-                            : 'bg-red-500/15 text-red-400'
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            : 'bg-red-500/15 text-red-400 border border-red-500/30'
                         }`}
                       >
                         {product.stock_status === 'in_stock'
@@ -743,35 +542,18 @@ export default function LiveStorefront({
 
                       {/* Prices */}
                       <div className="text-right whitespace-nowrap">
-                        {appliedCoupons[product.id]?.status === 'valid' ? (
-                          <>
-                            <div className="font-display text-base sm:text-lg font-bold text-emerald-400">
-                              {formatPrice(appliedCoupons[product.id].finalPrice, settings)}
-                            </div>
-                            <div className="text-[11px] text-silver-dim line-through">
-                              {formatPrice(product.price, settings)}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="font-display text-base sm:text-lg font-bold text-[#00C4CC]">
-                              {formatPrice(product.price, settings)}
-                            </div>
-                            {product.old_price && product.old_price > product.price && (
-                              <div className="text-[11px] text-silver-dim line-through">
-                                {formatPrice(product.old_price, settings)}
-                              </div>
-                            )}
-                          </>
+                        <div className="font-display text-sm sm:text-base font-black text-[#00C4CC]">
+                          {formatPrice(product.price, settings)}
+                        </div>
+                        {product.old_price && product.old_price > product.price && (
+                          <div className="text-[10px] text-silver-dim line-through">
+                            {formatPrice(product.old_price, settings)}
+                          </div>
                         )}
                       </div>
 
-                      {/* WhatsApp & View Details Buttons */}
+                      {/* Action Buttons */}
                       {(() => {
-                        const applied = appliedCoupons[product.id];
-                        const isApplied = applied?.status === 'valid';
-                        const discount = isApplied ? applied.discount : 0;
-                        const finalPrice = isApplied ? applied.finalPrice : product.price;
                         const productUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products/${product.slug}`;
                         const phone =
                           settings?.whatsapp_number && settings.whatsapp_number.trim()
@@ -784,38 +566,38 @@ export default function LiveStorefront({
                           productName: product.name,
                           price: product.price,
                           quantity: 1,
-                          discount,
-                          finalPrice,
+                          discount: 0,
+                          finalPrice: product.price,
                           productUrl,
                           currencySymbol: settings?.currency_symbol || 'Rs.',
                         });
 
                         return (
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => addToCart(product, 1)}
-                              className="flex items-center gap-1 rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] text-[#00C4CC] hover:text-black px-2.5 py-1.5 text-xs font-bold transition whitespace-nowrap"
-                              title="Add to cart"
-                            >
-                              <span>🛒</span>
-                              <span className="hidden sm:inline">Add</span>
-                            </button>
                             <a
                               href={orderLink}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={() => trackWhatsAppClick(product.id)}
-                              className="flex items-center gap-1.5 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:scale-[1.02] whitespace-nowrap"
+                              className="flex items-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-3 py-1.5 text-xs font-black text-white shadow-sm transition hover:scale-[1.02] whitespace-nowrap"
                             >
                               <svg viewBox="0 0 32 32" className="h-3.5 w-3.5 fill-white shrink-0">
                                 <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
                               </svg>
                               <span>Order</span>
                             </a>
+                            <button
+                              type="button"
+                              onClick={() => addToCart(product, 1)}
+                              className="flex items-center gap-1 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-2.5 py-1.5 text-xs font-black transition whitespace-nowrap"
+                              title="Add to cart"
+                            >
+                              <span>🛒</span>
+                              <span className="hidden sm:inline">Cart</span>
+                            </button>
                             <Link
                               href={`/products/${product.slug}`}
-                              className="rounded-xl border border-slate-700/60 px-3 py-1.5 text-center font-display text-xs font-semibold text-silver-bright transition hover:border-[#00C4CC] hover:text-[#00C4CC] whitespace-nowrap"
+                              className="rounded-xl border border-slate-700/80 hover:border-[#00C4CC] px-2.5 py-1.5 text-center font-display text-xs font-semibold text-silver-bright hover:text-[#00C4CC] transition whitespace-nowrap"
                             >
                               Details
                             </Link>
@@ -852,3 +634,4 @@ export default function LiveStorefront({
     </div>
   );
 }
+

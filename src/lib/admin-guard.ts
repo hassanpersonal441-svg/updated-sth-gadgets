@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
  *  admin-only API route before performing any write.
  */
 export async function requireAdmin(): Promise<{ userId: string } | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

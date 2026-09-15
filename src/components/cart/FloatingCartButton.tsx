@@ -1,12 +1,17 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 
 export default function FloatingCartButton() {
+  const pathname = usePathname();
   const { totalItems, totalAmount, openCart, isCartOpen, isCheckoutOpen } = useCart();
 
-  if (totalItems === 0 || isCartOpen || isCheckoutOpen) return null;
+  // Hide completely inside Admin Panel or when cart/checkout is open or cart is empty
+  if (pathname?.startsWith('/admin') || totalItems === 0 || isCartOpen || isCheckoutOpen) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-20 right-5 z-40 animate-slideUp">

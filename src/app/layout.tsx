@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk, Inter } from 'next/font/google';
 import './globals.css';
+import { CartProvider } from '@/context/CartContext';
+import ClientCartOverlays from '@/components/cart/ClientCartOverlays';
 
 const display = Space_Grotesk({
   subsets: ['latin'],
@@ -33,24 +35,13 @@ export const metadata: Metadata = {
   icons: { icon: '/images/logo.png' },
 };
 
-import dynamic from 'next/dynamic';
-import { CartProvider } from '@/context/CartContext';
-
-const CartDrawer = dynamic(() => import('@/components/cart/CartDrawer'), { ssr: false });
-const CheckoutModal = dynamic(() => import('@/components/cart/CheckoutModal'), { ssr: false });
-const FloatingCartButton = dynamic(() => import('@/components/cart/FloatingCartButton'), { ssr: false });
-const StorefrontTour = dynamic(() => import('@/components/storefront/StorefrontTour'), { ssr: false });
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
-      <body className="font-body bg-base text-silver antialiased">
+    <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <body className="font-body bg-base text-silver antialiased" suppressHydrationWarning>
         <CartProvider>
           {children}
-          <CartDrawer />
-          <CheckoutModal />
-          <FloatingCartButton />
-          <StorefrontTour />
+          <ClientCartOverlays />
         </CartProvider>
       </body>
     </html>

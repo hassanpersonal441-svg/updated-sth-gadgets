@@ -133,6 +133,69 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        {/* Invoice Header & Contact Information */}
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📄</span>
+              <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+                Invoice Header & Store Contact Info
+              </h2>
+            </div>
+            <span className="rounded-full bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-2.5 py-0.5 text-[10px] font-bold text-[#00C4CC]">
+              Appears on Invoices
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-silver-dim">
+                Business Location / Address (Shows on Invoice)
+              </label>
+              <input
+                value={settings.address || ''}
+                onChange={(e) => update('address', e.target.value)}
+                placeholder="e.g. Lahore, Pakistan"
+                className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+              />
+              <p className="mt-1 text-[11px] text-silver-dim">
+                Printed on top-left of generated customer invoices (e.g. Lahore, Pakistan).
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-silver-dim">
+                Phone / WhatsApp Number (Shows on Invoice & Storefront)
+              </label>
+              <input
+                value={settings.whatsapp_number || ''}
+                onChange={(e) => update('whatsapp_number', e.target.value)}
+                placeholder="e.g. +92 348 9593671"
+                className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none font-mono"
+              />
+              <p className="mt-1 text-[11px] text-silver-dim">
+                Printed on invoices under Phone / WhatsApp and used for storefront WhatsApp ordering.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-silver-dim">
+                Official Store Email (Shows on Invoice)
+              </label>
+              <input
+                type="email"
+                value={settings.email || ''}
+                onChange={(e) => update('email', e.target.value)}
+                placeholder="e.g. support@sthgadgets.com"
+                className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+              />
+              <p className="mt-1 text-[11px] text-silver-dim">
+                Printed on invoices under Email (e.g. support@sthgadgets.com).
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* WhatsApp Ordering & Greetings */}
         <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4 border-b border-slate-800/80 pb-3">

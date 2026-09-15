@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   }
   const { code, orderAmount, productId } = parsed.data;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: coupon } = await supabase
     .from('coupons')
     .select('*')

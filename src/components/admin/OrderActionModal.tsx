@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Order } from '@/types/database';
 import { useToast } from '@/context/ToastContext';
-import InvoiceModal from '@/components/admin/InvoiceModal';
 
 interface OrderActionModalProps {
   order: Order | null;
@@ -35,9 +34,6 @@ export default function OrderActionModal({
   // Delete State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  // Invoice Modal State
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   useEffect(() => {
     if (order) {
@@ -276,15 +272,6 @@ export default function OrderActionModal({
                 }`}
               >
                 {isEditing ? '✕ Cancel Edit' : '✏️ Edit Details'}
-              </button>
-
-              {/* View / Print Invoice Button */}
-              <button
-                type="button"
-                onClick={() => setShowInvoiceModal(true)}
-                className="rounded-lg border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 text-[#00C4CC] px-2.5 py-1 text-xs font-semibold transition"
-              >
-                📄 View / Print Invoice
               </button>
             </div>
             <p className="mt-1 text-[11px] sm:text-xs text-silver-dim truncate max-w-xs sm:max-w-md">
@@ -617,6 +604,15 @@ export default function OrderActionModal({
                 {order.status}
               </span>
 
+              <a
+                href={`/admin/invoices/new?customer_name=${encodeURIComponent(order.customer_name)}&customer_phone=${encodeURIComponent(order.phone)}&customer_city=${encodeURIComponent(order.city)}&customer_address=${encodeURIComponent(order.address)}&delivery=${order.delivery_charges}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-xl border border-[#00C4CC]/40 bg-[#00C4CC]/10 px-3 py-1 text-xs font-bold text-[#00C4CC] hover:bg-[#00C4CC]/20 transition"
+              >
+                📄 Generate Invoice
+              </a>
+
               {/* Direct Delete Toggle Button */}
               {!showDeleteConfirm && (
                 <button
@@ -693,14 +689,6 @@ export default function OrderActionModal({
 
               <button
                 type="button"
-                onClick={() => setShowInvoiceModal(true)}
-                className="rounded-xl border border-[#00C4CC]/60 bg-[#00C4CC]/15 hover:bg-[#00C4CC]/25 px-4 py-2 text-xs font-bold text-[#00C4CC] shadow-sm transition"
-              >
-                📄 View / Print Invoice
-              </button>
-
-              <button
-                type="button"
                 onClick={onClose}
                 className="rounded-xl border border-slate-800 px-3.5 py-2 text-xs font-semibold text-silver-dim hover:text-white transition"
               >
@@ -710,10 +698,6 @@ export default function OrderActionModal({
           </div>
         </div>
       </div>
-
-      {showInvoiceModal && (
-        <InvoiceModal order={order} onClose={() => setShowInvoiceModal(false)} />
-      )}
     </div>
   );
 }

@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: any }
 ) {
   try {
-    const orderId = params.id;
-    const supabase = createClient();
+    const resolvedParams = await params;
+    const orderId = resolvedParams?.id || params?.id;
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -155,6 +158,56 @@ export async function POST(
     ].join('\n');
 
     const confirmationWhatsAppUrl = `https://wa.me/${cleanCustomerPhone}?text=${encodeURIComponent(confirmationMessage)}`;
+
+    // Generate corresponding official invoice for approved order
+    try {
+      const { data: existingInvoice } = await service
+        .from('invoices')
+        .select('id')
+        .eq('customer_phone', approvedOrder.phone)
+        .eq('subtotal', approvedOrder.subtotal)
+        .eq('grand_total', approvedOrder.total_amount)
+        .maybeSingle();
+
+      if (!existingInvoice) {
+        const { data: newInv } = await service
+          .from('invoices')
+          .insert({
+            customer_name: approvedOrder.customer_name,
+            customer_phone: approvedOrder.phone,
+            customer_whatsapp: approvedOrder.phone,
+            customer_address: approvedOrder.address,
+            customer_city: approvedOrder.city,
+            subtotal: approvedOrder.subtotal,
+            coupon_discount: (approvedOrder.coupon_discount || 0) + (approvedOrder.bundle_discount || 0),
+            delivery_charges: approvedOrder.delivery_charges,
+            grand_total: approvedOrder.total_amount,
+            payment_method: 'Cash on Delivery',
+            payment_status: approvedOrder.payment_status === 'paid' ? 'Paid' : 'Unpaid',
+            invoice_status: 'Confirmed',
+            amount_paid: approvedOrder.payment_status === 'paid' ? approvedOrder.total_amount : 0,
+            remaining_amount: approvedOrder.payment_status === 'paid' ? 0 : approvedOrder.total_amount,
+            notes: `Auto-generated from Approved Order ${approvedOrder.order_number}`,
+          })
+          .select()
+          .single();
+
+        if (newInv && approvedOrder.order_items && approvedOrder.order_items.length > 0) {
+          const invItems = approvedOrder.order_items.map((i: any) => ({
+            invoice_id: newInv.id,
+            product_id: i.product_id || null,
+            product_name: i.product_name + (i.variant_name ? ` (${i.variant_name})` : ''),
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            discount: 0,
+            total: i.line_total,
+          }));
+          await service.from('invoice_items').insert(invItems);
+        }
+      }
+    } catch (invEx) {
+      console.error('Auto invoice creation error during order approval:', invEx);
+    }
 
     return NextResponse.json({
       success: true,

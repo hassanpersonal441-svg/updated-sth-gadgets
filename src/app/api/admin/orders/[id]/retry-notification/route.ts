@@ -6,13 +6,16 @@ import {
   type WhatsAppNotificationResult,
 } from '@/lib/whatsapp';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: any }
 ) {
   try {
-    const orderId = params.id;
-    const supabase = createClient();
+    const resolvedParams = await params;
+    const orderId = resolvedParams?.id || params?.id;
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();

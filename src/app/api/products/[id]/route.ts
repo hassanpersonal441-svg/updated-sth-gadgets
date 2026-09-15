@@ -28,7 +28,9 @@ const productUpdateSchema = z.object({
     .optional(),
 });
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: any }) {
+  const resolvedParams = await params;
+  const id = resolvedParams?.id || params?.id;
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -36,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const { data, error } = await service
     .from('products')
     .select('*, category:categories(*), product_images(*)')
-    .eq('id', params.id)
+    .eq('id', id)
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -44,7 +46,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   return NextResponse.json({ product: data });
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: any }) {
+  const resolvedParams = await params;
+  const id = resolvedParams?.id || params?.id;
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -66,7 +70,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       const { data: currentProd } = await service
         .from('products')
         .select('price, purchase_price')
-        .eq('id', params.id)
+        .eq('id', id)
         .maybeSingle();
 
       const effectivePrice = productData.price !== undefined ? productData.price : (currentProd?.price || 0);
@@ -80,16 +84,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
-    const { error } = await service.from('products').update(productData).eq('id', params.id);
+    const { error } = await service.from('products').update(productData).eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   // Replace image set if provided
   if (images) {
-    await service.from('product_images').delete().eq('product_id', params.id);
+    await service.from('product_images').delete().eq('product_id', id);
     if (images.length > 0) {
       const rows = images.map((img, i) => ({
-        product_id: params.id,
+        product_id: id,
         image_url: img.image_url,
         is_primary: img.is_primary || i === 0,
         sort_order: i,
@@ -102,26 +106,28 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const { data: updated } = await service
     .from('products')
     .select('*, category:categories(*), product_images(*)')
-    .eq('id', params.id)
+    .eq('id', id)
     .maybeSingle();
 
-  revalidateTag('products');
-  if (updated?.slug) revalidateTag(`product-${updated.slug}`);
+  (revalidateTag as any)('products');
+  if (updated?.slug) (revalidateTag as any)(`product-${updated.slug}`);
   revalidatePath('/');
   revalidatePath('/products');
 
   return NextResponse.json({ product: updated });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: any }) {
+  const resolvedParams = await params;
+  const id = resolvedParams?.id || params?.id;
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const service = createServiceClient();
-  const { error } = await service.from('products').delete().eq('id', params.id);
+  const { error } = await service.from('products').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  revalidateTag('products');
+  (revalidateTag as any)('products');
   revalidatePath('/');
   revalidatePath('/products');
 

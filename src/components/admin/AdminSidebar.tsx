@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -79,6 +80,15 @@ const links = [
       </svg>
     ),
   },
+  {
+    href: '/admin/backup',
+    label: 'Backup & Restore',
+    icon: (
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+      </svg>
+    ),
+  },
 ];
 
 interface AdminSidebarProps {
@@ -89,6 +99,11 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -100,100 +115,108 @@ export default function AdminSidebar({ mobileOpen = false, onCloseMobile }: Admi
     router.refresh();
   }
 
-  const SidebarContent = (
-    <div className="flex h-full w-64 shrink-0 flex-col border-r border-slate-800/80 bg-[#080D15] text-[#C9D2DB]">
-      {/* Brand Header */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 px-5 py-5">
-        <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] p-0.5 shadow-[0_0_12px_rgba(0,196,204,0.4)]">
-            <Image src="/images/logo.png" alt="STH Gadgets" fill className="object-cover rounded-full" />
+  function renderSidebar(isMobileDrawer = false, onClose?: () => void) {
+    return (
+      <div className="flex h-full w-64 shrink-0 flex-col border-r border-slate-800/80 bg-[#080D15] text-[#C9D2DB]">
+        {/* Brand Header */}
+        <div className="flex items-center justify-between border-b border-slate-800/80 px-5 py-5">
+          <div className="flex items-center gap-3">
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] p-0.5 shadow-[0_0_12px_rgba(0,196,204,0.4)]">
+              <Image src="/images/logo.png" alt="STH Gadgets" fill className="object-cover rounded-full" />
+            </div>
+            <div>
+              <span className="block font-display text-sm font-black tracking-wider uppercase text-silver-bright">
+                STH Gadgets
+              </span>
+              <span className="inline-block rounded bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-1.5 py-0.2 text-[10px] font-extrabold uppercase tracking-widest text-[#00C4CC]">
+                Admin Portal
+              </span>
+            </div>
           </div>
-          <div>
-            <span className="block font-display text-sm font-black tracking-wider uppercase text-silver-bright">
-              STH Gadgets
-            </span>
-            <span className="inline-block rounded bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-1.5 py-0.2 text-[10px] font-extrabold uppercase tracking-widest text-[#00C4CC]">
-              Admin Portal
-            </span>
-          </div>
+
+          {/* Close Button on Mobile Drawer Only */}
+          {isMobileDrawer && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-silver-dim hover:text-white lg:hidden"
+              aria-label="Close menu"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Close Button on Mobile Drawer */}
-        {onCloseMobile && (
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            className="rounded-lg p-1.5 text-silver-dim hover:text-white lg:hidden"
-            aria-label="Close menu"
+        {/* Navigation Links */}
+        <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-5">
+          {links.map((l) => {
+            const isActive = Boolean(
+              pathname &&
+                (pathname === l.href ||
+                  (l.href !== '/admin' && pathname.startsWith(l.href)))
+            );
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                prefetch={true}
+                onClick={() => {
+                  if (onClose) onClose();
+                }}
+                className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-display text-xs sm:text-sm font-semibold transition ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#00C4CC]/20 via-[#00C4CC]/10 to-transparent text-[#00C4CC] border-l-4 border-[#00C4CC] shadow-sm'
+                    : 'text-silver-dim hover:bg-[#0E1624] hover:text-silver-bright'
+                }`}
+              >
+                <span className={isActive ? 'text-[#00C4CC]' : 'text-silver-dim'}>
+                  {l.icon}
+                </span>
+                <span>{l.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Bottom Actions: View Store & Log Out */}
+        <div className="border-t border-slate-800/80 p-3 space-y-2">
+          <Link
+            href="/"
+            target="_blank"
+            className="flex items-center justify-between rounded-xl border border-slate-800 bg-[#0C1420] px-3.5 py-2 font-display text-xs font-semibold text-silver-bright hover:border-[#00C4CC]/50 hover:text-[#00C4CC] transition"
           >
-            ✕
+            <span className="flex items-center gap-2">
+              <span>🌐</span>
+              <span>View Live Store</span>
+            </span>
+            <svg className="h-3.5 w-3.5 text-silver-dim" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </Link>
+
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 px-3.5 py-2 font-display text-xs font-semibold text-silver-dim transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Log Out</span>
           </button>
-        )}
+        </div>
       </div>
-
-      {/* Navigation Links */}
-      <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-5">
-        {links.map((l) => {
-          const isActive = pathname.startsWith(l.href);
-          return (
-            <Link
-              key={l.href}
-              href={l.href}
-              prefetch={true}
-              onClick={() => {
-                if (onCloseMobile) onCloseMobile();
-              }}
-              className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-display text-xs sm:text-sm font-semibold transition ${
-                isActive
-                  ? 'bg-gradient-to-r from-[#00C4CC]/20 via-[#00C4CC]/10 to-transparent text-[#00C4CC] border-l-4 border-[#00C4CC] shadow-sm'
-                  : 'text-silver-dim hover:bg-[#0E1624] hover:text-silver-bright'
-              }`}
-            >
-              <span className={isActive ? 'text-[#00C4CC]' : 'text-silver-dim'}>{l.icon}</span>
-              <span>{l.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Bottom Actions: View Store & Log Out */}
-      <div className="border-t border-slate-800/80 p-3 space-y-2">
-        <Link
-          href="/"
-          target="_blank"
-          className="flex items-center justify-between rounded-xl border border-slate-800 bg-[#0C1420] px-3.5 py-2 font-display text-xs font-semibold text-silver-bright hover:border-[#00C4CC]/50 hover:text-[#00C4CC] transition"
-        >
-          <span className="flex items-center gap-2">
-            <span>🌐</span>
-            <span>View Live Store</span>
-          </span>
-          <svg className="h-3.5 w-3.5 text-silver-dim" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </Link>
-
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 px-3.5 py-2 font-display text-xs font-semibold text-silver-dim transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span>Log Out</span>
-        </button>
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <>
       {/* Persistent Desktop Sidebar */}
       <aside className="hidden lg:flex lg:h-screen lg:shrink-0 sticky top-0 z-40">
-        {SidebarContent}
+        {renderSidebar(false)}
       </aside>
 
       {/* Mobile Slide-Over Drawer with Backdrop */}
-      {mobileOpen && (
+      {mounted && mobileOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden animate-fadeIn">
           {/* Backdrop overlay */}
           <div
@@ -204,7 +227,7 @@ export default function AdminSidebar({ mobileOpen = false, onCloseMobile }: Admi
 
           {/* Drawer panel */}
           <div className="relative z-10 flex h-full max-w-[80vw] animate-slideRight">
-            {SidebarContent}
+            {renderSidebar(true, onCloseMobile)}
           </div>
         </div>
       )}

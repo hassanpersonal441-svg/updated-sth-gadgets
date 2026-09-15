@@ -2,11 +2,13 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import ProductForm from '@/components/admin/ProductForm';
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+export default async function EditProductPage({ params }: { params: any }) {
+  const resolvedParams = await params;
+  const id = resolvedParams?.id || params?.id;
+  const supabase = await createClient();
   const [{ data: categories }, { data: product }] = await Promise.all([
     supabase.from('categories').select('*').order('name'),
-    supabase.from('products').select('*, category:categories(*), product_images(*)').eq('id', params.id).maybeSingle(),
+    supabase.from('products').select('*, category:categories(*), product_images(*)').eq('id', id).maybeSingle(),
   ]);
 
   if (!product) notFound();

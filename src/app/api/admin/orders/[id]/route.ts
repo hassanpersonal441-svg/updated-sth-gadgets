@@ -2,14 +2,17 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 // GET: Fetch single order details with order_items for invoice/viewing
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: any }
 ) {
   try {
-    const orderId = params.id;
-    const supabase = createClient();
+    const resolvedParams = await params;
+    const orderId = resolvedParams?.id || params?.id;
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -20,11 +23,24 @@ export async function GET(
 
     const service = createServiceClient();
 
-    const { data: order, error } = await service
+    let { data: order, error } = await service
       .from('orders')
       .select('*, order_items(*, product:products(*, product_images(*)))')
       .eq('id', orderId)
       .maybeSingle();
+
+    // Fallback if deep relation query fails
+    if (error) {
+      console.warn('Primary single order query failed, trying fallback query:', error.message);
+      const fallbackRes = await service
+        .from('orders')
+        .select('*, order_items(*)')
+        .eq('id', orderId)
+        .maybeSingle();
+      
+      order = fallbackRes.data;
+      error = fallbackRes.error;
+    }
 
     if (error || !order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -48,11 +64,12 @@ const updateOrderSchema = z.object({
 // PATCH: Update order details (customer info, admin notes, order number)
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: any }
 ) {
   try {
-    const orderId = params.id;
-    const supabase = createClient();
+    const resolvedParams = await params;
+    const orderId = resolvedParams?.id || params?.id;
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -139,11 +156,12 @@ export async function PATCH(
 // DELETE: Permanently delete an order and its items
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: any }
 ) {
   try {
-    const orderId = params.id;
-    const supabase = createClient();
+    const resolvedParams = await params;
+    const orderId = resolvedParams?.id || params?.id;
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();

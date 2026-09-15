@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   const { data, error } = await service.from('categories').insert(parsed.data).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  revalidateTag('categories');
+  (revalidateTag as any)('categories');
   revalidatePath('/');
   revalidatePath('/products');
 

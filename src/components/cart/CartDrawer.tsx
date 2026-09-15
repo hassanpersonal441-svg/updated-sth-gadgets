@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import QuickWhatsAppModal from './QuickWhatsAppModal';
 
 export default function CartDrawer() {
   const {
@@ -29,6 +30,8 @@ export default function CartDrawer() {
   } = useCart();
 
   const [inputCode, setInputCode] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (!isCartOpen) return null;
 
@@ -39,8 +42,86 @@ export default function CartDrawer() {
     if (success) setInputCode('');
   }
 
+  async function handleWhatsAppCartSubmit(custName: string, custPhone: string) {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    // Pre-open tab in click event context to avoid browser popup blocker
+    const newTab = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
+
+    const storePhone = '923489593671';
+    let fallbackMsg = `🛒 *STH GADGETS — WHATSAPP CART ORDER*\n\n`;
+    items.forEach((item, idx) => {
+      fallbackMsg += `${idx + 1}. *${item.productName}*\n   Qty: ${item.quantity} × PKR ${item.price.toLocaleString('en-PK')} = PKR ${(item.quantity * item.price).toLocaleString('en-PK')}\n`;
+    });
+    fallbackMsg += `\n--------------------\n`;
+    fallbackMsg += `*Customer:* ${custName} (${custPhone})\n`;
+    fallbackMsg += `*Subtotal:* PKR ${subtotal.toLocaleString('en-PK')}\n`;
+    if (couponDiscount > 0) fallbackMsg += `*Coupon Discount (${couponCode}):* -PKR ${couponDiscount.toLocaleString('en-PK')}\n`;
+    if (bundleDiscount > 0) fallbackMsg += `*Bundle Discount (${bundlePercentage}%):* -PKR ${bundleDiscount.toLocaleString('en-PK')}\n`;
+    fallbackMsg += `*Delivery:* ${deliveryCharges === 0 ? 'FREE' : `PKR ${deliveryCharges}`}\n`;
+    fallbackMsg += `*Total Amount:* PKR ${totalAmount.toLocaleString('en-PK')}\n\n`;
+    fallbackMsg += `Please confirm availability and dispatch!`;
+    let targetUrl = `https://wa.me/${storePhone}?text=${encodeURIComponent(fallbackMsg)}`;
+
+    try {
+      // Create pending DB order with customer info so Admin Panel instantly alerts & lists under Pending Approval!
+      const res = await fetch('/api/orders/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: custName,
+          phone: custPhone,
+          city: 'Pakistan',
+          address: 'WhatsApp Cart Quick Order',
+          coupon_code: couponCode || null,
+          items: items.map((i) => ({
+            product_id: i.productId,
+            quantity: i.quantity,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.whatsappUrl) {
+        targetUrl = data.whatsappUrl;
+      }
+    } catch (e) {
+      console.error('WhatsApp cart submit error:', e);
+    } finally {
+      setIsSubmitting(false);
+      clearCart();
+      closeCart();
+
+      if (newTab && !newTab.closed) {
+        newTab.location.href = targetUrl;
+      } else {
+        window.location.href = targetUrl;
+      }
+    }
+  }
+
+  function handleQuickOrderClick() {
+    const savedName = localStorage.getItem('sth_customer_name');
+    const savedPhone = localStorage.getItem('sth_customer_phone');
+
+    if (savedName && savedPhone) {
+      handleWhatsAppCartSubmit(savedName, savedPhone);
+    } else {
+      setIsModalOpen(true);
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm transition-opacity animate-fadeIn">
+    <>
+      <QuickWhatsAppModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={async (name, phone) => {
+          setIsModalOpen(false);
+          await handleWhatsAppCartSubmit(name, phone);
+        }}
+      />
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm transition-opacity animate-fadeIn">
       {/* Backdrop click to close */}
       <div className="fixed inset-0" onClick={closeCart} />
 
@@ -261,7 +342,7 @@ export default function CartDrawer() {
                 </div>
               )}
 
-              <div className="flex justify-between text-silver-dim">
+              <div className="flex justify-between text-[#A0AEC0]">
                 <span>Delivery Charges</span>
                 <span>
                   {deliveryCharges === 0 ? (
@@ -289,7 +370,15 @@ export default function CartDrawer() {
                 <svg viewBox="0 0 32 32" className="h-4 w-4 fill-white shrink-0">
                   <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
                 </svg>
-                <span>Proceed to WhatsApp Order</span>
+                <span>Checkout & Create Order</span>
+              </button>
+
+              <button
+                disabled={isSubmitting}
+                onClick={handleQuickOrderClick}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#00C4CC] bg-[#00C4CC]/10 hover:bg-[#00C4CC] text-[#00C4CC] hover:text-slate-950 py-3 px-4 font-display text-xs font-bold transition disabled:opacity-50"
+              >
+                <span>💬 {isSubmitting ? 'Creating Order...' : 'Quick Order Entire Cart on WhatsApp'}</span>
               </button>
 
               <button
@@ -303,5 +392,6 @@ export default function CartDrawer() {
         )}
       </div>
     </div>
+    </>
   );
 }

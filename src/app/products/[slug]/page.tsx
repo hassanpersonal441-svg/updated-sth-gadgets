@@ -1,15 +1,20 @@
 import { notFound } from 'next/navigation';
 import TopTicker from '@/components/storefront/TopTicker';
+import Navbar from '@/components/storefront/Navbar';
 import Footer from '@/components/storefront/Footer';
 import WhatsAppFloatingButton from '@/components/storefront/WhatsAppFloatingButton';
 import ProductDetailClient from '@/components/storefront/ProductDetailClient';
-import { getProductBySlug, getSettings } from '@/lib/data';
+import RelatedProducts from '@/components/storefront/RelatedProducts';
+import { getProductBySlug, getSettings, getActiveCategories, getAllActiveProducts } from '@/lib/data';
 import type { Metadata } from 'next';
 
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const product = await getProductBySlug(params.slug);
+export async function generateMetadata({ params }: { params: any }): Promise<Metadata> {
+  const resolvedParams = await params;
+  const slug = resolvedParams?.slug || params?.slug;
+  const product = await getProductBySlug(slug);
   if (!product) return {};
   return {
     title: product.name,
@@ -22,22 +27,38 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
-  const [product, settings] = await Promise.all([
-    getProductBySlug(params.slug),
+export default async function ProductDetailPage({ params }: { params: any }) {
+  const resolvedParams = await params;
+  const slug = resolvedParams?.slug || params?.slug;
+  const [product, settings, categories, allProducts] = await Promise.all([
+    getProductBySlug(slug),
     getSettings(),
+    getActiveCategories(),
+    getAllActiveProducts(),
   ]);
 
   if (!product) notFound();
 
+  // Filter related products in same category or general active products
+  const categoryProducts = allProducts.filter(
+    (p) => p.category_id === product.category_id && p.id !== product.id
+  );
+  const relatedList = categoryProducts.length >= 2 ? categoryProducts : allProducts;
+
   return (
     <>
-      {/* Top Moving Text Banner */}
       <TopTicker settings={settings} />
+      <Navbar categories={categories} settings={settings} />
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <ProductDetailClient product={product} settings={settings} />
+        <RelatedProducts
+          products={relatedList}
+          currentProductId={product.id}
+          settings={settings}
+        />
       </main>
+
       <Footer settings={settings} />
       <WhatsAppFloatingButton whatsappNumber={settings?.whatsapp_number ?? null} />
     </>

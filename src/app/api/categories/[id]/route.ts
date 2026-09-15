@@ -12,7 +12,9 @@ const categoryUpdateSchema = z.object({
   active: z.boolean().optional(),
 });
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: any }) {
+  const resolvedParams = await params;
+  const id = resolvedParams?.id || params?.id;
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -20,25 +22,27 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const service = createServiceClient();
-  const { data, error } = await service.from('categories').update(parsed.data).eq('id', params.id).select().single();
+  const { data, error } = await service.from('categories').update(parsed.data).eq('id', id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  revalidateTag('categories');
+  (revalidateTag as any)('categories');
   revalidatePath('/');
   revalidatePath('/products');
 
   return NextResponse.json({ category: data });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: any }) {
+  const resolvedParams = await params;
+  const id = resolvedParams?.id || params?.id;
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const service = createServiceClient();
-  const { error } = await service.from('categories').delete().eq('id', params.id);
+  const { error } = await service.from('categories').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  revalidateTag('categories');
+  (revalidateTag as any)('categories');
   revalidatePath('/');
   revalidatePath('/products');
 

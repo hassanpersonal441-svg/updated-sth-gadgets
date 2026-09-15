@@ -78,32 +78,3 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
-
-/* Print Styles for STH Gadgets A4 Invoices */
-@media print {
-  body {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-  }
-  .no-print,
-  .no-print-backdrop,
-  header,
-  nav,
-  aside,
-  button,
-  .sidebar {
-    display: none !important;
-  }
-  .printable-invoice {
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 auto !important;
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-  @page {
-    size: A4 portrait;
-    margin: 12mm;
-  }
-}

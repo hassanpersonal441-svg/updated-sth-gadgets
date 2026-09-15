@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     if (imgError) return NextResponse.json({ error: imgError.message }, { status: 500 });
   }
 
-  revalidateTag('products');
+  (revalidateTag as any)('products');
   revalidatePath('/');
   revalidatePath('/products');
 
