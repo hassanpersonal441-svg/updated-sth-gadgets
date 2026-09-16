@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import type { Category, Settings } from '@/types/database';
 import { useCart } from '@/context/CartContext';
 
+import ThemeToggle from '@/components/theme/ThemeToggle';
+
 interface NavbarProps {
   categories: Category[];
   settings?: Settings | null;
@@ -81,10 +83,11 @@ export default function Navbar({ categories, settings }: NavbarProps) {
           </div>
         </form>
 
-
-
-        {/* Right Actions: Cart & WhatsApp Order (Desktop & Mobile) */}
+        {/* Right Actions: Cart & Theme Toggle (Desktop & Mobile) */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Theme Toggle Button */}
+          {mounted && <ThemeToggle />}
+
           {/* Mobile Search Toggle */}
           <button
             type="button"

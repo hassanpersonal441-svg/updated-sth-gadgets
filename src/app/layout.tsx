@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk, Inter } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import ClientCartOverlays from '@/components/cart/ClientCartOverlays';
 import PwaRegister from '@/components/pwa/PwaRegister';
 import InstallPwaModal from '@/components/pwa/InstallPwaModal';
@@ -53,13 +54,33 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var t = localStorage.getItem('sth_theme');
+                  if (t === 'light') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  } else {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="font-body bg-base text-silver antialiased" suppressHydrationWarning>
-        <PwaRegister />
-        <CartProvider>
-          {children}
-          <ClientCartOverlays />
-          <InstallPwaModal />
-        </CartProvider>
+        <ThemeProvider>
+          <PwaRegister />
+          <CartProvider>
+            {children}
+            <ClientCartOverlays />
+            <InstallPwaModal />
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

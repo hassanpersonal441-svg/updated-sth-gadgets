@@ -20,12 +20,97 @@ body {
   color-scheme: dark;
 }
 
+/* ============================================================ */
+/* LIGHT MODE GLOBAL OVERRIDES & PERSISTENT SCREEN STYLING */
+/* ============================================================ */
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+  color-scheme: light !important;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #F1F5F9 !important;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #CBD5E1 !important;
+}
+
+/* Outer Container & Page Backgrounds */
+html[data-theme="light"] .bg-\[\#080D15\],
+html[data-theme="light"] .bg-\[\#05080E\],
+html[data-theme="light"] .bg-\[\#050608\],
+html[data-theme="light"] .bg-slate-950,
+html[data-theme="light"] .bg-slate-900,
+html[data-theme="light"] .bg-base {
+  background-color: #F8FAFC !important;
+}
+
+/* Inner Cards, Headers, Modals, Drawers & Containers */
+html[data-theme="light"] .bg-\[\#0C1420\],
+html[data-theme="light"] .bg-\[\#0A101A\],
+html[data-theme="light"] .bg-black\/30,
+html[data-theme="light"] .bg-slate-900\/60,
+html[data-theme="light"] .bg-slate-900\/90 {
+  background-color: #FFFFFF !important;
+}
+
+html[data-theme="light"] .bg-\[\#080D15\]\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+html[data-theme="light"] .bg-\[\#0C1420\]\/90 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Borders in Light Mode */
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-800\/80,
+html[data-theme="light"] .border-slate-800\/90,
+html[data-theme="light"] .border-slate-700,
+html[data-theme="light"] .border-slate-700\/80 {
+  border-color: #E2E8F0 !important;
+}
+
+/* Text Colors in Light Mode */
+html[data-theme="light"] .text-silver,
+html[data-theme="light"] .text-silver-bright,
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-\[\#C9D2DB\] {
+  color: #0F172A !important;
+}
+
+html[data-theme="light"] .text-silver-dim,
+html[data-theme="light"] .text-slate-400,
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] .text-slate-500 {
+  color: #475569 !important;
+}
+
+/* Inputs, Textareas, Selects */
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Selection Highlight */
 ::selection {
   background: rgba(59, 180, 255, 0.35);
   color: #F2F5F8;
 }
 
-/* Thin scrollbar, matches dark theme */
+/* Thin scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
