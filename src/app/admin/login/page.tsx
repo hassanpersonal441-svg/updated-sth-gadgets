@@ -38,15 +38,29 @@ function AdminLoginForm() {
       cleanLower === 'sthgadgets';
     const targetEmail = isAlias ? 'hm7599733@gmail.com' : trimmed;
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
-    setLoading(false);
-    if (signInError) {
-      setError(signInError.message);
-      return;
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: targetEmail,
+        password,
+      });
+
+      if (signInError) {
+        setLoading(false);
+        setError(signInError.message);
+        return;
+      }
+
+      // Fast, full-page redirect to dashboard for instant cookie session sync
+      if (typeof window !== 'undefined') {
+        window.location.href = '/admin/dashboard';
+      } else {
+        router.push('/admin/dashboard');
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setError(err?.message || 'Login failed. Please try again.');
     }
-    router.push('/admin/dashboard');
-    router.refresh();
   }
 
   return (
@@ -112,7 +126,7 @@ function AdminLoginForm() {
             disabled={loading}
             className="w-full rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] py-3 font-display text-sm font-bold text-black shadow-[0_0_20px_rgba(0,196,204,0.3)] transition hover:scale-[1.01] disabled:opacity-50"
           >
-            {loading ? 'Authenticating...' : 'Sign In to Dashboard'}
+            {loading ? 'Authenticating & Redirecting...' : 'Sign In to Dashboard'}
           </button>
         </form>
 
