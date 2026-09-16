@@ -5,17 +5,20 @@ import Link from 'next/link';
 import type { Product, Settings } from '@/types/database';
 import { formatPrice, buildWhatsAppOrderLink } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import { useTheme } from '@/components/theme/ThemeProvider';
 
 export default function ProductCard({
   product,
   settings,
-  isLight = false,
+  isLight: propIsLight,
 }: {
   product: Product;
   settings?: Settings | null;
   isLight?: boolean;
 }) {
   const { addToCart } = useCart();
+  const { theme } = useTheme();
+  const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
 
   const primaryImage =
     product.product_images?.find((i) => i.is_primary)?.image_url ||

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Category, Product, Settings, BundleOffer } from '@/types/database';
 import { formatPrice, buildWhatsAppOrderLink } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import ProductCard from './ProductCard';
 
 export default function LiveStorefront({
@@ -18,21 +19,18 @@ export default function LiveStorefront({
   settings: Settings | null;
 }) {
   const { addToCart, openCart, totalItems } = useCart();
+  const { theme, toggleTheme } = useTheme();
+  const isLight = theme === 'light';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [inStockOnly, setInStockOnly] = useState(false);
   const [offersOnly, setOffersOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'discount' | 'newest'>('default');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isLight, setIsLight] = useState(false);
 
   const rawPhone = settings?.whatsapp_number || '+92 348 9593671';
   const cleanPhone = rawPhone.replace(/[^\d]/g, '');
-
-  // Toggle light/dark
-  function toggleTheme() {
-    setIsLight((prev) => !prev);
-  }
 
   // Compute all special bundle offers from products catalog
   const allBundleOffers = useMemo(() => {
