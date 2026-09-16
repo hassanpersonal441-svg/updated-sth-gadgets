@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
+import AdminTour from '@/components/tour/AdminTour';
 import { ToastProvider } from '@/context/ToastContext';
 
 export default function AdminLayoutClient({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,9 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
             <div className="mx-auto max-w-7xl">{children}</div>
           </main>
         </div>
+
+        {/* Guided Admin Onboarding Tour */}
+        <AdminTour onOpenMobileSidebar={() => setIsMobileOpen(true)} />
       </div>
     </ToastProvider>
   );

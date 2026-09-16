@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { Invoice, InvoiceStatus, InvoicePaymentStatus, InvoicePaymentMethod } from '@/types/database';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 interface InvoiceStats {
   totalInvoices: number;
@@ -37,6 +38,7 @@ export default function AdminInvoicesPage() {
   const [endDate, setEndDate] = useState('');
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; invoiceNumber: string } | null>(null);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -68,11 +70,13 @@ export default function AdminInvoicesPage() {
     fetchInvoices();
   }, [fetchInvoices]);
 
-  const handleDelete = async (id: string, invoiceNumber: string) => {
-    if (!confirm(`Are you sure you want to delete invoice ${invoiceNumber}? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDelete = (id: string, invoiceNumber: string) => {
+    setConfirmDelete({ id, invoiceNumber });
+  };
 
+  const executeDelete = async () => {
+    if (!confirmDelete) return;
+    const { id } = confirmDelete;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/admin/invoices/${id}`, { method: 'DELETE' });
@@ -87,6 +91,7 @@ export default function AdminInvoicesPage() {
       alert('Failed to delete invoice');
     } finally {
       setDeletingId(null);
+      setConfirmDelete(null);
     }
   };
 
@@ -311,7 +316,7 @@ export default function AdminInvoicesPage() {
                   <tr key={inv.id} className="hover:bg-[#0F1A2A] transition">
                     <td className="py-3.5 px-4 font-mono font-bold text-[#00C4CC]">
                       <Link href={`/admin/invoices/${inv.id}`} className="hover:underline">
-                        {inv.invoice_number}
+                        {inv.invoice_number || `STH-INV-${inv.id.slice(0, 8).toUpperCase()}`}
                       </Link>
                     </td>
                     <td className="py-3.5 px-4">
@@ -405,6 +410,15 @@ export default function AdminInvoicesPage() {
           </table>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={executeDelete}
+        title="Delete Invoice"
+        description={`Are you sure you want to delete invoice "${confirmDelete?.invoiceNumber}"? This action cannot be undone.`}
+        confirmText="Delete Invoice"
+      />
     </div>
   );
 }

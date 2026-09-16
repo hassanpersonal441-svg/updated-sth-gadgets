@@ -109,6 +109,10 @@ export interface Settings {
   courier_partners?: string;
   dispatch_window?: string;
   dispatch_note?: string;
+  bundle_tier1_threshold?: number;
+  bundle_tier1_percent?: number;
+  bundle_tier2_threshold?: number;
+  bundle_tier2_percent?: number;
   updated_at: string;
 }
 
@@ -337,5 +341,31 @@ export interface FinanceSummary {
   fullyPaidCount: number;
   recentBorrowings: Borrowing[];
   recentRepayments: Repayment[];
+}
+
+export type VendorPurchaseStatus = 'pending' | 'purchased';
+
+export interface VendorProfile {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+export interface VendorPurchase {
+  id: string;
+  vendor_name: string;
+  order_number: string;
+  product_name: string;
+  quantity: number;
+  wholesale_cost: number;
+  status: VendorPurchaseStatus;
+  purchase_date: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at?: string;
 }
 

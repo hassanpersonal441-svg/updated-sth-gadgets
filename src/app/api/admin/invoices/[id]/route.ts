@@ -15,14 +15,13 @@ export async function GET(
   const supabase = createServiceClient();
 
   try {
-    let query = supabase
-      .from('invoices')
-      .select('*, invoice_items(*)');
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let query = supabase.from('invoices').select('*, invoice_items(*)');
 
-    if (id.startsWith('STH-INV-')) {
-      query = query.eq('invoice_number', id);
-    } else {
+    if (isUuid) {
       query = query.eq('id', id);
+    } else {
+      query = query.ilike('invoice_number', id);
     }
 
     const { data: invoice, error } = await query.maybeSingle();
@@ -54,6 +53,7 @@ export async function PUT(
     const body = await req.json();
 
     const {
+      invoice_number,
       customer_name,
       customer_phone,
       customer_whatsapp,
@@ -90,15 +90,21 @@ export async function PUT(
     }
 
     // Verify existing invoice exists
-    const { data: existingInv } = await supabase
-      .from('invoices')
-      .select('id')
-      .eq('id', id)
-      .maybeSingle();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let findQuery = supabase.from('invoices').select('id, invoice_number');
+    if (isUuid) {
+      findQuery = findQuery.eq('id', id);
+    } else {
+      findQuery = findQuery.ilike('invoice_number', id);
+    }
+
+    const { data: existingInv } = await findQuery.maybeSingle();
 
     if (!existingInv) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
+
+    const targetId = existingInv.id;
 
     // Server-side recalculations
     let subtotal = 0;
@@ -114,7 +120,7 @@ export async function PUT(
       item_discount += discount;
 
       return {
-        invoice_id: id,
+        invoice_id: targetId,
         product_id: it.product_id || null,
         product_name: it.product_name || 'Selected Product',
         product_image: it.product_image || null,
@@ -161,34 +167,40 @@ export async function PUT(
     const remaining_amount = Math.max(0, grand_total - paidNum);
 
     // Update invoice header
+    const updateData: Record<string, any> = {
+      customer_name: customer_name.trim(),
+      customer_phone: customer_phone.trim(),
+      customer_whatsapp: customer_whatsapp?.trim() || customer_phone.trim(),
+      customer_email: customer_email?.trim() || null,
+      customer_address: customer_address.trim(),
+      customer_city: customer_city.trim(),
+      invoice_date: invoice_date ? new Date(invoice_date).toISOString() : new Date().toISOString(),
+      due_date: due_date ? new Date(due_date).toISOString() : null,
+      subtotal,
+      item_discount,
+      coupon_discount,
+      delivery_charges: deliveryNum,
+      grand_total,
+      coupon_code: coupon_code?.trim() || null,
+      coupon_id,
+      payment_method,
+      payment_status,
+      amount_paid: paidNum,
+      remaining_amount,
+      invoice_status,
+      notes: notes?.trim() || null,
+      terms: terms?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (invoice_number?.trim()) {
+      updateData.invoice_number = invoice_number.trim();
+    }
+
     const { data: updatedInvoice, error: updateErr } = await supabase
       .from('invoices')
-      .update({
-        customer_name: customer_name.trim(),
-        customer_phone: customer_phone.trim(),
-        customer_whatsapp: customer_whatsapp?.trim() || customer_phone.trim(),
-        customer_email: customer_email?.trim() || null,
-        customer_address: customer_address.trim(),
-        customer_city: customer_city.trim(),
-        invoice_date: invoice_date ? new Date(invoice_date).toISOString() : new Date().toISOString(),
-        due_date: due_date ? new Date(due_date).toISOString() : null,
-        subtotal,
-        item_discount,
-        coupon_discount,
-        delivery_charges: deliveryNum,
-        grand_total,
-        coupon_code: coupon_code?.trim() || null,
-        coupon_id,
-        payment_method,
-        payment_status,
-        amount_paid: paidNum,
-        remaining_amount,
-        invoice_status,
-        notes: notes?.trim() || null,
-        terms: terms?.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
+      .update(updateData)
+      .eq('id', targetId)
       .select()
       .single();
 

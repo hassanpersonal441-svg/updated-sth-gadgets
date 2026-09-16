@@ -62,12 +62,7 @@ export default function ProductForm({
     product?.specifications?.length ? product.specifications : [{ label: '', value: '' }]
   );
   const [keyFeatures, setKeyFeatures] = useState<KeyFeature[]>(
-    product?.key_features?.length
-      ? product.key_features
-      : [
-          { icon: '⚡', title: 'Fast Charging', subtitle: 'Quick Power Delivery' },
-          { icon: '🔋', title: 'High Capacity', subtitle: 'Long Battery Life' },
-        ]
+    product?.key_features?.length ? product.key_features : [{ icon: '⚡', title: '', subtitle: '' }]
   );
   const [bundleOffers, setBundleOffers] = useState<BundleOffer[]>(
     product?.bundle_offers?.length ? product.bundle_offers : []
@@ -189,6 +184,25 @@ export default function ProductForm({
     setSaving(true);
     setError(null);
 
+    const validSpecs = specs.filter((s) => s.label.trim() && s.value.trim());
+    const validFeatures = keyFeatures.filter((f) => f.title.trim());
+
+    if (validFeatures.length === 0) {
+      const msg = 'Please add at least 1 Key Feature for this product (e.g. Waterproof, 20-Hour Playtime).';
+      setError(msg);
+      showErrorToast(msg);
+      setSaving(false);
+      return;
+    }
+
+    if (validSpecs.length === 0) {
+      const msg = 'Please add at least 1 Specification row for this product (e.g. Connectivity: Bluetooth 5.0).';
+      setError(msg);
+      showErrorToast(msg);
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       name,
       slug,
@@ -205,8 +219,8 @@ export default function ProductForm({
       best_seller: bestSeller,
       new_arrival: newArrival,
       active,
-      specifications: specs.filter((s) => s.label.trim() && s.value.trim()),
-      key_features: keyFeatures.filter((f) => f.title.trim()),
+      specifications: validSpecs,
+      key_features: validFeatures,
       bundle_offers: bundleOffers
         .filter((bo) => bo.title.trim() && bo.bundle_price > 0)
         .map((bo) => ({

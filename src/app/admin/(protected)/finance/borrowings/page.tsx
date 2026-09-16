@@ -6,6 +6,7 @@ import BorrowingModal from '@/components/admin/finance/BorrowingModal';
 import RepaymentModal from '@/components/admin/finance/RepaymentModal';
 import LenderProfileModal from '@/components/admin/finance/LenderProfileModal';
 import EmailActionModal from '@/components/admin/finance/EmailActionModal';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 export default function BorrowedAmountsPage() {
   const [borrowings, setBorrowings] = useState<Borrowing[]>([]);
@@ -67,13 +68,27 @@ export default function BorrowedAmountsPage() {
     }
   }
 
-  async function handleDelete(id: string, name: string, borNum: string) {
-    if (!confirm(`Are you sure you want to delete borrowing record ${borNum} for ${name}? This will also delete all associated repayments.`)) {
-      return;
-    }
+  // Confirm Modal State
+  const [confirmDeleteData, setConfirmDeleteData] = useState<{
+    id: string;
+    title: string;
+    description: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  function handleDeleteClick(id: string, name: string, borNum: string) {
+    setConfirmDeleteData({
+      id,
+      title: `Delete Borrowing Record (${borNum})`,
+      description: `Are you sure you want to delete borrowing record ${borNum} for "${name}"? This will also delete all associated repayments.`,
+    });
+  }
+
+  async function handleConfirmDelete() {
+    if (!confirmDeleteData) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/finance/borrowings/${id}`, {
+      const res = await fetch(`/api/admin/finance/borrowings/${confirmDeleteData.id}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -83,6 +98,9 @@ export default function BorrowedAmountsPage() {
       }
     } catch {
       alert('An error occurred while deleting.');
+    } finally {
+      setDeleting(false);
+      setConfirmDeleteData(null);
     }
   }
 
@@ -408,7 +426,7 @@ export default function BorrowedAmountsPage() {
 
                           <button
                             type="button"
-                            onClick={() => handleDelete(b.id, b.lender_name, b.borrowing_number)}
+                            onClick={() => handleDeleteClick(b.id, b.lender_name, b.borrowing_number)}
                             title="Delete Borrowing"
                             className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-1.5 text-xs text-rose-400 hover:bg-rose-600 hover:text-white transition"
                           >
@@ -583,6 +601,18 @@ export default function BorrowedAmountsPage() {
         recipientName={emailModalData.recipientName}
         subject={emailModalData.subject}
         bodyText={emailModalData.bodyText}
+      />
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteData}
+        onClose={() => setConfirmDeleteData(null)}
+        onConfirm={handleConfirmDelete}
+        title={confirmDeleteData?.title || 'Delete Borrowing Record'}
+        description={confirmDeleteData?.description || ''}
+        confirmText="Delete Record"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deleting}
       />
     </div>
   );

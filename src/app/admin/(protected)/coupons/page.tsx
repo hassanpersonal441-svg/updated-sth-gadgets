@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Coupon } from '@/types/database';
 import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 // In-memory cache for instant module opening without blocking loading spinner
 let cachedCoupons: Coupon[] | null = null;
@@ -315,47 +316,15 @@ export default function AdminCouponsPage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {couponToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="fixed inset-0" onClick={() => setCouponToDelete(null)} />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-rose-500/40 bg-[#0C1420] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20 text-xl text-rose-400">
-                🗑️
-              </span>
-              <div>
-                <h3 className="font-display text-base font-bold text-rose-300">
-                  Delete Coupon Permanently
-                </h3>
-                <span className="font-mono text-xs text-[#00C4CC]">{couponToDelete.code}</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-silver-dim leading-relaxed">
-              Are you sure you want to delete coupon <strong className="text-white font-mono">{couponToDelete.code}</strong>? Customers will no longer be able to use this discount code.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setCouponToDelete(null)}
-                disabled={deleting}
-                className="rounded-xl border border-slate-700 bg-[#080D15] px-4 py-2 text-xs font-semibold text-silver-bright hover:bg-slate-800 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteCoupon}
-                disabled={deleting}
-                className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition disabled:opacity-50"
-              >
-                {deleting ? 'Deleting...' : 'Yes, Delete Coupon'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!couponToDelete}
+        onClose={() => setCouponToDelete(null)}
+        onConfirm={confirmDeleteCoupon}
+        title="Delete Coupon Permanently"
+        description={`Are you sure you want to delete coupon "${couponToDelete?.code}"? Customers will no longer be able to use this discount code.`}
+        confirmText="Yes, Delete Coupon"
+        isDeleting={deleting}
+      />
 
       {/* Coupons Container */}
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-[#0C1420] shadow-sm">

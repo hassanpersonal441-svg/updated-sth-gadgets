@@ -321,6 +321,7 @@ export default function EditInvoicePage({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          invoice_number: invoiceNumber,
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_whatsapp: customerWhatsapp || customerPhone,
@@ -433,6 +434,17 @@ export default function EditInvoicePage({
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div>
+                <label className="block font-bold text-silver-dim mb-1">Invoice Number</label>
+                <input
+                  type="text"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  placeholder="e.g. STH-INV-00001"
+                  className="w-full rounded-xl border border-slate-800 bg-[#080D15] px-3 py-2 font-mono font-bold text-[#00C4CC] focus:border-[#00C4CC] focus:outline-none"
+                />
+              </div>
+
               <div>
                 <label className="block font-bold text-silver-dim mb-1">Customer Name *</label>
                 <input

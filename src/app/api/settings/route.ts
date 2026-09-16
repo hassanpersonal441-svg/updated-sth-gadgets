@@ -24,6 +24,10 @@ const settingsSchema = z.object({
   courier_partners: z.string().optional(),
   dispatch_window: z.string().optional(),
   dispatch_note: z.string().optional(),
+  bundle_tier1_threshold: z.number().min(0).optional(),
+  bundle_tier1_percent: z.number().min(0).max(100).optional(),
+  bundle_tier2_threshold: z.number().min(0).optional(),
+  bundle_tier2_percent: z.number().min(0).max(100).optional(),
 });
 
 export async function GET() {
@@ -62,6 +66,10 @@ export async function PATCH(request: Request) {
     delete fallbackPayload.courier_partners;
     delete fallbackPayload.dispatch_window;
     delete fallbackPayload.dispatch_note;
+    delete fallbackPayload.bundle_tier1_threshold;
+    delete fallbackPayload.bundle_tier1_percent;
+    delete fallbackPayload.bundle_tier2_threshold;
+    delete fallbackPayload.bundle_tier2_percent;
 
     const retry = await service
       .from('settings')

@@ -65,11 +65,8 @@ body {
 .animate-marquee {
   display: flex;
   width: max-content;
-  animation: marquee 28s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
+  animation: marquee 25s linear infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -44,7 +44,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Load cart from localStorage on client mount
+  const [bundleTier1Threshold, setBundleTier1Threshold] = useState(2000);
+  const [bundleTier1Percent, setBundleTier1Percent] = useState(5);
+  const [bundleTier2Threshold, setBundleTier2Threshold] = useState(4000);
+  const [bundleTier2Percent, setBundleTier2Percent] = useState(10);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(5000);
+  const [deliveryFee, setDeliveryFee] = useState(200);
+
+  // Load cart from localStorage on client mount & fetch live store settings
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem(CART_STORAGE_KEY);
@@ -63,6 +70,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore storage access errors
     }
+
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.settings) {
+          if (data.settings.bundle_tier1_threshold !== undefined) setBundleTier1Threshold(data.settings.bundle_tier1_threshold);
+          if (data.settings.bundle_tier1_percent !== undefined) setBundleTier1Percent(data.settings.bundle_tier1_percent);
+          if (data.settings.bundle_tier2_threshold !== undefined) setBundleTier2Threshold(data.settings.bundle_tier2_threshold);
+          if (data.settings.bundle_tier2_percent !== undefined) setBundleTier2Percent(data.settings.bundle_tier2_percent);
+          if (data.settings.free_shipping_threshold !== undefined) setFreeShippingThreshold(data.settings.free_shipping_threshold);
+          if (data.settings.delivery_charges !== undefined) setDeliveryFee(data.settings.delivery_charges);
+        }
+      })
+      .catch(() => {});
+
     setIsMounted(true);
   }, []);
 
@@ -96,20 +118,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Raw subtotal of products in cart
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  // Bundle discount logic:
-  // 1 item: 0%
-  // 2 items: 5% discount on total cart
-  // 3+ items: 10% discount on total cart
+  // Bundle / Amount discount logic:
+  // Subtotal >= Tier 2 Threshold (e.g. 4,000 PKR) -> Tier 2 Percent (10%)
+  // Subtotal >= Tier 1 Threshold (e.g. 2,000 PKR) -> Tier 1 Percent (5%)
   let bundlePercentage = 0;
-  if (totalItems >= 3) {
-    bundlePercentage = 10;
-  } else if (totalItems === 2) {
-    bundlePercentage = 5;
+  if (subtotal >= bundleTier2Threshold && bundleTier2Threshold > 0) {
+    bundlePercentage = bundleTier2Percent;
+  } else if (subtotal >= bundleTier1Threshold && bundleTier1Threshold > 0) {
+    bundlePercentage = bundleTier1Percent;
   }
   const bundleDiscount = Math.round((subtotal * bundlePercentage) / 100);
 
-  // Standard delivery charges: PKR 200 (or free if order exceeds PKR 5,000)
-  const deliveryCharges = subtotal > 0 ? (subtotal >= 5000 ? 0 : 200) : 0;
+  // Delivery charges: Free if order exceeds threshold, else standard fee
+  const deliveryCharges = subtotal > 0 ? (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold ? 0 : deliveryFee) : 0;
 
   // Final total
   const totalAmount = Math.max(0, subtotal - couponDiscount - bundleDiscount + deliveryCharges);

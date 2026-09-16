@@ -16,7 +16,7 @@ export default function TopTicker({ settings }: { settings: Settings | null }) {
   return (
     <div className="relative overflow-hidden bg-[#00C4CC] py-2 text-slate-950 select-none shadow-sm z-40">
       <div className="animate-marquee whitespace-nowrap text-xs font-black tracking-wide flex items-center">
-        {[0, 1, 2].map((groupIndex) => (
+        {[0, 1].map((groupIndex) => (
           <div key={groupIndex} className="flex items-center">
             {items.map((text, idx) => (
               <span key={idx} className="mx-6 inline-flex items-center gap-2">

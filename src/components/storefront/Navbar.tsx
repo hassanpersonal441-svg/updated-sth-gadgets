@@ -16,7 +16,6 @@ export default function Navbar({ categories, settings }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [categoriesDropdown, setCategoriesDropdown] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const { totalItems, openCart } = useCart();
@@ -42,8 +41,8 @@ export default function Navbar({ categories, settings }: NavbarProps) {
     <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-[#080D15]/95 backdrop-blur-md text-[#C9D2DB]">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         {/* Brand Section */}
-        <Link href="/" className="flex shrink-0 items-center gap-3 group">
-          <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-[#00C4CC] p-0.5 shadow-[0_0_12px_rgba(0,196,204,0.4)] transition group-hover:scale-105">
+        <Link href="/" className="flex shrink-0 items-center gap-3.5 group">
+          <div className="relative h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-full border-2 border-[#00C4CC] bg-black p-0.5 shadow-[0_0_16px_rgba(0,196,204,0.45)] transition group-hover:scale-105">
             <Image
               src={settings?.logo_url || '/images/logo.png'}
               alt={settings?.business_name || 'STH Gadgets'}
@@ -53,10 +52,10 @@ export default function Navbar({ categories, settings }: NavbarProps) {
             />
           </div>
           <div>
-            <span className="block font-display text-base font-black tracking-wider text-white group-hover:text-[#00C4CC] transition uppercase">
-              STH <span className="text-[#00C4CC]">Gadgets</span>
+            <span className="block font-display text-xl sm:text-2xl font-black tracking-wider text-white group-hover:text-[#00C4CC] transition uppercase">
+              {settings?.business_name || 'STH GADGETS'}
             </span>
-            <span className="hidden sm:block text-[10px] font-semibold text-slate-400 tracking-wide">
+            <span className="hidden sm:block text-xs font-semibold text-[#00C4CC] tracking-wide">
               Mobile Accessories & Gadgets — Official Rates
             </span>
           </div>
@@ -82,57 +81,7 @@ export default function Navbar({ categories, settings }: NavbarProps) {
           </div>
         </form>
 
-        {/* Navigation Links (Desktop) */}
-        <nav className="hidden items-center gap-5 font-display text-xs font-semibold text-slate-300 md:flex">
-          <Link href="/" className="transition hover:text-[#00C4CC]">
-            Home
-          </Link>
 
-          {/* Categories Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setCategoriesDropdown(true)}
-            onMouseLeave={() => setCategoriesDropdown(false)}
-          >
-            <button
-              type="button"
-              className="flex items-center gap-1 transition hover:text-[#00C4CC] py-1"
-            >
-              <span>Categories</span>
-              <span className="text-[10px]">▼</span>
-            </button>
-
-            {categoriesDropdown && (
-              <div className="absolute top-full left-0 w-52 rounded-xl border border-slate-800 bg-[#0C1420] p-2 shadow-2xl backdrop-blur-xl animate-fadeIn z-50">
-                <Link
-                  href="/products"
-                  className="block rounded-lg px-3 py-2 text-xs font-bold text-[#00C4CC] hover:bg-slate-900 transition"
-                  onClick={() => setCategoriesDropdown(false)}
-                >
-                  All Products
-                </Link>
-                <div className="my-1 border-t border-slate-800/80" />
-                {categories.map((cat) => (
-                  <Link
-                    key={cat.id}
-                    href={`/products?category=${cat.slug}`}
-                    className="block rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900 hover:text-white transition"
-                    onClick={() => setCategoriesDropdown(false)}
-                  >
-                    {cat.name}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Link href="/products?sort=discount" className="transition hover:text-[#00C4CC]">
-            🔥 Deals
-          </Link>
-          <Link href="/products?sort=newest" className="transition hover:text-[#00C4CC]">
-            ✨ New Arrivals
-          </Link>
-        </nav>
 
         {/* Right Actions: Cart & WhatsApp Order (Desktop & Mobile) */}
         <div className="flex items-center gap-2 sm:gap-3">
@@ -162,16 +111,14 @@ export default function Navbar({ categories, settings }: NavbarProps) {
             )}
           </button>
 
-          {/* WhatsApp Direct Order Button (Desktop & Tablet) */}
-          <a
-            href={`https://wa.me/${cleanPhone}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-3.5 py-2 font-display text-xs font-bold text-white shadow-[0_0_12px_rgba(37,211,102,0.3)] transition hover:scale-[1.02]"
+          {/* All Products Catalog Button (Desktop & Tablet) */}
+          <Link
+            href="/products"
+            className="hidden sm:flex items-center gap-2 rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] px-3.5 py-2 font-display text-xs font-bold text-[#00C4CC] hover:text-black shadow-[0_0_12px_rgba(0,196,204,0.2)] transition hover:scale-[1.02]"
           >
-            <span>💬</span>
-            <span>WhatsApp Order</span>
-          </a>
+            <span>🛍️</span>
+            <span>All Products</span>
+          </Link>
 
           {/* Hamburger Menu Toggle for Mobile */}
           <button

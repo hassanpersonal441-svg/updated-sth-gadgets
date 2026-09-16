@@ -6,6 +6,7 @@ import type { Category } from '@/types/database';
 import { slugify } from '@/lib/utils';
 import ImageUploader, { UploadedImage } from '@/components/admin/ImageUploader';
 import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 // In-memory cache for instant module opening without blocking loading spinner
 let cachedCategories: Category[] | null = null;
@@ -254,47 +255,15 @@ export default function AdminCategoriesPage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {categoryToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="fixed inset-0" onClick={() => setCategoryToDelete(null)} />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-rose-500/40 bg-[#0C1420] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20 text-xl text-rose-400">
-                🗑️
-              </span>
-              <div>
-                <h3 className="font-display text-base font-bold text-rose-300">
-                  Delete Category
-                </h3>
-                <span className="text-xs text-silver-dim">{categoryToDelete.name}</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-silver-dim leading-relaxed">
-              Are you sure you want to delete category <strong className="text-white">{categoryToDelete.name}</strong>? Products in this category will become uncategorized.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setCategoryToDelete(null)}
-                disabled={deleting}
-                className="rounded-xl border border-slate-700 bg-[#080D15] px-4 py-2 text-xs font-semibold text-silver-bright hover:bg-slate-800 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteCategory}
-                disabled={deleting}
-                className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition disabled:opacity-50"
-              >
-                {deleting ? 'Deleting...' : 'Yes, Delete Category'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!categoryToDelete}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={confirmDeleteCategory}
+        title="Delete Category"
+        description={`Are you sure you want to delete category "${categoryToDelete?.name}"? Products in this category will become uncategorized.`}
+        confirmText="Yes, Delete Category"
+        isDeleting={deleting}
+      />
 
       {/* Categories Cards Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">

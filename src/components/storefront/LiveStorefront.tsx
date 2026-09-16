@@ -423,6 +423,7 @@ export default function LiveStorefront({
             {/* Shopping Cart Button */}
             <button
               onClick={openCart}
+              data-tour="customer-cart"
               className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition hover:scale-105 ${
                 isLight
                   ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
@@ -467,7 +468,7 @@ export default function LiveStorefront({
         {/* ============================================================ */}
         {/* SEARCH BAR */}
         {/* ============================================================ */}
-        <div className="mt-5 relative w-full">
+        <div className="mt-5 relative w-full" data-tour="customer-search">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-silver-dim">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -539,163 +540,14 @@ export default function LiveStorefront({
         {/* ============================================================ */}
         <div className="mt-3.5 h-[2px] w-full bg-gradient-to-r from-transparent via-[#00C4CC] to-transparent shadow-[0_0_12px_rgba(0,196,204,0.7)]"></div>
 
-        {/* ============================================================ */}
-        {/* SPECIAL BUNDLE OFFERS & MEGA COMBO DEALS SECTION */}
-        {/* ============================================================ */}
-        {allBundleOffers.length > 0 && (selectedCategory === 'all' || offersOnly) && (
-          <div
-            className={`mt-6 rounded-2xl border p-5 sm:p-6 space-y-4 shadow-lg transition-colors duration-300 ${
-              isLight
-                ? 'bg-amber-50/50 border-amber-300 text-slate-900'
-                : 'bg-gradient-to-br from-[#0C1420] via-[#0F1C2D] to-[#080D15] border-amber-500/40 text-[#C9D2DB] shadow-[0_0_30px_rgba(245,158,11,0.15)]'
-            }`}
-          >
-            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3.5 ${isLight ? 'border-amber-200' : 'border-slate-800'}`}>
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl sm:text-3xl animate-bounce">🎁</span>
-                <div>
-                  <h2 className={`font-display text-base sm:text-lg font-extrabold uppercase tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    <span className={isLight ? 'text-amber-800' : 'text-amber-300'}>Special Bundle Deals & Mega Savings</span> (2-in-1 / 3-in-1 Combo Offers)
-                  </h2>
-                  <p className={`text-xs font-medium ${isLight ? 'text-slate-700' : 'text-silver-bright'}`}>
-                    Limited time package deals! Save extra when you buy these items together.
-                  </p>
-                </div>
-              </div>
-              <span className={`self-start sm:self-auto rounded-full border px-3 py-1 text-xs font-extrabold uppercase tracking-wider ${
-                isLight ? 'bg-amber-200/80 text-slate-900 border-amber-400' : 'bg-amber-400/20 text-amber-300 border-amber-400/50'
-              }`}>
-                🔥 {allBundleOffers.length} Active Bundle Deal{allBundleOffers.length > 1 ? 's' : ''}
-              </span>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allBundleOffers.map(({ product, bundle }, idx) => {
-                const bundleSavings =
-                  (bundle.original_price || 0) > bundle.bundle_price
-                    ? (bundle.original_price || 0) - bundle.bundle_price
-                    : 0;
-
-                const primaryImg =
-                  product.product_images?.find((i) => i.is_primary)?.image_url ||
-                  product.product_images?.[0]?.image_url ||
-                  '/images/logo.png';
-
-                return (
-                  <div
-                    key={idx}
-                    className={`relative flex flex-col justify-between rounded-xl border p-4 space-y-3.5 transition shadow-md group ${
-                      isLight
-                        ? 'bg-white border-amber-200 hover:border-amber-400 text-slate-900'
-                        : 'bg-[#080D15] border-amber-500/30 hover:border-amber-400 text-[#C9D2DB]'
-                    }`}
-                  >
-                    {/* Badge */}
-                    {bundle.badge_text && (
-                      <div className="absolute -top-3 right-3 z-10">
-                        <span className="rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-3 py-0.5 font-display text-[10px] font-black text-white shadow-md uppercase tracking-wider">
-                          {bundle.badge_text}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="space-y-3">
-                      {/* Target Main Product Link */}
-                      <Link
-                        href={`/products/${product.slug}`}
-                        className={`flex items-center gap-2.5 p-2 rounded-lg border transition group/prod ${
-                          isLight
-                            ? 'bg-slate-50 border-slate-200 hover:border-[#00C4CC]'
-                            : 'bg-[#0C1420] border-slate-800 hover:border-[#00C4CC]'
-                        }`}
-                      >
-                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-black">
-                          <Image src={primaryImg} alt={product.name} fill className="object-contain p-1" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? 'text-[#008B92]' : 'text-[#00C4CC]'}`}>
-                            MAIN PRODUCT
-                          </span>
-                          <h4 className={`text-xs font-bold truncate transition ${
-                            isLight ? 'text-slate-900 group-hover/prod:text-[#008B92]' : 'text-white group-hover/prod:text-[#00C4CC]'
-                          }`}>
-                            {product.name}
-                          </h4>
-                        </div>
-                      </Link>
-
-                      {/* Bundle Title */}
-                      <h3 className={`font-display text-sm sm:text-base font-extrabold leading-snug pr-8 ${isLight ? 'text-black' : 'text-white'}`}>
-                        {bundle.title}
-                      </h3>
-
-                      {/* Items Included List */}
-                      <div className={`p-3 rounded-xl border space-y-1.5 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0C1420] border-slate-800'}`}>
-                        <span className={`text-[10px] font-extrabold uppercase tracking-wider block mb-1 ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>
-                          Bundled Package Items ({bundle.items.length}):
-                        </span>
-                        {bundle.items.map((item, iIdx) => (
-                          <div key={iIdx} className="flex items-start gap-2 text-xs">
-                            <span className="text-emerald-500 font-bold shrink-0 mt-0.5">✓</span>
-                            <span>
-                              <strong className={isLight ? 'text-slate-900' : 'text-white'}>{item.name}</strong>
-                              {item.detail ? <span className={`text-[11px] ml-1 ${isLight ? 'text-slate-500' : 'text-silver-dim'}`}>({item.detail})</span> : ''}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Pricing Box */}
-                      <div className={`flex items-center justify-between p-3 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0C1420] border-slate-800'}`}>
-                        <div>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? 'text-slate-500' : 'text-silver-dim'}`}>
-                            BUNDLE PRICE
-                          </span>
-                          <div className="flex items-baseline gap-2">
-                            <span className={`font-display text-lg font-black ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
-                              {formatPrice(bundle.bundle_price, settings)}
-                            </span>
-                            {bundle.original_price && bundle.original_price > bundle.bundle_price && (
-                              <span className={`text-xs line-through font-semibold ${isLight ? 'text-slate-400' : 'text-silver-dim'}`}>
-                                {formatPrice(bundle.original_price, settings)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {bundleSavings > 0 && (
-                          <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold shadow-sm ${
-                            isLight ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                          }`}>
-                            Save {formatPrice(bundleSavings, settings)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Button: Full Width Add Bundle */}
-                    <div className={`pt-2 border-t ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
-                      <button
-                        type="button"
-                        onClick={() => handleAddBundleToCart(product, bundle)}
-                        className="w-full rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] py-2.5 text-xs font-black text-black text-center shadow-md transition hover:scale-[1.01]"
-                      >
-                        🛒 Add Bundle to Cart
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ============================================================ */}
         {/* CATEGORY TABS + VIEW MODE SWITCHER */}
         {/* ============================================================ */}
         <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           {/* Category Tabs (Hides categories with 0 products) */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none" data-tour="customer-categories">
             <button
               onClick={() => setSelectedCategory('all')}
               className={`shrink-0 rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold transition shadow-sm ${

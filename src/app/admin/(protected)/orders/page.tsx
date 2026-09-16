@@ -8,6 +8,7 @@ import type { Order } from '@/types/database';
 import OrderActionModal from '@/components/admin/OrderActionModal';
 import { useToast } from '@/context/ToastContext';
 import { formatInvoiceDate, formatNumber } from '@/lib/utils';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 const TABS = [
   { id: 'all', label: 'All Orders' },
@@ -512,49 +513,15 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Direct Delete Confirmation Modal */}
-      {orderToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="fixed inset-0" onClick={() => setOrderToDelete(null)} />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-rose-500/40 bg-[#0C1420] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20 text-xl text-rose-400">
-                🗑️
-              </span>
-              <div>
-                <h3 className="font-display text-base font-bold text-rose-300">
-                  Delete Order Permanently
-                </h3>
-                <span className="text-xs text-silver-dim">
-                  Order Ref: <span className="font-mono text-white">{orderToDelete.order_number || orderToDelete.id}</span>
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-silver-dim leading-relaxed">
-              Are you sure you want to delete the order for <strong className="text-white">{orderToDelete.customer_name}</strong> amounting to <strong className="text-white">PKR {Number(orderToDelete.total_amount).toLocaleString('en-PK')}</strong>? This action cannot be undone.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setOrderToDelete(null)}
-                disabled={deletingDirect}
-                className="rounded-xl border border-slate-700 bg-[#080D15] px-4 py-2 text-xs font-semibold text-silver-bright hover:bg-slate-800 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDirectDelete}
-                disabled={deletingDirect}
-                className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition disabled:opacity-50"
-              >
-                {deletingDirect ? 'Deleting...' : 'Yes, Delete Order'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!orderToDelete}
+        onClose={() => setOrderToDelete(null)}
+        onConfirm={confirmDirectDelete}
+        title="Delete Order Permanently"
+        description={`Are you sure you want to delete the order for "${orderToDelete?.customer_name}" (Ref: ${orderToDelete?.order_number || orderToDelete?.id}) amounting to PKR ${Number(orderToDelete?.total_amount || 0).toLocaleString('en-PK')}? This action cannot be undone.`}
+        confirmText="Yes, Delete Order"
+        isDeleting={deletingDirect}
+      />
 
       {/* Action / Detail Modal */}
       {selectedOrder && (

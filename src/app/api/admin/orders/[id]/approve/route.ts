@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { buildWhatsAppApprovalMessage, createWhatsAppUrl } from '@/lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +70,7 @@ export async function POST(
         .not('order_number', 'is', null)
         .order('created_at', { ascending: false });
 
-      // Determine next sequence number
+      // Determine lowest available unused sequence number starting from 1 (STH-001 format)
       let nextNumber = 1;
       if (existingApproved && existingApproved.length > 0) {
         const numbers = existingApproved
@@ -79,12 +80,13 @@ export async function POST(
           })
           .filter((n) => n > 0);
 
-        if (numbers.length > 0) {
-          nextNumber = Math.max(...numbers) + 1;
+        const usedSet = new Set(numbers);
+        while (usedSet.has(nextNumber)) {
+          nextNumber++;
         }
       }
 
-      const formattedOrderNumber = `STH-${String(nextNumber).padStart(4, '0')}`;
+      const formattedOrderNumber = `STH-${String(nextNumber).padStart(3, '0')}`;
 
       const { data: updated, error: updateErr } = await service
         .from('orders')
@@ -122,42 +124,21 @@ export async function POST(
     }
 
     // Build Approved Order WhatsApp confirmation message
-    const itemsText = (approvedOrder.order_items || [])
-      .map(
-        (i: any) =>
-          `• ${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}\nQty: ${i.quantity} x PKR ${Number(i.unit_price).toLocaleString('en-PK')} = PKR ${Number(i.line_total).toLocaleString('en-PK')}`
-      )
-      .join('\n\n');
+    const confirmationMessage = buildWhatsAppApprovalMessage({
+      order_number: approvedOrder.order_number,
+      customer_name: approvedOrder.customer_name,
+      phone: approvedOrder.phone,
+      city: approvedOrder.city,
+      address: approvedOrder.address,
+      subtotal: approvedOrder.subtotal,
+      coupon_discount: approvedOrder.coupon_discount,
+      bundle_discount: approvedOrder.bundle_discount,
+      delivery_charges: approvedOrder.delivery_charges,
+      total_amount: approvedOrder.total_amount,
+      items: approvedOrder.order_items || [],
+    });
 
-    const cleanCustomerPhone = approvedOrder.phone.replace(/[^0-9]/g, '');
-
-    const confirmationMessage = [
-      '🛍️ STH GADGETS - ORDER CONFIRMED',
-      '',
-      `🔢 Order Number: ${approvedOrder.order_number}`,
-      '',
-      `👤 Customer Name: ${approvedOrder.customer_name}`,
-      `📱 WhatsApp Number: ${approvedOrder.phone}`,
-      `🏙️ City: ${approvedOrder.city}`,
-      `📍 Address: ${approvedOrder.address}`,
-      '',
-      '📦 ORDER DETAILS',
-      '',
-      itemsText,
-      '',
-      `💵 Subtotal: PKR ${Number(approvedOrder.subtotal).toLocaleString('en-PK')}`,
-      `🎟️ Coupon Discount: PKR ${Number(approvedOrder.coupon_discount).toLocaleString('en-PK')}`,
-      `🎁 Bundle Discount: PKR ${Number(approvedOrder.bundle_discount).toLocaleString('en-PK')}`,
-      `🚚 Delivery Charges: PKR ${Number(approvedOrder.delivery_charges).toLocaleString('en-PK')}`,
-      `💰 TOTAL AMOUNT: PKR ${Number(approvedOrder.total_amount).toLocaleString('en-PK')}`,
-      '',
-      '=========================',
-      '',
-      'Thank you for shopping with STH Gadgets!',
-      `Your order ${approvedOrder.order_number} has been approved and is being prepared for dispatch.`,
-    ].join('\n');
-
-    const confirmationWhatsAppUrl = `https://wa.me/${cleanCustomerPhone}?text=${encodeURIComponent(confirmationMessage)}`;
+    const confirmationWhatsAppUrl = createWhatsAppUrl(approvedOrder.phone, confirmationMessage);
 
     // Generate corresponding official invoice for approved order
     try {
@@ -170,9 +151,33 @@ export async function POST(
         .maybeSingle();
 
       if (!existingInvoice) {
+        // Calculate next invoice number
+        const { data: existingInvoices } = await service
+          .from('invoices')
+          .select('invoice_number')
+          .not('invoice_number', 'is', null)
+          .order('created_at', { ascending: false });
+
+        let nextNum = 1;
+        if (existingInvoices && existingInvoices.length > 0) {
+          const numbers = existingInvoices
+            .map((inv: any) => {
+              const m = (inv.invoice_number || '').match(/(\d+)/);
+              return m ? parseInt(m[1], 10) : 0;
+            })
+            .filter((n: number) => n > 0);
+
+          const usedSet = new Set(numbers);
+          while (usedSet.has(nextNum)) {
+            nextNum++;
+          }
+        }
+        const generatedInvNum = `STH-INV-${String(nextNum).padStart(3, '0')}`;
+
         const { data: newInv } = await service
           .from('invoices')
           .insert({
+            invoice_number: generatedInvNum,
             customer_name: approvedOrder.customer_name,
             customer_phone: approvedOrder.phone,
             customer_whatsapp: approvedOrder.phone,

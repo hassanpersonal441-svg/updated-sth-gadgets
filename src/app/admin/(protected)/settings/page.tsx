@@ -17,7 +17,33 @@ export default function AdminSettingsPage() {
   );
   const [loading, setLoading] = useState(!cachedSettings);
   const [saving, setSaving] = useState(false);
+  const [resettingAction, setResettingAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  async function handleSystemReset(action: string) {
+    setResettingAction(action);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/admin/system-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        success(data.message || 'Reset completed successfully!');
+        setMessage(data.message || 'Reset completed successfully!');
+      } else {
+        showErrorToast(data.error || 'Failed to perform reset');
+        setMessage(data.error || 'Failed to perform reset');
+      }
+    } catch {
+      showErrorToast('Failed to perform reset');
+      setMessage('Failed to perform reset');
+    } finally {
+      setResettingAction(null);
+    }
+  }
 
   useEffect(() => {
     fetch('/api/settings')
@@ -90,11 +116,16 @@ export default function AdminSettingsPage() {
       <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
         {/* Business Identity */}
         <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4 border-b border-slate-800/80 pb-3">
-            <span className="text-base">🏢</span>
-            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
-              Brand & Currency
-            </h2>
+          <div className="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🏢</span>
+              <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+                Brand & Store Identity
+              </h2>
+            </div>
+            <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+              🇵🇰 Currency Fixed: PKR (Rs.)
+            </span>
           </div>
 
           <div className="space-y-4">
@@ -112,22 +143,39 @@ export default function AdminSettingsPage() {
               <ImageUploader bucket="site-assets" images={logo} onChange={setLogo} multiple={false} />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-silver-dim">Currency Code</label>
-                <input
-                  value={settings.currency}
-                  onChange={(e) => update('currency', e.target.value)}
-                  className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none font-mono"
-                />
+            {/* PWA App Status & Currency Safeguard Feature */}
+            <div className="rounded-xl border border-[#00C4CC]/30 bg-[#080D15] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📱</span>
+                  <span className="font-display text-xs font-bold text-white">
+                    Progressive Web App (PWA) Status
+                  </span>
+                </div>
+                <span className="rounded-full bg-[#00C4CC]/10 border border-[#00C4CC]/40 px-2.5 py-0.5 text-[10px] font-bold text-[#00C4CC]">
+                  ● Live & Installable
+                </span>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-silver-dim">Currency Symbol</label>
-                <input
-                  value={settings.currency_symbol}
-                  onChange={(e) => update('currency_symbol', e.target.value)}
-                  className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none font-mono"
-                />
+
+              <p className="text-xs text-silver-dim">
+                STH Gadgets is now a full <strong className="text-[#00C4CC]">Progressive Web App (PWA)</strong>. Customers can install it directly onto Android, iOS, or Desktop home screens with 1 click for fast offline browsing.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('sth_pwa_install_available'));
+                    success('PWA App Install Banner triggered on screen!');
+                  }}
+                  className="rounded-lg border border-[#00C4CC]/40 bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-3 py-1.5 font-display text-xs font-bold text-[#00C4CC] transition cursor-pointer"
+                >
+                  📲 Test PWA Install Banner
+                </button>
+
+                <span className="text-[11px] text-silver-dim">
+                  • Operating Currency: <strong className="text-amber-400">PKR (Rs.)</strong>
+                </span>
               </div>
             </div>
           </div>
@@ -378,7 +426,7 @@ export default function AdminSettingsPage() {
             <div className="flex items-center gap-2">
               <span className="text-base">🎁</span>
               <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
-                Active Promotions & Discounts
+                Active Promotions & Automatic Cart Discounts
               </h2>
             </div>
             <Link
@@ -390,31 +438,89 @@ export default function AdminSettingsPage() {
             </Link>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-[#080D15] p-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-base text-amber-400 border border-amber-500/30">
-                  2x
+          <p className="text-xs text-silver-dim mb-4">
+            Discounts automatically applied to customer carts when subtotal meets or exceeds the minimum amount threshold.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Tier 1 */}
+            <div className="rounded-xl border border-slate-800 bg-[#080D15] p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <span className="font-bold text-xs text-amber-400">Tier 1 Promotion</span>
+                <span className="rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                  {settings.bundle_tier1_percent ?? 5}% OFF
                 </span>
-                <div>
-                  <div className="font-semibold text-silver-bright">2 Items Bundle Discount</div>
-                  <div className="text-[11px] text-silver-dim">Automatically applied to cart total for 2 items</div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-silver-dim">
+                  Minimum Order Amount (PKR)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-xs font-bold text-silver-dim">PKR</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={settings.bundle_tier1_threshold ?? 2000}
+                    onChange={(e) => update('bundle_tier1_threshold', Number(e.target.value) || 0)}
+                    placeholder="2000"
+                    className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] pl-12 pr-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none font-mono"
+                  />
                 </div>
               </div>
-              <span className="font-display text-sm font-black text-amber-400">5% OFF</span>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-silver-dim">
+                  Discount Percentage (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={settings.bundle_tier1_percent ?? 5}
+                  onChange={(e) => update('bundle_tier1_percent', Number(e.target.value) || 0)}
+                  placeholder="5"
+                  className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none font-mono"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-[#080D15] p-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-base text-emerald-400 border border-emerald-500/30">
-                  3+
+            {/* Tier 2 */}
+            <div className="rounded-xl border border-slate-800 bg-[#080D15] p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <span className="font-bold text-xs text-emerald-400">Tier 2 Promotion</span>
+                <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                  {settings.bundle_tier2_percent ?? 10}% OFF
                 </span>
-                <div>
-                  <div className="font-semibold text-silver-bright">3+ Items Bundle Discount</div>
-                  <div className="text-[11px] text-silver-dim">Automatically applied to cart total for 3 or more items</div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-silver-dim">
+                  Minimum Order Amount (PKR)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-xs font-bold text-silver-dim">PKR</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={settings.bundle_tier2_threshold ?? 4000}
+                    onChange={(e) => update('bundle_tier2_threshold', Number(e.target.value) || 0)}
+                    placeholder="4000"
+                    className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] pl-12 pr-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none font-mono"
+                  />
                 </div>
               </div>
-              <span className="font-display text-sm font-black text-emerald-400">10% OFF</span>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-silver-dim">
+                  Discount Percentage (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={settings.bundle_tier2_percent ?? 10}
+                  onChange={(e) => update('bundle_tier2_percent', Number(e.target.value) || 0)}
+                  placeholder="10"
+                  className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none font-mono"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -466,6 +572,117 @@ export default function AdminSettingsPage() {
             onChange={(e) => update('order_message_template', e.target.value)}
             className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-3 font-mono text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
           />
+        </div>
+
+        {/* System ID Sequence & Analytics Control (STH-001 Format) */}
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🔢</span>
+              <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+                System ID Sequence & Analytics Control (STH-001 Format)
+              </h2>
+            </div>
+            <span className="rounded-full bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-2.5 py-0.5 text-[10px] font-bold text-[#00C4CC]">
+              001 Sequence & Reuse
+            </span>
+          </div>
+
+          <p className="text-xs text-silver-dim">
+            Reset WhatsApp tracked analytics to 0, or re-sequence Order and Invoice IDs starting cleanly from <code className="text-[#00C4CC]">STH-001</code> and <code className="text-[#00C4CC]">STH-INV-001</code>. Deleted/unused IDs are automatically reused!
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              disabled={resettingAction !== null}
+              onClick={() => handleSystemReset('reset_whatsapp')}
+              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 py-2.5 px-4 text-xs font-bold text-emerald-400 transition cursor-pointer disabled:opacity-50"
+            >
+              <span>{resettingAction === 'reset_whatsapp' ? 'Resetting...' : '⚡ Reset WhatsApp Tracked (0)'}</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={resettingAction !== null}
+              onClick={() => handleSystemReset('resequence_orders')}
+              className="flex items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 py-2.5 px-4 text-xs font-bold text-[#00C4CC] transition cursor-pointer disabled:opacity-50"
+            >
+              <span>{resettingAction === 'resequence_orders' ? 'Resequencing...' : '🔢 Resequence Orders (STH-001)'}</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={resettingAction !== null}
+              onClick={() => handleSystemReset('resequence_invoices')}
+              className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 py-2.5 px-4 text-xs font-bold text-amber-400 transition cursor-pointer disabled:opacity-50"
+            >
+              <span>{resettingAction === 'resequence_invoices' ? 'Resequencing...' : '📄 Resequence Invoices (STH-INV-001)'}</span>
+            </button>
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="button"
+              disabled={resettingAction !== null}
+              onClick={() => {
+                if (confirm('Are you sure you want to reset WhatsApp tracked clicks to 0 and resequence all Orders & Invoices starting from 001?')) {
+                  handleSystemReset('full_reset');
+                }
+              }}
+              className="w-full rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 py-3 px-4 text-xs font-bold text-purple-300 transition cursor-pointer disabled:opacity-50"
+            >
+              {resettingAction === 'full_reset' ? 'Executing Master Reset...' : '🔄 Master Reset: Reset WhatsApp Clicks & Resequence All IDs from 001'}
+            </button>
+          </div>
+        </div>
+
+        {/* Help & Guided Website Tours */}
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3">
+            <span className="text-base">🧭</span>
+            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+              Help & Website Tours
+            </h2>
+          </div>
+
+          <p className="text-xs text-silver-dim">
+            Re-run the interactive guided onboarding tours for the Admin Panel or Customer Storefront at any time.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('sth_admin_tour_completed');
+                  window.dispatchEvent(new CustomEvent('sth_restart_admin_tour'));
+                  success('Restarting Admin Panel Tour...');
+                } catch {
+                  // ignore
+                }
+              }}
+              className="flex-1 rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 py-2.5 px-4 font-display text-xs font-bold text-[#00C4CC] transition cursor-pointer"
+            >
+              🔄 Restart Admin Tour
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('sth_customer_tour_completed');
+                  window.open('/?tour=customer', '_blank');
+                  success('Opening Storefront Customer Tour...');
+                } catch {
+                  // ignore
+                }
+              }}
+              className="flex-1 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 py-2.5 px-4 font-display text-xs font-bold text-white transition cursor-pointer"
+            >
+              🛍️ Restart Customer Tour
+            </button>
+          </div>
         </div>
 
         {/* Status Notification */}

@@ -367,6 +367,7 @@ export default function AdminHeader({
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
+              data-tour="admin-notifications"
               onClick={() => {
                 setIsDropdownOpen(!isDropdownOpen);
                 requestNotificationPermission();

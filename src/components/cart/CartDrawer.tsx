@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import QuickWhatsAppModal from './QuickWhatsAppModal';
+import ExclusiveBundleModal from './ExclusiveBundleModal';
 
 export default function CartDrawer() {
   const {
@@ -32,6 +33,8 @@ export default function CartDrawer() {
   const [inputCode, setInputCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPreCheckoutModalOpen, setIsPreCheckoutModalOpen] = useState(false);
+  const [hasDismissedPreCheckout, setHasDismissedPreCheckout] = useState(false);
 
   if (!isCartOpen) return null;
 
@@ -52,19 +55,19 @@ export default function CartDrawer() {
     setIsSubmitting(true);
 
     const storePhone = '923489593671';
-    let fallbackMsg = `🛒 *STH GADGETS — WHATSAPP CART ORDER*\n\n`;
+    let fallbackMsg = `🛍️ *STH GADGETS — WHATSAPP CART ORDER* 🛒\n━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    fallbackMsg += `👤 *Customer:* ${custName} (${custPhone})\n`;
+    if (custAddress) fallbackMsg += `📍 *Address:* ${custAddress}${custCity ? `, ${custCity}` : ''}\n`;
+    fallbackMsg += `━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *ORDER ITEMS:*\n`;
     items.forEach((item, idx) => {
-      fallbackMsg += `${idx + 1}. *${item.productName}*\n   Qty: ${item.quantity} × PKR ${item.price.toLocaleString('en-PK')} = PKR ${(item.quantity * item.price).toLocaleString('en-PK')}\n`;
+      fallbackMsg += `${idx + 1}. 🔹 *${item.productName}* ${item.variantName ? `(${item.variantName})` : ''}\n   🔢 Qty: ${item.quantity} × PKR ${item.price.toLocaleString('en-PK')} = 💵 PKR ${(item.quantity * item.price).toLocaleString('en-PK')}\n`;
     });
-    fallbackMsg += `\n--------------------\n`;
-    fallbackMsg += `*Customer:* ${custName} (${custPhone})\n`;
-    if (custAddress) fallbackMsg += `*Address:* ${custAddress}${custCity ? `, ${custCity}` : ''}\n`;
-    fallbackMsg += `*Subtotal:* PKR ${subtotal.toLocaleString('en-PK')}\n`;
-    if (couponDiscount > 0) fallbackMsg += `*Coupon Discount (${couponCode}):* -PKR ${couponDiscount.toLocaleString('en-PK')}\n`;
-    if (bundleDiscount > 0) fallbackMsg += `*Bundle Discount (${bundlePercentage}%):* -PKR ${bundleDiscount.toLocaleString('en-PK')}\n`;
-    fallbackMsg += `*Delivery:* ${deliveryCharges === 0 ? 'FREE' : `PKR ${deliveryCharges}`}\n`;
-    fallbackMsg += `*Total Amount:* PKR ${totalAmount.toLocaleString('en-PK')}\n\n`;
-    fallbackMsg += `Please confirm availability and dispatch!`;
+    fallbackMsg += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    fallbackMsg += `💵 *Subtotal:* PKR ${subtotal.toLocaleString('en-PK')}\n`;
+    if (couponDiscount > 0) fallbackMsg += `🏷️ *Coupon Discount (${couponCode}):* -PKR ${couponDiscount.toLocaleString('en-PK')}\n`;
+    if (bundleDiscount > 0) fallbackMsg += `🎁 *Bundle Discount (${bundlePercentage}%):* -PKR ${bundleDiscount.toLocaleString('en-PK')}\n`;
+    fallbackMsg += `🚚 *Delivery:* ${deliveryCharges === 0 ? 'FREE ✨' : `PKR ${deliveryCharges}`}\n`;
+    fallbackMsg += `💰 *TOTAL AMOUNT:* PKR ${totalAmount.toLocaleString('en-PK')}\n━━━━━━━━━━━━━━━━━━━━━━━━━\n✨ *Please confirm availability & dispatch! Thank you!* 🙏`;
     let targetUrl = `https://wa.me/${storePhone}?text=${encodeURIComponent(fallbackMsg)}`;
 
     try {
@@ -114,8 +117,27 @@ export default function CartDrawer() {
     }
   }
 
+  function handleCheckoutClick() {
+    if (!hasDismissedPreCheckout) {
+      setIsPreCheckoutModalOpen(true);
+    } else {
+      openCheckout();
+    }
+  }
+
   return (
     <>
+      <ExclusiveBundleModal
+        isOpen={isPreCheckoutModalOpen}
+        onClose={() => {
+          setIsPreCheckoutModalOpen(false);
+          setHasDismissedPreCheckout(true);
+        }}
+        isPreCheckout={true}
+        onProceedToCheckout={() => {
+          openCheckout();
+        }}
+      />
       <QuickWhatsAppModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -304,16 +326,16 @@ export default function CartDrawer() {
                 <div className="flex items-center gap-2 font-medium">
                   <span>🎁</span>
                   <span>
-                    Bundle Deal Applied ({bundlePercentage}% OFF {totalItems} items!)
+                    Special Offer Applied ({bundlePercentage}% OFF Order!)
                   </span>
                 </div>
                 <span className="font-bold font-mono">
                   -PKR {bundleDiscount.toLocaleString('en-PK')}
                 </span>
               </div>
-            ) : totalItems === 1 ? (
+            ) : subtotal > 0 && subtotal < 2000 ? (
               <div className="rounded-xl border border-slate-800 bg-[#0C1420] p-2.5 text-center text-[11px] text-silver-dim">
-                💡 <span className="text-[#00C4CC] font-bold">Tip:</span> Add 1 more item to unlock a <strong className="text-amber-400">5% Bundle Discount</strong>!
+                💡 <span className="text-[#00C4CC] font-bold">Tip:</span> Add items worth PKR {(2000 - subtotal).toLocaleString('en-PK')} more to unlock a <strong className="text-amber-400">5% Discount</strong>!
               </div>
             ) : null}
           </div>
@@ -367,7 +389,7 @@ export default function CartDrawer() {
             {/* Action Buttons */}
             <div className="space-y-2 pt-1">
               <button
-                onClick={openCheckout}
+                onClick={handleCheckoutClick}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-3.5 px-4 font-display text-sm font-bold text-white shadow-[0_0_20px_rgba(37,211,102,0.3)] transition hover:scale-[1.01]"
               >
                 <svg viewBox="0 0 32 32" className="h-4 w-4 fill-white shrink-0">

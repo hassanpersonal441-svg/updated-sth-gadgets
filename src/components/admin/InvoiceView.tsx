@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import type { Invoice, Settings } from '@/types/database';
+import { buildWhatsAppInvoiceMessage, createWhatsAppUrl } from '@/lib/whatsapp';
 
 interface InvoiceViewProps {
   invoice: Invoice;
@@ -36,6 +37,8 @@ export default function InvoiceView({
   const businessAddress = rawAddress;
   const logoUrl = settings?.logo_url || '/images/logo.png';
   const currencySymbol = settings?.currency_symbol || 'Rs.';
+
+  const displayInvoiceNumber = invoice.invoice_number || (invoice.id && !invoice.id.startsWith('draft') ? `STH-INV-${invoice.id.slice(0, 8).toUpperCase()}` : 'STH-INV-DRAFT');
 
   const handlePrint = () => {
     window.print();
@@ -82,7 +85,7 @@ export default function InvoiceView({
         heightLeft -= pdfHeight;
       }
 
-      const filename = `${invoice.invoice_number || 'STH-INV'}.pdf`;
+      const filename = `${displayInvoiceNumber}.pdf`;
       pdf.save(filename);
     } catch (err) {
       console.error('PDF Generation Error:', err);
@@ -98,12 +101,20 @@ export default function InvoiceView({
     const phone = cleanPhone.startsWith('0') ? '92' + cleanPhone.slice(1) : cleanPhone;
 
     const publicUrl = typeof window !== 'undefined'
-      ? `${window.location.origin}/invoice/${invoice.invoice_number || invoice.id}`
-      : `/invoice/${invoice.invoice_number || invoice.id}`;
+      ? `${window.location.origin}/invoice/${displayInvoiceNumber}`
+      : `/invoice/${displayInvoiceNumber}`;
 
-    const message = `Hello ${invoice.customer_name}!\n\nThank you for shopping with ${businessName}.\n\nYour invoice details:\nInvoice No: ${invoice.invoice_number}\nTotal Amount: ${currencySymbol} ${invoice.grand_total.toLocaleString()}\nPayment Status: ${invoice.payment_status}\n\nYou can view your invoice here:\n${publicUrl}\n\nThank you for choosing ${businessName}.`;
+    const message = buildWhatsAppInvoiceMessage({
+      customer_name: invoice.customer_name,
+      business_name: businessName,
+      invoice_number: displayInvoiceNumber,
+      grand_total: invoice.grand_total,
+      payment_status: invoice.payment_status,
+      currency_symbol: currencySymbol,
+      public_url: publicUrl,
+    });
 
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(createWhatsAppUrl(phone, message), '_blank');
   };
 
   const getStatusColor = (status: string) => {
@@ -131,7 +142,7 @@ export default function InvoiceView({
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-[#0C1420] p-4 text-white print:hidden">
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm font-bold text-[#00C4CC]">
-              {invoice.invoice_number}
+              {displayInvoiceNumber}
             </span>
             <span
               className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(
@@ -218,7 +229,7 @@ export default function InvoiceView({
             <div className="sm:text-right space-y-1">
               <h2 className="text-3xl font-black text-slate-900 tracking-wider">INVOICE</h2>
               <p className="font-mono text-base font-bold text-[#0066FF]">
-                {invoice.invoice_number}
+                {displayInvoiceNumber}
               </p>
               <div className="text-xs text-slate-600 space-y-0.5 pt-2">
                 <p>

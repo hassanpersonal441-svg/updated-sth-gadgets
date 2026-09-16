@@ -81,7 +81,7 @@ export default function AdminInvoiceDetailPage({
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black tracking-tight text-white uppercase font-display">
-              {invoice.invoice_number}
+              {invoice.invoice_number || `STH-INV-${invoice.id.slice(0, 8).toUpperCase()}`}
             </h1>
           </div>
         </div>

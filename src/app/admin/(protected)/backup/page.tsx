@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { BackupRecord, RestoreHistoryRecord } from '@/types/database';
 import RestoreModal from '@/components/admin/RestoreModal';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 export default function AdminBackupPage() {
   const [backups, setBackups] = useState<BackupRecord[]>([]);
@@ -27,6 +28,19 @@ export default function AdminBackupPage() {
   const [previewModalBackup, setPreviewModalBackup] = useState<BackupRecord | null>(null);
   const [previewData, setPreviewData] = useState<any>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isRollingBack, setIsRollingBack] = useState<string | null>(null);
@@ -79,23 +93,28 @@ export default function AdminBackupPage() {
     }
   }
 
-  async function handleDeleteBackup(backup: BackupRecord) {
-    if (!confirm(`Are you sure you want to permanently delete backup "${backup.backup_name}"?`)) {
-      return;
-    }
+  function handleDeleteBackup(backup: BackupRecord) {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: 'Delete Backup',
+      description: `Are you sure you want to permanently delete backup "${backup.backup_name}"? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      onConfirm: async () => {
+        setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/admin/backups/${backup.id}`, {
+            method: 'DELETE',
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Failed to delete backup');
 
-    try {
-      const res = await fetch(`/api/admin/backups/${backup.id}`, {
-        method: 'DELETE',
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to delete backup');
-
-      setMessage({ type: 'success', text: 'Backup deleted successfully' });
-      loadData();
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Deletion failed' });
-    }
+          setMessage({ type: 'success', text: 'Backup deleted successfully' });
+          loadData();
+        } catch (err: any) {
+          setMessage({ type: 'error', text: err.message || 'Deletion failed' });
+        }
+      },
+    });
   }
 
   async function handleViewPreview(backup: BackupRecord) {
@@ -115,43 +134,44 @@ export default function AdminBackupPage() {
     }
   }
 
-  async function handleRollback(historyRow: RestoreHistoryRecord) {
+  function handleRollback(historyRow: RestoreHistoryRecord) {
     if (!historyRow.safety_backup_id) {
       alert('Cannot perform rollback: Safety backup missing for this restore entry.');
       return;
     }
 
-    if (
-      !confirm(
-        `WARNING: This will roll back your entire database to the safety state recorded on ${new Date(historyRow.started_at).toLocaleString()}.\n\nDo you want to proceed with Database Rollback?`
-      )
-    ) {
-      return;
-    }
+    setConfirmModalConfig({
+      isOpen: true,
+      title: 'Database Rollback Warning',
+      description: `WARNING: This will roll back your entire database to the safety state recorded on ${new Date(historyRow.started_at).toLocaleString()}. Are you sure you want to proceed?`,
+      confirmText: 'Execute Rollback',
+      onConfirm: async () => {
+        setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }));
+        setIsRollingBack(historyRow.id);
+        setMessage(null);
 
-    setIsRollingBack(historyRow.id);
-    setMessage(null);
+        try {
+          const res = await fetch('/api/admin/backups/rollback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ restoreHistoryId: historyRow.id }),
+          });
 
-    try {
-      const res = await fetch('/api/admin/backups/rollback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restoreHistoryId: historyRow.id }),
-      });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Rollback failed');
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Rollback failed');
-
-      setMessage({
-        type: 'success',
-        text: '🎉 Database successfully rolled back to pre-restore safety snapshot!',
-      });
-      loadData();
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Rollback operation failed' });
-    } finally {
-      setIsRollingBack(null);
-    }
+          setMessage({
+            type: 'success',
+            text: 'Database successfully rolled back to safety point!',
+          });
+          loadData();
+        } catch (err: any) {
+          setMessage({ type: 'error', text: err.message || 'Rollback operation failed' });
+        } finally {
+          setIsRollingBack(null);
+        }
+      },
+    });
   }
 
   function formatBytes(bytes: number): string {
@@ -558,6 +578,16 @@ export default function AdminBackupPage() {
           }}
         />
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModalConfig.isOpen}
+        onClose={() => setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalConfig.onConfirm}
+        title={confirmModalConfig.title}
+        description={confirmModalConfig.description}
+        confirmText={confirmModalConfig.confirmText}
+      />
     </div>
   );
 }

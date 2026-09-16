@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServiceClient } from '@/lib/supabase/server';
 import { evaluateCoupon, normalizePhoneNumber } from '@/lib/utils';
+import { buildWhatsAppCheckoutMessage, createWhatsAppUrl } from '@/lib/whatsapp';
 import type { Product } from '@/types/database';
 
 const checkoutSchema = z.object({
@@ -114,18 +115,29 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Calculate bundle discount:
-    // 2 items: 5%
-    // 3+ items: 10%
+    // 4. Calculate bundle discount based on subtotal thresholds from store settings
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    const tier1Threshold = settings?.bundle_tier1_threshold ?? 2000;
+    const tier1Percent = settings?.bundle_tier1_percent ?? 5;
+    const tier2Threshold = settings?.bundle_tier2_threshold ?? 4000;
+    const tier2Percent = settings?.bundle_tier2_percent ?? 10;
+
     let bundle_discount = 0;
-    if (totalQuantity >= 3) {
-      bundle_discount = Math.round((subtotal * 10) / 100);
-    } else if (totalQuantity === 2) {
-      bundle_discount = Math.round((subtotal * 5) / 100);
+    if (subtotal >= tier2Threshold && tier2Threshold > 0) {
+      bundle_discount = Math.round((subtotal * tier2Percent) / 100);
+    } else if (subtotal >= tier1Threshold && tier1Threshold > 0) {
+      bundle_discount = Math.round((subtotal * tier1Percent) / 100);
     }
 
-    // 5. Calculate delivery charges: Free above PKR 5,000, else PKR 200
-    const delivery_charges = subtotal >= 5000 ? 0 : 200;
+    // 5. Calculate delivery charges based on store settings
+    const freeShippingThreshold = settings?.free_shipping_threshold ?? 5000;
+    const defaultDeliveryFee = settings?.delivery_charges ?? 200;
+    const delivery_charges = freeShippingThreshold > 0 && subtotal >= freeShippingThreshold ? 0 : defaultDeliveryFee;
 
     // 6. Calculate final total amount
     const total_amount = Math.max(0, subtotal - coupon_discount - bundle_discount + delivery_charges);
@@ -188,13 +200,7 @@ export async function POST(request: Request) {
       // non-blocking
     }
 
-    // 10. Fetch business settings for destination WhatsApp number
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('whatsapp_number')
-      .eq('id', 1)
-      .maybeSingle();
-
+    // 10. Destination WhatsApp number from settings
     const destPhone = (settings?.whatsapp_number && settings.whatsapp_number.trim())
       ? settings.whatsapp_number.replace(/[^0-9]/g, '')
       : '923489593671';
@@ -218,38 +224,21 @@ export async function POST(request: Request) {
     // Thank you for ordering with STH Gadgets!
     // We will confirm your order shortly.
 
-    const itemsText = verifiedItems
-      .map(
-        (i) =>
-          `\u{1F539} ${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}\n   \u{1F522} Qty: ${i.quantity} x PKR ${i.unit_price.toLocaleString('en-PK')} = \u{1F4B5} PKR ${i.line_total.toLocaleString('en-PK')}`
-      )
-      .join('\n\n');
+    const whatsappMessage = buildWhatsAppCheckoutMessage({
+      customer_name,
+      phone,
+      city,
+      address,
+      subtotal,
+      coupon_discount,
+      coupon_code,
+      bundle_discount,
+      delivery_charges,
+      total_amount,
+      items: verifiedItems,
+    });
 
-    const whatsappMessage = [
-      '\u{1F6CD}\u{FE0F} STH GADGETS - NEW ORDER \u{1F6D2}',
-      '=========================',
-      `\u{1F464} Customer Name: ${customer_name}`,
-      `\u{1F4DE} Phone Number: ${phone}`,
-      `\u{1F4F1} WhatsApp Number: ${phone}`,
-      `\u{1F3D9}\u{FE0F} City: ${city}`,
-      `\u{1F4CD} Address: ${address}`,
-      '=========================',
-      '\u{1F4E6} ORDER DETAILS',
-      '=========================',
-      '',
-      itemsText,
-      '',
-      '=========================',
-      `\u{1F4B5} Subtotal: PKR ${subtotal.toLocaleString('en-PK')}`,
-      ...(coupon_discount > 0 ? [`\u{1F39F}\u{FE0F} Coupon Discount: PKR ${coupon_discount.toLocaleString('en-PK')}`] : []),
-      ...(bundle_discount > 0 ? [`\u{1F381} Bundle Discount: PKR ${bundle_discount.toLocaleString('en-PK')}`] : []),
-      `\u{1F69A} Delivery Charges: PKR ${delivery_charges.toLocaleString('en-PK')}`,
-      `\u{1F4B0} TOTAL AMOUNT: PKR ${total_amount.toLocaleString('en-PK')}`,
-      '=========================',
-      '\u{1F64F} Please confirm my order and availability. Thank you! \u{2728}',
-    ].join('\n');
-
-    const whatsappUrl = `https://wa.me/${destPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+    const whatsappUrl = createWhatsAppUrl(destPhone, whatsappMessage);
 
     return NextResponse.json({
       success: true,

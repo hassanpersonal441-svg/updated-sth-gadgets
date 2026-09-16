@@ -6,6 +6,7 @@ import Image from 'next/image';
 import type { Product, BundleOffer, BundleOfferItem } from '@/types/database';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 export default function AdminBundleOffersPage() {
   const { success: showSuccessToast, error: showErrorToast } = useToast();
@@ -228,10 +229,27 @@ export default function AdminBundleOffersPage() {
     }
   }
 
-  async function handleDeleteBundle(prod: Product, bundleIndex: number) {
-    if (!confirm(`Are you sure you want to delete bundle "${prod.bundle_offers?.[bundleIndex]?.title}"?`)) {
-      return;
-    }
+  // Confirm Modal State
+  const [confirmDeleteBundle, setConfirmDeleteBundle] = useState<{
+    prod: Product;
+    bundleIndex: number;
+    title: string;
+  } | null>(null);
+  const [deletingBundle, setDeletingBundle] = useState(false);
+
+  function handleDeleteBundleClick(prod: Product, bundleIndex: number) {
+    const bTitle = prod.bundle_offers?.[bundleIndex]?.title || 'Bundle Offer';
+    setConfirmDeleteBundle({
+      prod,
+      bundleIndex,
+      title: bTitle,
+    });
+  }
+
+  async function handleConfirmDeleteBundle() {
+    if (!confirmDeleteBundle) return;
+    const { prod, bundleIndex } = confirmDeleteBundle;
+    setDeletingBundle(true);
 
     const updatedBundles = (prod.bundle_offers || []).filter((_, idx) => idx !== bundleIndex);
 
@@ -251,6 +269,9 @@ export default function AdminBundleOffersPage() {
       fetchProducts();
     } catch (err: any) {
       showErrorToast(err.message || 'Error deleting bundle');
+    } finally {
+      setDeletingBundle(false);
+      setConfirmDeleteBundle(null);
     }
   }
 
@@ -420,7 +441,7 @@ export default function AdminBundleOffersPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDeleteBundle(prod, idx)}
+                    onClick={() => handleDeleteBundleClick(prod, idx)}
                     className="flex items-center gap-1.5 rounded-xl border border-rose-900/40 bg-rose-950/40 px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-800/40 transition"
                   >
                     <span>🗑️ Delete</span>
@@ -610,6 +631,19 @@ export default function AdminBundleOffersPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!confirmDeleteBundle}
+        onClose={() => setConfirmDeleteBundle(null)}
+        onConfirm={handleConfirmDeleteBundle}
+        title={`Delete "${confirmDeleteBundle?.title}"?`}
+        description={`Are you sure you want to delete bundle "${confirmDeleteBundle?.title}" attached to "${confirmDeleteBundle?.prod.name}"? This action cannot be undone.`}
+        confirmText="Delete Bundle"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deletingBundle}
+      />
     </div>
   );
 }

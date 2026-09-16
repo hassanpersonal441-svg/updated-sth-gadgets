@@ -22,12 +22,14 @@ export default async function PublicInvoicePage({ params }: PublicInvoicePagePro
   const { id } = await params;
   const supabase = getPublicClient();
 
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   let query = supabase.from('invoices').select('*, invoice_items(*)');
 
-  if (id.startsWith('STH-INV-')) {
-    query = query.eq('invoice_number', id);
-  } else {
+  if (isUuid) {
     query = query.eq('id', id);
+  } else {
+    query = query.ilike('invoice_number', id);
   }
 
   const { data: invoice } = await query.maybeSingle();
@@ -39,6 +41,7 @@ export default async function PublicInvoicePage({ params }: PublicInvoicePagePro
   const settings = await getSettings();
 
   const typedInvoice = invoice as unknown as Invoice;
+  const displayInvoiceNumber = typedInvoice.invoice_number || `STH-INV-${typedInvoice.id.slice(0, 8).toUpperCase()}`;
 
   return (
     <div className="min-h-screen bg-slate-950 py-8 px-4 sm:px-6 lg:px-8">
@@ -53,7 +56,7 @@ export default async function PublicInvoicePage({ params }: PublicInvoicePagePro
           </div>
 
           <span className="font-mono text-xs font-bold text-slate-300">
-            {typedInvoice.invoice_number}
+            {displayInvoiceNumber}
           </span>
         </div>
 

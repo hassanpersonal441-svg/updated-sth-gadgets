@@ -1,8 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk, Inter } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import ClientCartOverlays from '@/components/cart/ClientCartOverlays';
+import PwaRegister from '@/components/pwa/PwaRegister';
+import InstallPwaModal from '@/components/pwa/InstallPwaModal';
 
 const display = Space_Grotesk({
   subsets: ['latin'],
@@ -17,6 +19,13 @@ const body = Inter({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#00C4CC',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: {
@@ -25,6 +34,12 @@ export const metadata: Metadata = {
   },
   description:
     'STH Gadgets — power banks, wireless earbuds, chargers, cables, covers, speakers and smart watches. Order directly on WhatsApp.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'STH Gadgets',
+  },
   openGraph: {
     title: 'STH Gadgets — Premium Mobile Accessories',
     description: 'Power banks, earbuds, chargers, cables, covers, speakers and smart watches.',
@@ -32,16 +47,18 @@ export const metadata: Metadata = {
     type: 'website',
     images: ['/images/logo.png'],
   },
-  icons: { icon: '/images/logo.png' },
+  icons: { icon: '/images/logo.png', apple: '/images/logo.png' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <body className="font-body bg-base text-silver antialiased" suppressHydrationWarning>
+        <PwaRegister />
         <CartProvider>
           {children}
           <ClientCartOverlays />
+          <InstallPwaModal />
         </CartProvider>
       </body>
     </html>

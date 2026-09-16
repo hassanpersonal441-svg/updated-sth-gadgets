@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Product } from '@/types/database';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 // In-memory cache for instant module opening without blocking loading spinner
 let cachedProducts: Product[] | null = null;
@@ -383,49 +384,15 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {productToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="fixed inset-0" onClick={() => setProductToDelete(null)} />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-rose-500/40 bg-[#0C1420] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20 text-xl text-rose-400">
-                🗑️
-              </span>
-              <div>
-                <h3 className="font-display text-base font-bold text-rose-300">
-                  Delete Product Permanently
-                </h3>
-                <span className="text-xs text-silver-dim truncate block max-w-xs">
-                  {productToDelete.name}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-silver-dim leading-relaxed">
-              Are you sure you want to permanently delete <strong className="text-white">{productToDelete.name}</strong>? This cannot be undone and will remove all product images and inventory records.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setProductToDelete(null)}
-                disabled={deleting}
-                className="rounded-xl border border-slate-700 bg-[#080D15] px-4 py-2 text-xs font-semibold text-silver-bright hover:bg-slate-800 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteProduct}
-                disabled={deleting}
-                className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition disabled:opacity-50"
-              >
-                {deleting ? 'Deleting...' : 'Yes, Delete Product'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={confirmDeleteProduct}
+        title="Delete Product Permanently"
+        description={`Are you sure you want to permanently delete "${productToDelete?.name}"? This action cannot be undone and will remove all product images and inventory records.`}
+        confirmText="Yes, Delete Product"
+        isDeleting={deleting}
+      />
     </div>
   );
 }

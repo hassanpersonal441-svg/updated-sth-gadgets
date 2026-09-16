@@ -15,6 +15,7 @@ async function getStats() {
     { data: recentProducts },
     { count: whatsappClicks },
     { data: approvedOrders },
+    { data: vendorPurchases },
   ] = await Promise.all([
     supabase.from('products').select('*', { count: 'exact', head: true }),
     supabase.from('products').select('*', { count: 'exact', head: true }).eq('active', true),
@@ -24,6 +25,7 @@ async function getStats() {
     supabase.from('products').select('id, name, price, active, created_at, stock_status').order('created_at', { ascending: false }).limit(6),
     supabase.from('whatsapp_clicks').select('*', { count: 'exact', head: true }),
     supabase.from('orders').select('subtotal, order_items(unit_price, purchase_price, quantity, line_total)').in('status', ['approved', 'processing', 'shipped', 'delivered']),
+    supabase.from('vendor_purchases').select('*'),
   ]);
 
   let totalRevenue = 0;
@@ -40,6 +42,9 @@ async function getStats() {
   const grossProfit = totalRevenue - totalCost;
   const avgMargin = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 10000) / 100 : 0;
 
+  const pendingVendorCount = (vendorPurchases || []).filter((p: any) => p.status === 'pending').length;
+  const totalVendorCost = (vendorPurchases || []).reduce((sum: number, p: any) => sum + (Number(p.wholesale_cost) || 0) * (Number(p.quantity) || 1), 0);
+
   return {
     totalProducts: totalProducts || 0,
     activeProducts: activeProducts || 0,
@@ -52,6 +57,8 @@ async function getStats() {
     totalCost,
     grossProfit,
     avgMargin,
+    pendingVendorCount,
+    totalVendorCost,
   };
 }
 
@@ -85,6 +92,24 @@ export default async function AdminDashboardPage() {
       borderColor: 'border-amber-500/30',
       textColor: 'text-amber-400',
       href: '/admin/profit',
+    },
+    {
+      label: 'Pending Vendor Purchases',
+      value: `${stats.pendingVendorCount} Pending (Voltix)`,
+      icon: '⏳',
+      color: 'from-amber-500/20 to-transparent',
+      borderColor: 'border-amber-500/30',
+      textColor: 'text-amber-300',
+      href: '/admin/vendor-purchases',
+    },
+    {
+      label: 'Vendor Purchase Cost',
+      value: `PKR ${stats.totalVendorCost.toLocaleString('en-PK')}`,
+      icon: '🏬',
+      color: 'from-cyan-500/20 to-transparent',
+      borderColor: 'border-cyan-500/30',
+      textColor: 'text-[#00C4CC]',
+      href: '/admin/vendor-purchases',
     },
     {
       label: 'Total Products',

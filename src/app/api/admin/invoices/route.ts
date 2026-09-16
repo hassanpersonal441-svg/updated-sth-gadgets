@@ -217,10 +217,37 @@ export async function POST(req: NextRequest) {
     const paidNum = Math.max(0, parseFloat(amount_paid) || 0);
     const remaining_amount = Math.max(0, grand_total - paidNum);
 
+    // Auto-generate next invoice_number if not supplied or if DB trigger is uninitialized
+    let finalInvoiceNumber = body.invoice_number?.trim() || null;
+    if (!finalInvoiceNumber) {
+      const { data: existingInvoices } = await supabase
+        .from('invoices')
+        .select('invoice_number')
+        .not('invoice_number', 'is', null)
+        .order('created_at', { ascending: false });
+
+      let nextNum = 1;
+      if (existingInvoices && existingInvoices.length > 0) {
+        const numbers = existingInvoices
+          .map((inv: any) => {
+            const m = (inv.invoice_number || '').match(/(\d+)/);
+            return m ? parseInt(m[1], 10) : 0;
+          })
+          .filter((n: number) => n > 0);
+
+        const usedSet = new Set(numbers);
+        while (usedSet.has(nextNum)) {
+          nextNum++;
+        }
+      }
+      finalInvoiceNumber = `STH-INV-${String(nextNum).padStart(3, '0')}`;
+    }
+
     // Insert Invoice
     const { data: invoice, error: invErr } = await supabase
       .from('invoices')
       .insert({
+        invoice_number: finalInvoiceNumber,
         customer_name: customer_name.trim(),
         customer_phone: customer_phone.trim(),
         customer_whatsapp: customer_whatsapp?.trim() || customer_phone.trim(),

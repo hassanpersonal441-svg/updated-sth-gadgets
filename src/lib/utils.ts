@@ -46,7 +46,7 @@ export function evaluateCoupon(coupon: Coupon | null, orderAmount: number): Coup
 }
 
 const DEFAULT_ORDER_TEMPLATE =
-  '\u{1F6CD}\u{FE0F} STH GADGETS - NEW ORDER \u{1F6D2}\n=========================\n\u{1F4E6} Product: {product_name}\n\u{1F4B5} Price: {currency_symbol} {product_price}\n\u{1F522} Quantity: {quantity}\n\u{1F39F}\u{FE0F} Discount: {discount}\n\u{1F4B0} Final Price: {currency_symbol} {final_price}\n\n\u{1F517} Link: {product_url}\n=========================\n\u{1F64F} Please confirm availability & order details. Thank you! \u{2728}';
+  '🛍️ *STH GADGETS — NEW ORDER* 🛒\n━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *Product:* {product_name}\n💵 *Price:* {currency_symbol} {product_price}\n🔢 *Quantity:* {quantity}\n🏷️ *Discount:* {discount}\n💰 *Final Price:* {currency_symbol} {final_price}\n\n🔗 *Product Link:* {product_url}\n━━━━━━━━━━━━━━━━━━━━━━━━━\n✨ *Please confirm availability & order details. Thank you!* 🙏';
 
 /** Builds the pre-filled WhatsApp order message and returns a wa.me deep link. */
 export function buildWhatsAppOrderLink(params: {

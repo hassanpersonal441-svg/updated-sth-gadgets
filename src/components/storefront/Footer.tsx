@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import type { Settings } from '@/types/database';
 
 export default function Footer({ settings }: { settings: Settings | null }) {
@@ -7,7 +6,7 @@ export default function Footer({ settings }: { settings: Settings | null }) {
 
   return (
     <footer className="border-t border-slate-800/80 bg-[#060A10] text-[#C9D2DB] pb-16 lg:pb-0">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
         {/* Col 1: Store Brand & About */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -33,26 +32,6 @@ export default function Footer({ settings }: { settings: Settings | null }) {
           </p>
         </div>
 
-        {/* Col 2: Quick Links */}
-        <div>
-          <h4 className="font-display text-xs font-bold uppercase tracking-wider text-[#00C4CC]">
-            Quick Links
-          </h4>
-          <ul className="mt-3 space-y-2 text-xs text-slate-300">
-            <li>
-              <Link href="/" className="hover:text-[#00C4CC] transition">Home</Link>
-            </li>
-            <li>
-              <Link href="/products" className="hover:text-[#00C4CC] transition">All Products Catalog</Link>
-            </li>
-            <li>
-              <Link href="/products?sort=discount" className="hover:text-[#00C4CC] transition">🔥 Hot Deals & Discounts</Link>
-            </li>
-            <li>
-              <Link href="/products?sort=newest" className="hover:text-[#00C4CC] transition">✨ New Arrivals</Link>
-            </li>
-          </ul>
-        </div>
 
         {/* Col 3: Customer Support & Contact Info */}
         <div>
@@ -92,10 +71,6 @@ export default function Footer({ settings }: { settings: Settings | null }) {
             <li className="flex items-center gap-2">
               <span className="text-emerald-400 font-bold">✓</span>
               <span>2–4 Day Fast Courier Shipping</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">✓</span>
-              <span>7-Day Checking Warranty</span>
             </li>
             <li className="flex items-center gap-2">
               <span className="text-emerald-400 font-bold">✓</span>
