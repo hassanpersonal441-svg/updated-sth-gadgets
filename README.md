@@ -111,3 +111,4 @@ Because orders are completed on WhatsApp (outside this app), there's no separate
 ## Tech stack
 
 Next.js 14 (App Router) · React 18 · TypeScript · Tailwind CSS · Supabase (Postgres, Auth, Storage) · Zod validation · Vercel hosting
+"# updated-sth-gadgets" 
