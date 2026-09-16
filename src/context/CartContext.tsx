@@ -118,16 +118,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Raw subtotal of products in cart
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  // Bundle / Amount discount logic:
-  // Subtotal >= Tier 2 Threshold (e.g. 4,000 PKR) -> Tier 2 Percent (10%)
-  // Subtotal >= Tier 1 Threshold (e.g. 2,000 PKR) -> Tier 1 Percent (5%)
+  // Mutually Exclusive Discount Rule:
+  // Either a Coupon Code is applied OR Automatic Promotions / Bundle Discounts apply.
+  // Both cannot be applied at the same time.
+  const isCouponActive = couponStatus === 'valid' && couponDiscount > 0;
+
   let bundlePercentage = 0;
-  if (subtotal >= bundleTier2Threshold && bundleTier2Threshold > 0) {
-    bundlePercentage = bundleTier2Percent;
-  } else if (subtotal >= bundleTier1Threshold && bundleTier1Threshold > 0) {
-    bundlePercentage = bundleTier1Percent;
+  if (!isCouponActive) {
+    if (subtotal >= bundleTier2Threshold && bundleTier2Threshold > 0) {
+      bundlePercentage = bundleTier2Percent;
+    } else if (subtotal >= bundleTier1Threshold && bundleTier1Threshold > 0) {
+      bundlePercentage = bundleTier1Percent;
+    }
   }
-  const bundleDiscount = Math.round((subtotal * bundlePercentage) / 100);
+  const bundleDiscount = isCouponActive ? 0 : Math.round((subtotal * bundlePercentage) / 100);
 
   // Delivery charges: Free if order exceeds threshold, else standard fee
   const deliveryCharges = subtotal > 0 ? (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold ? 0 : deliveryFee) : 0;

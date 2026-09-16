@@ -281,19 +281,24 @@ export default function CartDrawer() {
               </label>
 
               {couponStatus === 'valid' && couponCode ? (
-                <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-xs text-emerald-400">
-                  <div className="flex items-center gap-2">
-                    <span>✓</span>
-                    <span className="font-mono font-bold">{couponCode}</span>
-                    <span>(-PKR {couponDiscount.toLocaleString('en-PK')})</span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-xs text-emerald-400">
+                    <div className="flex items-center gap-2">
+                      <span>✓</span>
+                      <span className="font-mono font-bold">{couponCode}</span>
+                      <span>(-PKR {couponDiscount.toLocaleString('en-PK')})</span>
+                    </div>
+                    <button
+                      onClick={removeCoupon}
+                      className="font-bold text-emerald-400 hover:text-white px-1"
+                      title="Remove coupon"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <button
-                    onClick={removeCoupon}
-                    className="font-bold text-emerald-400 hover:text-white px-1"
-                    title="Remove coupon"
-                  >
-                    ✕
-                  </button>
+                  <p className="text-[11px] text-amber-300/80 font-medium">
+                    ℹ️ Note: Coupon code active. Automatic promo discounts are paused when a coupon is applied.
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleApply} className="flex gap-2">
@@ -334,7 +339,7 @@ export default function CartDrawer() {
                   -PKR {bundleDiscount.toLocaleString('en-PK')}
                 </span>
               </div>
-            ) : subtotal > 0 && subtotal < 2000 ? (
+            ) : subtotal > 0 && subtotal < 2000 && couponStatus !== 'valid' ? (
               <div className="rounded-xl border border-slate-800 bg-[#0C1420] p-2.5 text-center text-[11px] text-silver-dim">
                 💡 <span className="text-[#00C4CC] font-bold">Tip:</span> Add items worth PKR {(2000 - subtotal).toLocaleString('en-PK')} more to unlock a <strong className="text-amber-400">5% Discount</strong>!
               </div>

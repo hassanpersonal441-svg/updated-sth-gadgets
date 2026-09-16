@@ -128,10 +128,14 @@ export async function POST(request: Request) {
     const tier2Percent = settings?.bundle_tier2_percent ?? 10;
 
     let bundle_discount = 0;
-    if (subtotal >= tier2Threshold && tier2Threshold > 0) {
-      bundle_discount = Math.round((subtotal * tier2Percent) / 100);
-    } else if (subtotal >= tier1Threshold && tier1Threshold > 0) {
-      bundle_discount = Math.round((subtotal * tier1Percent) / 100);
+    // Mutually Exclusive Discount Rule:
+    // Either Coupon Discount OR Automatic Bundle Discount applies, NOT both!
+    if (coupon_discount === 0) {
+      if (subtotal >= tier2Threshold && tier2Threshold > 0) {
+        bundle_discount = Math.round((subtotal * tier2Percent) / 100);
+      } else if (subtotal >= tier1Threshold && tier1Threshold > 0) {
+        bundle_discount = Math.round((subtotal * tier1Percent) / 100);
+      }
     }
 
     // 5. Calculate delivery charges based on store settings
