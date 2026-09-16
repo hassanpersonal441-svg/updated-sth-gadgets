@@ -209,32 +209,16 @@ export default function ProductCard({
           </div>
         </div>
 
-        {/* Action Buttons: Sleek 2-Button Row (Add to Cart + Order on WhatsApp) */}
-        <div className="mt-2 flex items-center gap-1.5">
-          {/* Add to Cart */}
+        {/* Action Button: Add to Cart */}
+        <div className="mt-2">
           <button
             type="button"
             onClick={() => addToCart(product, 1)}
-            className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black py-2 px-2 font-display text-[11px] sm:text-xs font-black transition duration-200 shadow-sm"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black py-2.5 px-3 font-display text-xs sm:text-sm font-black transition duration-200 shadow-sm hover:scale-[1.02]"
           >
             <span>🛒</span>
-            <span className="truncate">Add to Cart</span>
+            <span>Add to Cart</span>
           </button>
-
-          {/* WhatsApp Order */}
-          <a
-            href={orderLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={trackWhatsAppClick}
-            className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-2 px-2 text-[11px] sm:text-xs font-black text-white shadow-sm transition duration-200 hover:scale-[1.02]"
-            title="Order on WhatsApp"
-          >
-            <svg viewBox="0 0 32 32" className="h-3.5 w-3.5 fill-white shrink-0">
-              <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
-            </svg>
-            <span className="truncate">WhatsApp</span>
-          </a>
         </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ export default function ProductDetailClient({
   product,
   settings,
 }: ProductDetailClientProps) {
-  const { addToCart } = useCart();
+  const { addToCart, openCheckout, openCart } = useCart();
 
   const images = product.product_images?.length
     ? product.product_images
@@ -293,22 +293,21 @@ export default function ProductDetailClient({
             <button
               type="button"
               onClick={() => addToCart(product, quantity)}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00D8E0] text-slate-950 py-2.5 px-3 font-display text-xs font-extrabold shadow-[0_0_15px_rgba(0,196,204,0.3)] transition"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00D8E0] text-slate-950 py-3 px-3 font-display text-xs sm:text-sm font-extrabold shadow-[0_0_15px_rgba(0,196,204,0.3)] transition hover:scale-[1.02]"
             >
               <span>🛒 Add to Cart</span>
             </button>
 
-            <OrderOnWhatsAppButton
-              settings={settings}
-              productId={product.id}
-              productName={product.name}
-              price={product.price}
-              quantity={quantity}
-              discount={discountAmount}
-              finalPrice={finalPrice}
-              productUrl={productUrl}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-2.5 px-3 font-display text-xs font-extrabold text-white shadow-[0_0_15px_rgba(37,211,102,0.3)] transition"
-            />
+            <button
+              type="button"
+              onClick={() => {
+                addToCart(product, quantity);
+                openCheckout();
+              }}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-3 px-3 font-display text-xs sm:text-sm font-extrabold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition hover:scale-[1.02]"
+            >
+              <span>⚡ Buy Now</span>
+            </button>
           </div>
 
           {/* 3 Trust Badges Row */}
@@ -525,7 +524,7 @@ export default function ProductDetailClient({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="pt-2 border-t border-slate-800/80">
                       <button
                         type="button"
                         onClick={() =>
@@ -539,23 +538,10 @@ export default function ProductDetailClient({
                             1
                           )
                         }
-                        className="flex items-center justify-center gap-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-black py-2 px-2 font-display text-xs font-black transition shadow-sm"
+                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black py-2.5 px-3 font-display text-xs font-black transition shadow-sm hover:scale-[1.02]"
                       >
-                        <span>🛒</span>
-                        <span className="truncate">Add Bundle</span>
+                        <span>🛒 Add Bundle to Cart</span>
                       </button>
-
-                      <a
-                        href={bundleOrderLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-2 px-2 text-xs font-black text-white shadow-sm transition hover:scale-[1.02]"
-                      >
-                        <svg viewBox="0 0 32 32" className="h-3.5 w-3.5 fill-white shrink-0">
-                          <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
-                        </svg>
-                        <span className="truncate">WhatsApp Bundle</span>
-                      </a>
                     </div>
                   </div>
                 </div>

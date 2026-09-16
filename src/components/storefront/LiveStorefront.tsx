@@ -653,21 +653,14 @@ export default function LiveStorefront({
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
+                    {/* Action Button */}
+                    <div className="pt-2 border-t border-slate-800/80">
                       <button
                         type="button"
                         onClick={() => handleAddBundleToCart(product, bundle)}
-                        className="rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] py-2 text-xs font-bold text-black text-center shadow-sm transition hover:scale-[1.02]"
+                        className="w-full rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] py-2.5 text-xs font-bold text-black text-center shadow-sm transition hover:scale-[1.02]"
                       >
-                        🛒 Add Bundle
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleWhatsAppBundleOrder(product, bundle)}
-                        className="rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-2 text-xs font-bold text-white text-center shadow-sm transition hover:scale-[1.02]"
-                      >
-                        💬 WhatsApp
+                        🛒 Add Bundle to Cart
                       </button>
                     </div>
                   </div>
