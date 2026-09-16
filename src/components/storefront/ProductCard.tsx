@@ -209,12 +209,12 @@ export default function ProductCard({
           </div>
         </div>
 
-        {/* Action Button: Add to Cart */}
-        <div className="mt-2">
+        {/* Action Button: Full-Width Add to Cart */}
+        <div className="mt-2.5">
           <button
             type="button"
             onClick={() => addToCart(product, 1)}
-            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black py-2.5 px-3 font-display text-xs sm:text-sm font-black transition duration-200 shadow-sm hover:scale-[1.02]"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black py-2.5 px-3 font-display text-xs sm:text-sm font-black transition duration-200 shadow-sm hover:scale-[1.01]"
           >
             <span>🛒</span>
             <span>Add to Cart</span>

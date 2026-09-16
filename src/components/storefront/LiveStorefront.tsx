@@ -653,12 +653,12 @@ export default function LiveStorefront({
                       </div>
                     </div>
 
-                    {/* Action Button */}
+                    {/* Action Button: Full Width Add Bundle */}
                     <div className="pt-2 border-t border-slate-800/80">
                       <button
                         type="button"
                         onClick={() => handleAddBundleToCart(product, bundle)}
-                        className="w-full rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] py-2.5 text-xs font-bold text-black text-center shadow-sm transition hover:scale-[1.02]"
+                        className="w-full rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] py-2.5 text-xs font-black text-black text-center shadow-md transition hover:scale-[1.01]"
                       >
                         🛒 Add Bundle to Cart
                       </button>

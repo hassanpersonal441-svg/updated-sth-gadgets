@@ -18,7 +18,7 @@ export default function ProductDetailClient({
   product,
   settings,
 }: ProductDetailClientProps) {
-  const { addToCart, openCheckout, openCart } = useCart();
+  const { addToCart } = useCart();
 
   const images = product.product_images?.length
     ? product.product_images
@@ -288,25 +288,14 @@ export default function ProductDetailClient({
             </div>
           </div>
 
-          {/* Side-by-Side Action Buttons */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Action Button: Full-Width Add to Cart */}
+          <div>
             <button
               type="button"
               onClick={() => addToCart(product, quantity)}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00D8E0] text-slate-950 py-3 px-3 font-display text-xs sm:text-sm font-extrabold shadow-[0_0_15px_rgba(0,196,204,0.3)] transition hover:scale-[1.02]"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00C4CC] hover:bg-[#00D8E0] text-slate-950 py-3 px-4 font-display text-sm font-black shadow-[0_0_20px_rgba(0,196,204,0.35)] transition hover:scale-[1.01]"
             >
               <span>🛒 Add to Cart</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                addToCart(product, quantity);
-                openCheckout();
-              }}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-3 px-3 font-display text-xs sm:text-sm font-extrabold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition hover:scale-[1.02]"
-            >
-              <span>⚡ Buy Now</span>
             </button>
           </div>
 
@@ -524,7 +513,7 @@ export default function ProductDetailClient({
                       )}
                     </div>
 
-                    <div className="pt-2 border-t border-slate-800/80">
+                    <div className="pt-2 border-t border-slate-800">
                       <button
                         type="button"
                         onClick={() =>
@@ -538,7 +527,7 @@ export default function ProductDetailClient({
                             1
                           )
                         }
-                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black py-2.5 px-3 font-display text-xs font-black transition shadow-sm hover:scale-[1.02]"
+                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 py-2.5 px-3 font-display text-xs font-black transition shadow-md hover:scale-[1.01]"
                       >
                         <span>🛒 Add Bundle to Cart</span>
                       </button>
