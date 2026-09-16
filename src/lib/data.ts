@@ -6,7 +6,7 @@ import { cache } from 'react';
 // Public storefront product select — strictly excludes private financial columns:
 // purchase_price, wholesale_price, profit_amount, profit_margin
 const PRODUCT_SELECT =
-  'id, name, slug, description, short_description, specifications, price, old_price, discount, category_id, stock_status, featured, best_seller, new_arrival, active, created_at, updated_at, sku, category:categories(*), product_images(*)';
+  'id, name, slug, description, short_description, specifications, key_features, bundle_offers, price, old_price, discount, category_id, stock_status, featured, best_seller, new_arrival, active, created_at, updated_at, sku, category:categories(*), product_images(*)';
 
 export const getAllActiveProducts = unstable_cache(
   async (): Promise<Product[]> => {

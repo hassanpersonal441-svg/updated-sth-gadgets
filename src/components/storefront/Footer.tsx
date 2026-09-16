@@ -66,25 +66,14 @@ export default function Footer({ settings }: { settings: Settings | null }) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[#00C4CC]">📞</span>
-              <a href={`https://wa.me/${cleanPhone}`} target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-[#00C4CC] font-mono transition">
+              <span className="text-slate-300 font-mono font-medium">
                 {settings?.whatsapp_number || '+92 348 9593671'}
-              </a>
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[#00C4CC]">✉️</span>
               <a href={`mailto:${settings?.email || 'support@sthgadgets.com'}`} className="text-slate-300 hover:text-[#00C4CC] transition">
                 {settings?.email || 'support@sthgadgets.com'}
-              </a>
-            </div>
-            <div className="pt-2">
-              <a
-                href={`https://wa.me/${cleanPhone}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-3.5 py-2 font-display text-xs font-bold text-white shadow-md transition"
-              >
-                <span>💬 Order on WhatsApp</span>
-                <span>→</span>
               </a>
             </div>
           </div>
