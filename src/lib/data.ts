@@ -154,8 +154,11 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<Prod
       const supabase = getPublicClient();
       let query = supabase.from('products').select(PRODUCT_SELECT).eq('active', true);
 
-      if (filters.q) {
-        query = query.ilike('name', `%${filters.q}%`);
+      if (filters.q && filters.q.trim()) {
+        const searchTerm = filters.q.trim();
+        query = query.or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,short_description.ilike.%${searchTerm}%`
+        );
       }
       if (filters.category) {
         const categories = await getActiveCategories();

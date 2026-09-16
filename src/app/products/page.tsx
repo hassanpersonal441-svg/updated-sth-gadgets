@@ -12,21 +12,28 @@ export const revalidate = 30;
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: { q?: string; category?: string; min?: string; max?: string; sort?: string };
+  searchParams: Promise<{ q?: string; category?: string; min?: string; max?: string; sort?: string }> | { q?: string; category?: string; min?: string; max?: string; sort?: string };
 }) {
+  const resolvedSearchParams = await searchParams;
+  const q = resolvedSearchParams?.q;
+  const category = resolvedSearchParams?.category;
+  const min = resolvedSearchParams?.min;
+  const max = resolvedSearchParams?.max;
+  const sort = resolvedSearchParams?.sort;
+
   const [settings, categories, products] = await Promise.all([
     getSettings(),
     getActiveCategories(),
     getFilteredProducts({
-      q: searchParams.q,
-      category: searchParams.category,
-      minPrice: searchParams.min ? Number(searchParams.min) : undefined,
-      maxPrice: searchParams.max ? Number(searchParams.max) : undefined,
-      sort: (searchParams.sort as any) || 'newest',
+      q,
+      category,
+      minPrice: min ? Number(min) : undefined,
+      maxPrice: max ? Number(max) : undefined,
+      sort: (sort as any) || 'newest',
     }),
   ]);
 
-  const activeCategory = categories.find((c) => c.slug === searchParams.category);
+  const activeCategory = categories.find((c) => c.slug === category);
 
   return (
     <>
@@ -34,7 +41,7 @@ export default async function ProductsPage({
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-silver-bright">
-            {activeCategory ? activeCategory.name : searchParams.q ? `Results for "${searchParams.q}"` : 'All Products'}
+            {activeCategory ? activeCategory.name : q ? `Results for "${q}"` : 'All Products'}
           </h1>
           <p className="mt-1 text-sm text-silver-dim">{products.length} product{products.length === 1 ? '' : 's'} found</p>
         </div>
@@ -72,9 +79,9 @@ export default async function ProductsPage({
                 ].map((opt) => (
                   <Link
                     key={opt.value}
-                    href={`/products?${new URLSearchParams({ ...searchParams, sort: opt.value } as any).toString()}`}
+                    href={`/products?${new URLSearchParams({ ...(q ? { q } : {}), ...(category ? { category } : {}), sort: opt.value }).toString()}`}
                     className={`block hover:text-electric-bright ${
-                      (searchParams.sort || 'newest') === opt.value ? 'text-electric-bright' : 'text-silver-dim'
+                      (sort || 'newest') === opt.value ? 'text-electric-bright' : 'text-silver-dim'
                     }`}
                   >
                     {opt.label}

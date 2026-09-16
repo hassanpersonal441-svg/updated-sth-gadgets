@@ -3,10 +3,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import type { Category, Settings } from '@/types/database';
+import { useState, useEffect, useRef } from 'react';
+import type { Category, Product, Settings } from '@/types/database';
 import { useCart } from '@/context/CartContext';
-
 import ThemeToggle from '@/components/theme/ThemeToggle';
 
 interface NavbarProps {
@@ -18,25 +17,75 @@ export default function Navbar({ categories, settings }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const { totalItems, openCart } = useCart();
   const router = useRouter();
-
-  const phone = settings?.whatsapp_number || '+923489593671';
-  const cleanPhone = phone.replace(/[^\d]/g, '');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  function handleSearch(e: React.FormEvent) {
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Live autocomplete search effect
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/products?q=${encodeURIComponent(trimmed)}`);
+        const data = await res.json();
+        if (data.products && Array.isArray(data.products)) {
+          setSearchResults(data.products.slice(0, 6));
+          setShowDropdown(true);
+        }
+      } catch {
+        // ignore fetch error
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (query.trim()) {
-      router.push(`/products?q=${encodeURIComponent(query.trim())}`);
+      setShowDropdown(false);
       setMobileSearchOpen(false);
       setMobileMenuOpen(false);
+      router.push(`/products?q=${encodeURIComponent(query.trim())}`);
     }
+  }
+
+  function handleSelectProduct(slug: string) {
+    setShowDropdown(false);
+    setMobileSearchOpen(false);
+    setMobileMenuOpen(false);
+    setQuery('');
+    router.push(`/products/${slug}`);
   }
 
   return (
@@ -64,24 +113,88 @@ export default function Navbar({ categories, settings }: NavbarProps) {
         </Link>
 
         {/* Search Bar (Desktop) */}
-        <form onSubmit={handleSearch} className="hidden max-w-md flex-1 items-center lg:flex">
-          <div className="relative w-full">
+        <div ref={searchContainerRef} className="relative hidden max-w-md flex-1 lg:block">
+          <form onSubmit={handleSearchSubmit} className="relative w-full">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => {
+                if (query.trim() && searchResults.length > 0) setShowDropdown(true);
+              }}
               placeholder="Search fast chargers, power banks, earbuds..."
-              className="w-full rounded-xl border border-slate-800 bg-[#0C1420] py-2 pl-4 pr-10 text-xs text-white placeholder:text-slate-500 focus:border-[#00C4CC] focus:outline-none focus:ring-1 focus:ring-[#00C4CC] shadow-inner transition"
+              className="w-full rounded-xl border border-slate-800 bg-[#0C1420] py-2.5 pl-4 pr-10 text-xs text-white placeholder:text-slate-500 focus:border-[#00C4CC] focus:outline-none focus:ring-1 focus:ring-[#00C4CC] shadow-inner transition font-medium"
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-[#00C4CC]"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-[#00C4CC] transition"
               aria-label="Search"
             >
               🔍
             </button>
-          </div>
-        </form>
+          </form>
+
+          {/* Autocomplete Suggestions Dropdown (Desktop) */}
+          {showDropdown && (
+            <div className="absolute left-0 right-0 top-full mt-2 z-50 overflow-hidden rounded-2xl border border-slate-800 bg-[#0C1420] p-2 shadow-2xl animate-fadeIn">
+              {isSearching ? (
+                <div className="p-3 text-center text-xs text-silver-dim">
+                  <span>⚡ Searching items...</span>
+                </div>
+              ) : searchResults.length > 0 ? (
+                <div className="space-y-1">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#00C4CC]">
+                    Matching Products ({searchResults.length})
+                  </div>
+                  {searchResults.map((prod) => {
+                    const img =
+                      prod.product_images?.find((i) => i.is_primary)?.image_url ||
+                      prod.product_images?.[0]?.image_url ||
+                      '/images/logo.png';
+
+                    return (
+                      <button
+                        key={prod.id}
+                        onClick={() => handleSelectProduct(prod.slug)}
+                        className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-[#080D15] transition group border border-transparent hover:border-slate-800"
+                      >
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-800 bg-black/40 p-0.5">
+                          <Image src={img} alt={prod.name} fill className="object-contain" sizes="40px" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate text-xs font-bold text-white group-hover:text-[#00C4CC] transition">
+                            {prod.name}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-silver-dim mt-0.5">
+                            <span className="font-mono font-bold text-[#00C4CC]">
+                              PKR {prod.price.toLocaleString('en-PK')}
+                            </span>
+                            {prod.category?.name && (
+                              <span className="rounded bg-slate-800/60 px-1.5 py-0.2 text-[9px]">
+                                {prod.category.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-slate-500 group-hover:text-[#00C4CC]">→</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={handleSearchSubmit}
+                    className="w-full rounded-xl border border-slate-800 bg-[#080D15] p-2.5 text-center text-xs font-bold text-[#00C4CC] hover:bg-[#00C4CC] hover:text-black transition mt-1"
+                  >
+                    View All Results for &quot;{query}&quot;
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3 text-center text-xs text-silver-dim">
+                  No products found for &quot;{query}&quot;
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Right Actions: Cart & Theme Toggle (Desktop & Mobile) */}
         <div className="flex items-center gap-2 sm:gap-3">
@@ -137,8 +250,8 @@ export default function Navbar({ categories, settings }: NavbarProps) {
 
       {/* Expandable Search Input (Mobile) */}
       {mobileSearchOpen && (
-        <div className="border-t border-slate-800 bg-[#0C1420] p-3 lg:hidden animate-fadeIn">
-          <form onSubmit={handleSearch} className="flex gap-2">
+        <div className="relative border-t border-slate-800 bg-[#0C1420] p-3 lg:hidden animate-fadeIn">
+          <form onSubmit={handleSearchSubmit} className="flex gap-2">
             <input
               type="text"
               value={query}
@@ -149,11 +262,29 @@ export default function Navbar({ categories, settings }: NavbarProps) {
             />
             <button
               type="submit"
-              className="rounded-xl bg-[#00C4CC] px-4 py-2 text-xs font-bold text-slate-950"
+              className="rounded-xl bg-[#00C4CC] px-4 py-2 text-xs font-bold text-slate-950 shrink-0"
             >
               Search
             </button>
           </form>
+
+          {/* Mobile Autocomplete Dropdown */}
+          {query.trim() && searchResults.length > 0 && (
+            <div className="mt-2 space-y-1 rounded-xl border border-slate-800 bg-[#080D15] p-2">
+              {searchResults.map((prod) => (
+                <button
+                  key={prod.id}
+                  onClick={() => handleSelectProduct(prod.slug)}
+                  className="flex w-full items-center justify-between rounded-lg p-2 text-xs text-white hover:bg-[#0C1420]"
+                >
+                  <span className="truncate font-bold">{prod.name}</span>
+                  <span className="font-mono text-[#00C4CC] shrink-0 ml-2">
+                    PKR {prod.price.toLocaleString('en-PK')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

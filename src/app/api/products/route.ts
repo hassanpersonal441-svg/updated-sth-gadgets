@@ -45,19 +45,32 @@ const productSchema = z.object({
   images: z.array(z.object({ image_url: z.string().url(), is_primary: z.boolean().default(false) })).optional().default([]),
 });
 
-// GET: list all products (admin sees inactive too)
-export async function GET() {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+// GET: list products (public visitors get active products; admins get all)
+export async function GET(request: Request) {
   const service = createServiceClient();
-  const { data, error } = await service
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get('q');
+  const admin = await requireAdmin();
+
+  let query = service
     .from('products')
-    .select('*, category:categories(*), product_images(*)')
-    .order('created_at', { ascending: false });
+    .select('*, category:categories(*), product_images(*)');
+
+  if (!admin) {
+    query = query.eq('active', true);
+  }
+
+  if (q && q.trim()) {
+    const term = q.trim();
+    query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%,short_description.ilike.%${term}%`);
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ products: data });
+  return NextResponse.json({ products: data || [] });
 }
 
 // POST: create a product with its images
