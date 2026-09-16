@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import type { Category, Product, Settings } from '@/types/database';
+import type { Category, Product, Settings, BundleOffer } from '@/types/database';
 import { formatPrice, buildWhatsAppOrderLink } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import ProductCard from './ProductCard';
@@ -32,6 +32,54 @@ export default function LiveStorefront({
   // Toggle light/dark
   function toggleTheme() {
     setIsLight((prev) => !prev);
+  }
+
+  // Compute all special bundle offers from products catalog
+  const allBundleOffers = useMemo(() => {
+    const list: { product: Product; bundle: BundleOffer }[] = [];
+    initialProducts.forEach((p) => {
+      if (p.bundle_offers && p.bundle_offers.length > 0) {
+        p.bundle_offers.forEach((b) => {
+          list.push({ product: p, bundle: b });
+        });
+      }
+    });
+    return list;
+  }, [initialProducts]);
+
+  function handleAddBundleToCart(product: Product, bundle: BundleOffer) {
+    const bundleProduct: Product = {
+      ...product,
+      name: `${product.name} [Bundle: ${bundle.title}]`,
+      price: bundle.bundle_price,
+    };
+    addToCart(bundleProduct, 1, bundle.title);
+    openCart();
+  }
+
+  function handleWhatsAppBundleOrder(product: Product, bundle: BundleOffer) {
+    const itemsSummary = bundle.items
+      .map((it) => `\u{1F539} ${it.name}${it.detail ? ` (${it.detail})` : ''}`)
+      .join('\n');
+
+    const msg = [
+      '\u{1F6CD}\u{FE0F} STH GADGETS - SPECIAL BUNDLE ORDER \u{1F381}',
+      '=========================',
+      `\u{1F381} Bundle Deal: ${bundle.title}`,
+      `\u{1F517} Main Product: ${product.name}`,
+      `\u{1F4B0} Bundle Price: PKR ${bundle.bundle_price.toLocaleString('en-PK')}`,
+      ...(bundle.original_price && bundle.original_price > bundle.bundle_price
+        ? [`\u{1F3F7}\u{FE0F} Regular Price: PKR ${bundle.original_price.toLocaleString('en-PK')}`]
+        : []),
+      '=========================',
+      '\u{1F4E6} PACKAGE INCLUDES:',
+      itemsSummary,
+      '=========================',
+      'Please confirm availability and order process. Thank you! \u{2728}',
+    ].join('\n');
+
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
   }
 
   // Generate and print / save PDF Rate Sheet
@@ -490,6 +538,144 @@ export default function LiveStorefront({
         {/* CYAN GLOW DIVIDER */}
         {/* ============================================================ */}
         <div className="mt-3.5 h-[2px] w-full bg-gradient-to-r from-transparent via-[#00C4CC] to-transparent shadow-[0_0_12px_rgba(0,196,204,0.7)]"></div>
+
+        {/* ============================================================ */}
+        {/* SPECIAL BUNDLE OFFERS & MEGA COMBO DEALS SECTION */}
+        {/* ============================================================ */}
+        {allBundleOffers.length > 0 && (selectedCategory === 'all' || offersOnly) && (
+          <div className="mt-6 rounded-2xl border border-amber-500/40 bg-gradient-to-br from-[#0C1420] via-[#0F1C2D] to-[#080D15] p-5 sm:p-6 shadow-[0_0_30px_rgba(245,158,11,0.15)] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl sm:text-3xl animate-bounce">🎁</span>
+                <div>
+                  <h2 className="font-display text-base sm:text-lg font-black text-amber-400 uppercase tracking-wider">
+                    Special Bundle Deals & Mega Savings (2-in-1 / 3-in-1 Combo Offers)
+                  </h2>
+                  <p className="text-xs text-silver-dim">
+                    Limited time package deals! Save extra when you buy these items together.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-auto rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                🔥 {allBundleOffers.length} Active Bundle Deal{allBundleOffers.length > 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allBundleOffers.map(({ product, bundle }, idx) => {
+                const bundleSavings =
+                  (bundle.original_price || 0) > bundle.bundle_price
+                    ? (bundle.original_price || 0) - bundle.bundle_price
+                    : 0;
+
+                const primaryImg =
+                  product.product_images?.find((i) => i.is_primary)?.image_url ||
+                  product.product_images?.[0]?.image_url ||
+                  '/images/logo.png';
+
+                return (
+                  <div
+                    key={idx}
+                    className="relative flex flex-col justify-between rounded-xl border border-amber-500/30 bg-[#080D15] p-4 space-y-3.5 hover:border-amber-400 transition shadow-md group"
+                  >
+                    {/* Badge */}
+                    {bundle.badge_text && (
+                      <div className="absolute -top-3 right-3 z-10">
+                        <span className="rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-3 py-0.5 font-display text-[10px] font-black text-white shadow-md uppercase tracking-wider">
+                          {bundle.badge_text}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {/* Target Main Product Link */}
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="flex items-center gap-2.5 p-2 rounded-lg bg-[#0C1420] border border-slate-800 hover:border-[#00C4CC] transition group/prod"
+                      >
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-black">
+                          <Image src={primaryImg} alt={product.name} fill className="object-contain p-1" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-bold text-[#00C4CC] uppercase tracking-wider block">
+                            MAIN PRODUCT
+                          </span>
+                          <h4 className="text-xs font-bold text-white truncate group-hover/prod:text-[#00C4CC] transition">
+                            {product.name}
+                          </h4>
+                        </div>
+                      </Link>
+
+                      {/* Bundle Title */}
+                      <h3 className="font-display text-sm sm:text-base font-bold text-white leading-snug pr-8">
+                        {bundle.title}
+                      </h3>
+
+                      {/* Items Included List */}
+                      <div className="bg-[#0C1420] p-3 rounded-xl border border-slate-800 space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">
+                          Bundled Package Items ({bundle.items.length}):
+                        </span>
+                        {bundle.items.map((item, iIdx) => (
+                          <div key={iIdx} className="flex items-start gap-2 text-xs text-silver-bright">
+                            <span className="text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                            <span>
+                              <strong className="text-white">{item.name}</strong>
+                              {item.detail ? <span className="text-silver-dim text-[11px] ml-1">({item.detail})</span> : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pricing Box */}
+                      <div className="flex items-center justify-between bg-[#0C1420] p-3 rounded-xl border border-slate-800">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-silver-dim block">
+                            BUNDLE PRICE
+                          </span>
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-display text-lg font-black text-emerald-400">
+                              {formatPrice(bundle.bundle_price, settings)}
+                            </span>
+                            {bundle.original_price && bundle.original_price > bundle.bundle_price && (
+                              <span className="text-xs text-silver-dim line-through font-semibold">
+                                {formatPrice(bundle.original_price, settings)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {bundleSavings > 0 && (
+                          <span className="rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 px-2.5 py-1 text-xs font-bold shadow-sm">
+                            Save {formatPrice(bundleSavings, settings)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
+                      <button
+                        type="button"
+                        onClick={() => handleAddBundleToCart(product, bundle)}
+                        className="rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] py-2 text-xs font-bold text-black text-center shadow-sm transition hover:scale-[1.02]"
+                      >
+                        🛒 Add Bundle
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleWhatsAppBundleOrder(product, bundle)}
+                        className="rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-2 text-xs font-bold text-white text-center shadow-sm transition hover:scale-[1.02]"
+                      >
+                        💬 WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* CATEGORY TABS + VIEW MODE SWITCHER */}

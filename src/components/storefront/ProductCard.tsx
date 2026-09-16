@@ -90,6 +90,11 @@ export default function ProductCard({
             -{Math.round(product.discount)}% OFF
           </span>
         )}
+        {product.bundle_offers && product.bundle_offers.length > 0 && (
+          <span className="rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-2.5 py-0.5 font-display text-[10px] sm:text-xs font-black text-white shadow-md tracking-wider">
+            🎁 BUNDLE DEAL
+          </span>
+        )}
       </div>
 
       <div className="absolute right-2.5 top-2.5 z-10">
