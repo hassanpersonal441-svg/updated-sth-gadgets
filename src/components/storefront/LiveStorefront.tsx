@@ -543,20 +543,28 @@ export default function LiveStorefront({
         {/* SPECIAL BUNDLE OFFERS & MEGA COMBO DEALS SECTION */}
         {/* ============================================================ */}
         {allBundleOffers.length > 0 && (selectedCategory === 'all' || offersOnly) && (
-          <div className="mt-6 rounded-2xl border border-amber-500/40 bg-gradient-to-br from-[#0C1420] via-[#0F1C2D] to-[#080D15] p-5 sm:p-6 shadow-[0_0_30px_rgba(245,158,11,0.15)] space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3.5">
+          <div
+            className={`mt-6 rounded-2xl border p-5 sm:p-6 space-y-4 shadow-lg transition-colors duration-300 ${
+              isLight
+                ? 'bg-amber-50/50 border-amber-300 text-slate-900'
+                : 'bg-gradient-to-br from-[#0C1420] via-[#0F1C2D] to-[#080D15] border-amber-500/40 text-[#C9D2DB] shadow-[0_0_30px_rgba(245,158,11,0.15)]'
+            }`}
+          >
+            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3.5 ${isLight ? 'border-amber-200' : 'border-slate-800'}`}>
               <div className="flex items-center gap-2.5">
                 <span className="text-2xl sm:text-3xl animate-bounce">🎁</span>
                 <div>
-                  <h2 className="font-display text-base sm:text-lg font-black text-amber-400 uppercase tracking-wider">
+                  <h2 className={`font-display text-base sm:text-lg font-black uppercase tracking-wider ${isLight ? 'text-amber-800' : 'text-amber-400'}`}>
                     Special Bundle Deals & Mega Savings (2-in-1 / 3-in-1 Combo Offers)
                   </h2>
-                  <p className="text-xs text-silver-dim">
+                  <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-silver-dim'}`}>
                     Limited time package deals! Save extra when you buy these items together.
                   </p>
                 </div>
               </div>
-              <span className="self-start sm:self-auto rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 text-xs font-bold uppercase tracking-wider">
+              <span className={`self-start sm:self-auto rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                isLight ? 'bg-amber-200/80 text-amber-900 border-amber-400' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              }`}>
                 🔥 {allBundleOffers.length} Active Bundle Deal{allBundleOffers.length > 1 ? 's' : ''}
               </span>
             </div>
@@ -576,7 +584,11 @@ export default function LiveStorefront({
                 return (
                   <div
                     key={idx}
-                    className="relative flex flex-col justify-between rounded-xl border border-amber-500/30 bg-[#080D15] p-4 space-y-3.5 hover:border-amber-400 transition shadow-md group"
+                    className={`relative flex flex-col justify-between rounded-xl border p-4 space-y-3.5 transition shadow-md group ${
+                      isLight
+                        ? 'bg-white border-amber-200 hover:border-amber-400 text-slate-900'
+                        : 'bg-[#080D15] border-amber-500/30 hover:border-amber-400 text-[#C9D2DB]'
+                    }`}
                   >
                     {/* Badge */}
                     {bundle.badge_text && (
@@ -591,54 +603,60 @@ export default function LiveStorefront({
                       {/* Target Main Product Link */}
                       <Link
                         href={`/products/${product.slug}`}
-                        className="flex items-center gap-2.5 p-2 rounded-lg bg-[#0C1420] border border-slate-800 hover:border-[#00C4CC] transition group/prod"
+                        className={`flex items-center gap-2.5 p-2 rounded-lg border transition group/prod ${
+                          isLight
+                            ? 'bg-slate-50 border-slate-200 hover:border-[#00C4CC]'
+                            : 'bg-[#0C1420] border-slate-800 hover:border-[#00C4CC]'
+                        }`}
                       >
                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-black">
                           <Image src={primaryImg} alt={product.name} fill className="object-contain p-1" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <span className="text-[10px] font-bold text-[#00C4CC] uppercase tracking-wider block">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? 'text-[#008B92]' : 'text-[#00C4CC]'}`}>
                             MAIN PRODUCT
                           </span>
-                          <h4 className="text-xs font-bold text-white truncate group-hover/prod:text-[#00C4CC] transition">
+                          <h4 className={`text-xs font-bold truncate transition ${
+                            isLight ? 'text-slate-900 group-hover/prod:text-[#008B92]' : 'text-white group-hover/prod:text-[#00C4CC]'
+                          }`}>
                             {product.name}
                           </h4>
                         </div>
                       </Link>
 
                       {/* Bundle Title */}
-                      <h3 className="font-display text-sm sm:text-base font-bold text-white leading-snug pr-8">
+                      <h3 className={`font-display text-sm sm:text-base font-bold leading-snug pr-8 ${isLight ? 'text-black' : 'text-white'}`}>
                         {bundle.title}
                       </h3>
 
                       {/* Items Included List */}
-                      <div className="bg-[#0C1420] p-3 rounded-xl border border-slate-800 space-y-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">
+                      <div className={`p-3 rounded-xl border space-y-1.5 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0C1420] border-slate-800'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isLight ? 'text-amber-800' : 'text-amber-400'}`}>
                           Bundled Package Items ({bundle.items.length}):
                         </span>
                         {bundle.items.map((item, iIdx) => (
-                          <div key={iIdx} className="flex items-start gap-2 text-xs text-silver-bright">
-                            <span className="text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                          <div key={iIdx} className="flex items-start gap-2 text-xs">
+                            <span className="text-emerald-500 font-bold shrink-0 mt-0.5">✓</span>
                             <span>
-                              <strong className="text-white">{item.name}</strong>
-                              {item.detail ? <span className="text-silver-dim text-[11px] ml-1">({item.detail})</span> : ''}
+                              <strong className={isLight ? 'text-slate-900' : 'text-white'}>{item.name}</strong>
+                              {item.detail ? <span className={`text-[11px] ml-1 ${isLight ? 'text-slate-500' : 'text-silver-dim'}`}>({item.detail})</span> : ''}
                             </span>
                           </div>
                         ))}
                       </div>
 
                       {/* Pricing Box */}
-                      <div className="flex items-center justify-between bg-[#0C1420] p-3 rounded-xl border border-slate-800">
+                      <div className={`flex items-center justify-between p-3 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0C1420] border-slate-800'}`}>
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-silver-dim block">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider block ${isLight ? 'text-slate-500' : 'text-silver-dim'}`}>
                             BUNDLE PRICE
                           </span>
                           <div className="flex items-baseline gap-2">
-                            <span className="font-display text-lg font-black text-emerald-400">
+                            <span className={`font-display text-lg font-black ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
                               {formatPrice(bundle.bundle_price, settings)}
                             </span>
                             {bundle.original_price && bundle.original_price > bundle.bundle_price && (
-                              <span className="text-xs text-silver-dim line-through font-semibold">
+                              <span className={`text-xs line-through font-semibold ${isLight ? 'text-slate-400' : 'text-silver-dim'}`}>
                                 {formatPrice(bundle.original_price, settings)}
                               </span>
                             )}
@@ -646,7 +664,9 @@ export default function LiveStorefront({
                         </div>
 
                         {bundleSavings > 0 && (
-                          <span className="rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 px-2.5 py-1 text-xs font-bold shadow-sm">
+                          <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold shadow-sm ${
+                            isLight ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                          }`}>
                             Save {formatPrice(bundleSavings, settings)}
                           </span>
                         )}
@@ -654,7 +674,7 @@ export default function LiveStorefront({
                     </div>
 
                     {/* Action Button: Full Width Add Bundle */}
-                    <div className="pt-2 border-t border-slate-800/80">
+                    <div className={`pt-2 border-t ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
                       <button
                         type="button"
                         onClick={() => handleAddBundleToCart(product, bundle)}
