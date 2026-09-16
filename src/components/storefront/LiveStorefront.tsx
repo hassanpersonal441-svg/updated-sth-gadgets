@@ -554,16 +554,16 @@ export default function LiveStorefront({
               <div className="flex items-center gap-2.5">
                 <span className="text-2xl sm:text-3xl animate-bounce">🎁</span>
                 <div>
-                  <h2 className={`font-display text-base sm:text-lg font-black uppercase tracking-wider ${isLight ? 'text-amber-800' : 'text-amber-400'}`}>
-                    Special Bundle Deals & Mega Savings (2-in-1 / 3-in-1 Combo Offers)
+                  <h2 className={`font-display text-base sm:text-lg font-extrabold uppercase tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    <span className={isLight ? 'text-amber-800' : 'text-amber-300'}>Special Bundle Deals & Mega Savings</span> (2-in-1 / 3-in-1 Combo Offers)
                   </h2>
-                  <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-silver-dim'}`}>
+                  <p className={`text-xs font-medium ${isLight ? 'text-slate-700' : 'text-silver-bright'}`}>
                     Limited time package deals! Save extra when you buy these items together.
                   </p>
                 </div>
               </div>
-              <span className={`self-start sm:self-auto rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                isLight ? 'bg-amber-200/80 text-amber-900 border-amber-400' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              <span className={`self-start sm:self-auto rounded-full border px-3 py-1 text-xs font-extrabold uppercase tracking-wider ${
+                isLight ? 'bg-amber-200/80 text-slate-900 border-amber-400' : 'bg-amber-400/20 text-amber-300 border-amber-400/50'
               }`}>
                 🔥 {allBundleOffers.length} Active Bundle Deal{allBundleOffers.length > 1 ? 's' : ''}
               </span>
@@ -625,13 +625,13 @@ export default function LiveStorefront({
                       </Link>
 
                       {/* Bundle Title */}
-                      <h3 className={`font-display text-sm sm:text-base font-bold leading-snug pr-8 ${isLight ? 'text-black' : 'text-white'}`}>
+                      <h3 className={`font-display text-sm sm:text-base font-extrabold leading-snug pr-8 ${isLight ? 'text-black' : 'text-white'}`}>
                         {bundle.title}
                       </h3>
 
                       {/* Items Included List */}
                       <div className={`p-3 rounded-xl border space-y-1.5 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0C1420] border-slate-800'}`}>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isLight ? 'text-amber-800' : 'text-amber-400'}`}>
+                        <span className={`text-[10px] font-extrabold uppercase tracking-wider block mb-1 ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>
                           Bundled Package Items ({bundle.items.length}):
                         </span>
                         {bundle.items.map((item, iIdx) => (
