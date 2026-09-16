@@ -3,17 +3,21 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: dark;
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
 }
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
+  background-color: #080D15;
 }
 
 body {
-  background-color: #050608;
+  background-color: #080D15;
   color: #C9D2DB;
+  color-scheme: dark;
 }
 
 ::selection {

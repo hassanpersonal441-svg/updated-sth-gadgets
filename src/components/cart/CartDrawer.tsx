@@ -84,6 +84,7 @@ export default function CartDrawer() {
           items: items.map((i) => ({
             product_id: i.productId,
             quantity: i.quantity,
+            variant_name: i.variantName || null,
           })),
         }),
       });

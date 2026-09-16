@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { buildWhatsAppOrderLink } from '@/lib/utils';
 import QuickWhatsAppModal from '@/components/cart/QuickWhatsAppModal';
 import type { Settings } from '@/types/database';
+import { useCart } from '@/context/CartContext';
 
 export default function OrderOnWhatsAppButton({
   settings,
@@ -31,6 +32,8 @@ export default function OrderOnWhatsAppButton({
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
+  const { items: cartItems, couponCode, clearCart } = useCart();
+
   const phone = settings?.whatsapp_number && settings.whatsapp_number.trim()
     ? settings.whatsapp_number
     : '+92 348 9593671';
@@ -55,6 +58,28 @@ export default function OrderOnWhatsAppButton({
   ) {
     let targetUrl = defaultLink;
 
+    // Build payload containing ALL items in cart if present, otherwise target single product
+    let checkoutItems: Array<{ product_id: string; quantity: number; variant_name?: string | null }> = [];
+
+    if (cartItems && cartItems.length > 0) {
+      checkoutItems = cartItems.map((i) => ({
+        product_id: i.productId,
+        quantity: i.quantity,
+        variant_name: i.variantName || null,
+      }));
+
+      // Ensure current product is included if not already in cart
+      const exists = checkoutItems.some((i) => i.product_id === productId);
+      if (!exists) {
+        checkoutItems.push({
+          product_id: productId,
+          quantity: quantity || 1,
+        });
+      }
+    } else {
+      checkoutItems = [{ product_id: productId, quantity: quantity || 1 }];
+    }
+
     try {
       const res = await fetch('/api/orders/checkout', {
         method: 'POST',
@@ -64,8 +89,8 @@ export default function OrderOnWhatsAppButton({
           phone: customerPhone,
           city: customerCity || 'Pakistan',
           address: customerAddress || `Direct WhatsApp Order for "${productName}"`,
-          coupon_code: null,
-          items: [{ product_id: productId, quantity: quantity || 1 }],
+          coupon_code: couponCode || null,
+          items: checkoutItems,
         }),
       });
 
@@ -76,6 +101,9 @@ export default function OrderOnWhatsAppButton({
     } catch (err) {
       console.error('Order submit error:', err);
     } finally {
+      if (cartItems && cartItems.length > 0) {
+        clearCart();
+      }
       if (typeof window !== 'undefined') {
         window.location.href = targetUrl;
       }
@@ -107,6 +135,11 @@ export default function OrderOnWhatsAppButton({
     setShowModal(true);
   }
 
+  const orderButtonLabel =
+    cartItems && cartItems.length > 1
+      ? `Order Entire Cart (${cartItems.length} items) on WhatsApp`
+      : 'Order on WhatsApp';
+
   return (
     <>
       <a
@@ -124,7 +157,7 @@ export default function OrderOnWhatsAppButton({
         <svg viewBox="0 0 32 32" className={compact ? 'h-4 w-4 fill-white' : 'h-5 w-5 fill-white'}>
           <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
         </svg>
-        <span>{loading ? 'Processing Order...' : 'Order on WhatsApp'}</span>
+        <span>{loading ? 'Processing Order...' : orderButtonLabel}</span>
       </a>
 
       {showModal && (
@@ -134,7 +167,7 @@ export default function OrderOnWhatsAppButton({
           onSubmit={async (name, phone, address, city) => {
             await executeOrderSubmit(name, phone, address, city);
           }}
-          title={`Order ${productName}`}
+          title={cartItems && cartItems.length > 1 ? `Order ${cartItems.length} Items on WhatsApp` : `Order ${productName}`}
         />
       )}
     </>
