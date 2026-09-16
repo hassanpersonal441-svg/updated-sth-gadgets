@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { playNotificationSound, SoundTone } from '@/lib/notification-sound';
 import OrderActionModal from './OrderActionModal';
 import type { Order } from '@/types/database';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 
 export interface AdminNotification {
   id: string;
@@ -331,8 +332,11 @@ export default function AdminHeader({
           </div>
         </div>
 
-        {/* Right Side Actions: Sound Controls & Notifications Bell */}
+        {/* Right Side Actions: Theme Toggle, Sound Controls & Notifications Bell */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Light / Dark Mode Toggle */}
+          <ThemeToggle />
+
           {/* Sound Alert Selector */}
           <div className="hidden sm:flex items-center gap-1 rounded-xl border border-slate-800 bg-[#0C1420] p-1 text-xs">
             <button

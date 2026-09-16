@@ -63,10 +63,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   var t = localStorage.getItem('sth_theme');
                   if (t === 'light') {
                     document.documentElement.setAttribute('data-theme', 'light');
+                  } else if (t === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+                    document.documentElement.setAttribute('data-theme', 'light');
                   } else {
                     document.documentElement.setAttribute('data-theme', 'dark');
                   }
-                } catch (e) {}
+                } catch (e) {
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                }
               })();
             `,
           }}
