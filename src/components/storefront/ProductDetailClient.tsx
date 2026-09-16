@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import type { Product, Settings } from '@/types/database';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, buildWhatsAppOrderLink } from '@/lib/utils';
 import OrderOnWhatsAppButton from './OrderOnWhatsAppButton';
 import { useCart } from '@/context/CartContext';
 
@@ -96,12 +96,15 @@ export default function ProductDetailClient({
   const savings = hasDiscount ? product.old_price! - product.price : 0;
 
   // Key Feature Pills
-  const featurePills = [
-    { icon: '🔋', title: '20000mAh', subtitle: 'High Capacity' },
-    { icon: '⚡', title: '22.5W', subtitle: 'Fast Charging' },
-    { icon: '📱', title: 'LED', subtitle: 'Digital Display' },
-    { icon: '🔌', title: 'Built-in Cables', subtitle: 'Type-C / Lightning' },
-  ];
+  const featurePills =
+    product.key_features && product.key_features.length > 0
+      ? product.key_features
+      : [
+          { icon: '🔋', title: '20000mAh', subtitle: 'High Capacity' },
+          { icon: '⚡', title: '22.5W', subtitle: 'Fast Charging' },
+          { icon: '📱', title: 'LED', subtitle: 'Digital Display' },
+          { icon: '🔌', title: 'Built-in Cables', subtitle: 'Type-C / Lightning' },
+        ];
 
   return (
     <div className="space-y-6 text-[#C9D2DB]" suppressHydrationWarning>
@@ -432,6 +435,135 @@ export default function ProductDetailClient({
         </div>
 
       </div>
+
+      {/* Special Bundle Offers Section */}
+      {product.bundle_offers && product.bundle_offers.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-br from-[#0F1923] via-[#141C28] to-[#0A111A] p-5 sm:p-6 space-y-4 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🎁</span>
+              <div>
+                <h2 className="font-display text-base sm:text-lg font-black text-amber-400 uppercase tracking-wider">
+                  Special Bundle Deals & Mega Savings
+                </h2>
+                <p className="text-xs text-slate-300">
+                  Buy this product as a combo package deal and save extra!
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {product.bundle_offers.map((bundle, bIdx) => {
+              const bundleSavings = (bundle.original_price || 0) > bundle.bundle_price
+                ? (bundle.original_price || 0) - bundle.bundle_price
+                : 0;
+
+              const bundleOrderLink = buildWhatsAppOrderLink({
+                whatsappNumber: settings?.whatsapp_number || '+92 348 9593671',
+                template: settings?.order_message_template || null,
+                productName: `${product.name} [Bundle: ${bundle.title}]`,
+                price: bundle.bundle_price,
+                quantity: 1,
+                discount: 0,
+                finalPrice: bundle.bundle_price,
+                productUrl,
+                currencySymbol: settings?.currency_symbol || 'Rs.',
+              });
+
+              return (
+                <div
+                  key={bIdx}
+                  className="relative flex flex-col justify-between rounded-xl border border-amber-500/30 bg-[#080D15] p-4 space-y-3 hover:border-amber-400 transition shadow-md"
+                >
+                  {/* Badge */}
+                  {bundle.badge_text && (
+                    <div className="absolute -top-3 right-3 z-10">
+                      <span className="rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-3 py-0.5 font-display text-[10px] font-black text-white shadow-md uppercase tracking-wider">
+                        {bundle.badge_text}
+                      </span>
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className="font-display text-sm sm:text-base font-bold text-white leading-snug pr-12">
+                      {bundle.title}
+                    </h3>
+
+                    {/* Items List */}
+                    <div className="mt-3 space-y-1.5 bg-[#0C1420] p-2.5 rounded-lg border border-slate-800">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">
+                        Package Includes ({bundle.items.length} Items):
+                      </span>
+                      {bundle.items.map((item, iIdx) => (
+                        <div key={iIdx} className="flex items-center gap-2 text-xs text-slate-200">
+                          <span className="text-emerald-400 font-bold">✓</span>
+                          <span className="font-semibold text-white">{item.name}</span>
+                          {item.detail && <span className="text-slate-400 text-[11px]">({item.detail})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Price & Buttons */}
+                  <div className="pt-2 border-t border-slate-800 flex flex-col gap-2">
+                    <div className="flex items-baseline justify-between">
+                      <div>
+                        <span className="font-display text-lg sm:text-xl font-black text-amber-400">
+                          {formatPrice(bundle.bundle_price, settings)}
+                        </span>
+                        {bundle.original_price && bundle.original_price > bundle.bundle_price && (
+                          <span className="ml-2 text-xs text-slate-400 line-through">
+                            {formatPrice(bundle.original_price, settings)}
+                          </span>
+                        )}
+                      </div>
+                      {bundleSavings > 0 && (
+                        <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
+                          Save {formatPrice(bundleSavings, settings)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          addToCart(
+                            {
+                              ...product,
+                              id: `${product.id}-bundle-${bIdx}`,
+                              name: `${product.name} (${bundle.title})`,
+                              price: bundle.bundle_price,
+                            },
+                            1
+                          )
+                        }
+                        className="flex items-center justify-center gap-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-black py-2 px-2 font-display text-xs font-black transition shadow-sm"
+                      >
+                        <span>🛒</span>
+                        <span className="truncate">Add Bundle</span>
+                      </button>
+
+                      <a
+                        href={bundleOrderLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-2 px-2 text-xs font-black text-white shadow-sm transition hover:scale-[1.02]"
+                      >
+                        <svg viewBox="0 0 32 32" className="h-3.5 w-3.5 fill-white shrink-0">
+                          <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
+                        </svg>
+                        <span className="truncate">WhatsApp Bundle</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Full Description Section */}
       {product.description && (

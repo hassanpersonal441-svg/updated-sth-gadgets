@@ -185,6 +185,13 @@ export default function AdminOrdersPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/invoices/new"
+            className="flex items-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-3.5 py-2 text-xs font-black transition shadow-sm hover:scale-105"
+          >
+            <span>➕</span>
+            <span>Create Invoice</span>
+          </Link>
           <button
             onClick={() => fetchOrders(true)}
             disabled={loading}
@@ -196,7 +203,7 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Module Switcher Bar (Orders vs Invoices vs Invoice) */}
+      {/* Module Switcher Bar */}
       <div className="flex flex-wrap items-center gap-2 bg-[#0C1420] p-1.5 rounded-2xl border border-slate-800">
         <Link
           href="/admin/orders"
@@ -209,12 +216,6 @@ export default function AdminOrdersPage() {
           className="px-4 py-2 rounded-xl text-xs font-bold text-silver-dim hover:text-white hover:bg-slate-800 transition"
         >
           📄 Invoices List & Dashboard
-        </Link>
-        <Link
-          href="/admin/invoices/new"
-          className="px-4 py-2 rounded-xl text-xs font-bold text-silver-dim hover:text-white hover:bg-slate-800 transition"
-        >
-          📄 Invoice
         </Link>
       </div>
 

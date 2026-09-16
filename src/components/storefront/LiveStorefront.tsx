@@ -21,6 +21,7 @@ export default function LiveStorefront({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [offersOnly, setOffersOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'discount' | 'newest'>('default');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLight, setIsLight] = useState(false);
@@ -31,6 +32,109 @@ export default function LiveStorefront({
   // Toggle light/dark
   function toggleTheme() {
     setIsLight((prev) => !prev);
+  }
+
+  // Generate and print / save PDF Rate Sheet
+  function handleDownloadRateSheet() {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const dateStr = new Date().toLocaleDateString('en-PK', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const grouped: Record<string, Product[]> = {};
+    initialProducts.forEach((p) => {
+      const catName = p.category?.name || 'General Gadgets';
+      if (!grouped[catName]) grouped[catName] = [];
+      grouped[catName].push(p);
+    });
+
+    let catalogRowsHtml = '';
+    Object.entries(grouped).forEach(([catName, items]) => {
+      catalogRowsHtml += `
+        <tr class="category-row">
+          <td colspan="4"><strong>📁 ${catName} (${items.length})</strong></td>
+        </tr>
+      `;
+      items.forEach((item, idx) => {
+        const priceFormatted = formatPrice(item.price, settings);
+        const oldPriceFormatted = item.old_price && item.old_price > item.price ? formatPrice(item.old_price, settings) : '';
+        const statusText = item.stock_status === 'in_stock' ? 'In Stock' : item.stock_status === 'low_stock' ? 'Low Stock' : 'Out of Stock';
+        catalogRowsHtml += `
+          <tr>
+            <td>${idx + 1}</td>
+            <td><strong>${item.name}</strong> ${item.short_description ? `<br><small style="color:#666;">${item.short_description}</small>` : ''}</td>
+            <td><span class="stock-${item.stock_status}">${statusText}</span></td>
+            <td style="text-align:right;">
+              <strong style="font-size:14px;">${priceFormatted}</strong>
+              ${oldPriceFormatted ? `<br><small style="text-decoration:line-through; color:#888;">${oldPriceFormatted}</small>` : ''}
+            </td>
+          </tr>
+        `;
+      });
+    });
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${settings?.business_name || 'STH Gadgets'} — Official Rate List (${dateStr})</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; color: #111; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00C4CC; padding-bottom: 12px; margin-bottom: 20px; }
+          .title { font-size: 24px; font-weight: 800; color: #008B92; text-transform: uppercase; margin: 0; }
+          .subtitle { font-size: 13px; color: #555; margin-top: 4px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+          th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+          th { background: #00C4CC; color: #fff; font-weight: bold; text-transform: uppercase; font-size: 11px; }
+          .category-row td { background: #f0fdfd; color: #00666b; font-size: 14px; padding: 10px; }
+          .stock-in_stock { color: #059669; font-weight: bold; }
+          .stock-low_stock { color: #d97706; font-weight: bold; }
+          .stock-out_of_stock { color: #dc2626; font-weight: bold; }
+          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="title">${settings?.business_name || 'STH GADGETS'}</h1>
+            <div class="subtitle">Official Product Catalog & Price Sheet · Generated on ${dateStr}</div>
+          </div>
+          <div style="text-align:right; font-size: 13px;">
+            <strong>WhatsApp Orders:</strong> ${rawPhone}<br>
+            <strong>Website:</strong> www.sthgadgets.com
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px;">#</th>
+              <th>Product Name / Details</th>
+              <th style="width:100px;">Availability</th>
+              <th style="width:120px; text-align:right;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${catalogRowsHtml}
+          </tbody>
+        </table>
+        <div class="footer">
+          Thank you for choosing ${settings?.business_name || 'STH Gadgets'}! Prices are subject to change based on market rates.
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   }
 
   // Filter & sort products
@@ -61,6 +165,11 @@ export default function LiveStorefront({
       list = list.filter((p) => p.stock_status === 'in_stock');
     }
 
+    // Special Offers only
+    if (offersOnly) {
+      list = list.filter((p) => (p.discount && p.discount > 0) || p.featured || p.best_seller);
+    }
+
     // Sorting
     switch (sortBy) {
       case 'price_asc':
@@ -87,7 +196,7 @@ export default function LiveStorefront({
     }
 
     return list;
-  }, [initialProducts, searchQuery, selectedCategory, inStockOnly, sortBy]);
+  }, [initialProducts, searchQuery, selectedCategory, inStockOnly, offersOnly, sortBy]);
 
   // Progressive rendering for optimal performance & loading speed
   const [visibleCount, setVisibleCount] = useState(24);
@@ -280,20 +389,30 @@ export default function LiveStorefront({
               )}
             </button>
 
-            {/* WhatsApp Shop Button */}
-            <a
-              href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                'Hello STH Gadgets! I want to inquire about your product catalog and rates.'
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-full bg-[#25D366] hover:bg-[#20BD5A] px-4 py-1.5 text-xs sm:text-sm font-bold text-white shadow-md transition hover:scale-[1.02]"
+            {/* Special Offers Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setOffersOnly((prev) => !prev)}
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-md transition hover:scale-[1.02] ${
+                offersOnly
+                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white ring-2 ring-rose-400'
+                  : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+              }`}
             >
-              <svg viewBox="0 0 32 32" className="h-4 w-4 fill-white">
-                <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
-              </svg>
-              <span>WhatsApp Shop</span>
-            </a>
+              <span>🔥</span>
+              <span>{offersOnly ? 'All Items' : 'Special Offers'}</span>
+            </button>
+
+            {/* Rate Sheet PDF Download / Print Button */}
+            <button
+              type="button"
+              onClick={handleDownloadRateSheet}
+              className="flex items-center gap-1.5 rounded-full bg-[#00C4CC] hover:bg-[#00B2B9] px-4 py-1.5 text-xs sm:text-sm font-bold text-black shadow-md transition hover:scale-[1.02]"
+              title="Download / Print Catalog Rate Sheet"
+            >
+              <span>📄</span>
+              <span>Rate Sheet</span>
+            </button>
           </div>
         </header>
 
@@ -469,7 +588,7 @@ export default function LiveStorefront({
             /* ============================================================ */
             <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-3 lg:grid-cols-4">
               {displayedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} settings={settings} />
+                <ProductCard key={product.id} product={product} settings={settings} isLight={isLight} />
               ))}
             </div>
           ) : (
@@ -505,7 +624,11 @@ export default function LiveStorefront({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <Link href={`/products/${product.slug}`}>
-                            <h4 className="font-display text-xs sm:text-sm font-bold text-silver-bright hover:text-[#00C4CC] transition truncate">
+                            <h4
+                              className={`font-display text-xs sm:text-sm font-bold hover:text-[#00C4CC] transition truncate ${
+                                isLight ? 'text-slate-900' : 'text-white'
+                              }`}
+                            >
                               {product.name}
                             </h4>
                           </Link>
@@ -542,11 +665,19 @@ export default function LiveStorefront({
 
                       {/* Prices */}
                       <div className="text-right whitespace-nowrap">
-                        <div className="font-display text-sm sm:text-base font-black text-[#00C4CC]">
+                        <div
+                          className={`font-display text-sm sm:text-base font-black ${
+                            isLight ? 'text-black' : 'text-white'
+                          }`}
+                        >
                           {formatPrice(product.price, settings)}
                         </div>
                         {product.old_price && product.old_price > product.price && (
-                          <div className="text-[10px] text-silver-dim line-through">
+                          <div
+                            className={`text-[10px] line-through ${
+                              isLight ? 'text-slate-500' : 'text-slate-400'
+                            }`}
+                          >
                             {formatPrice(product.old_price, settings)}
                           </div>
                         )}

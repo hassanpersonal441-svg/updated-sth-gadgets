@@ -44,6 +44,20 @@ const links = [
     ),
   },
   {
+    href: '/admin/finance',
+    label: 'Finance Management',
+    icon: (
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+    subItems: [
+      { href: '/admin/finance', label: 'Finance Dashboard' },
+      { href: '/admin/finance/borrowings', label: 'Borrowed Amounts' },
+      { href: '/admin/finance/repayments', label: 'Repayments' },
+    ],
+  },
+  {
     href: '/admin/products',
     label: 'Products',
     icon: (
@@ -156,24 +170,50 @@ export default function AdminSidebar({ mobileOpen = false, onCloseMobile }: Admi
                   (l.href !== '/admin' && pathname.startsWith(l.href)))
             );
             return (
-              <Link
-                key={l.href}
-                href={l.href}
-                prefetch={true}
-                onClick={() => {
-                  if (onClose) onClose();
-                }}
-                className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-display text-xs sm:text-sm font-semibold transition ${
-                  isActive
-                    ? 'bg-gradient-to-r from-[#00C4CC]/20 via-[#00C4CC]/10 to-transparent text-[#00C4CC] border-l-4 border-[#00C4CC] shadow-sm'
-                    : 'text-silver-dim hover:bg-[#0E1624] hover:text-silver-bright'
-                }`}
-              >
-                <span className={isActive ? 'text-[#00C4CC]' : 'text-silver-dim'}>
-                  {l.icon}
-                </span>
-                <span>{l.label}</span>
-              </Link>
+              <div key={l.href} className="space-y-1">
+                <Link
+                  href={l.href}
+                  prefetch={true}
+                  onClick={() => {
+                    if (onClose) onClose();
+                  }}
+                  className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-display text-xs sm:text-sm font-semibold transition ${
+                    isActive
+                      ? 'bg-gradient-to-r from-[#00C4CC]/20 via-[#00C4CC]/10 to-transparent text-[#00C4CC] border-l-4 border-[#00C4CC] shadow-sm'
+                      : 'text-silver-dim hover:bg-[#0E1624] hover:text-silver-bright'
+                  }`}
+                >
+                  <span className={isActive ? 'text-[#00C4CC]' : 'text-silver-dim'}>
+                    {l.icon}
+                  </span>
+                  <span>{l.label}</span>
+                </Link>
+
+                {/* Sub-items rendering */}
+                {l.subItems && isActive && (
+                  <div className="ml-7 pl-3 border-l border-slate-800 space-y-1 py-1">
+                    {l.subItems.map((sub) => {
+                      const isSubActive = pathname === sub.href;
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          onClick={() => {
+                            if (onClose) onClose();
+                          }}
+                          className={`block rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                            isSubActive
+                              ? 'text-[#00C4CC] font-bold bg-[#00C4CC]/10'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                          }`}
+                        >
+                          • {sub.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

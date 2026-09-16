@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 interface QuickWhatsAppModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string, phone: string) => Promise<void>;
+  onSubmit: (name: string, phone: string, address: string, city?: string) => Promise<void>;
   title?: string;
   subtitle?: string;
 }
@@ -15,10 +15,12 @@ export default function QuickWhatsAppModal({
   onClose,
   onSubmit,
   title = 'Quick WhatsApp Order',
-  subtitle = 'Please enter your contact number so we can record your order & send updates.',
+  subtitle = 'Please enter your phone number & delivery address to complete your order.',
 }: QuickWhatsAppModalProps) {
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -26,8 +28,12 @@ export default function QuickWhatsAppModal({
     if (isOpen && typeof window !== 'undefined') {
       const savedName = localStorage.getItem('sth_customer_name');
       const savedPhone = localStorage.getItem('sth_customer_phone');
+      const savedAddress = localStorage.getItem('sth_customer_address');
+      const savedCity = localStorage.getItem('sth_customer_city');
       if (savedName) setCustomerName(savedName);
       if (savedPhone) setPhone(savedPhone);
+      if (savedAddress) setAddress(savedAddress);
+      if (savedCity) setCity(savedCity);
     }
   }, [isOpen]);
 
@@ -38,21 +44,30 @@ export default function QuickWhatsAppModal({
     setErrorMsg('');
 
     const cleanPhone = phone.trim();
-    if (!cleanPhone || cleanPhone.length < 7) {
-      setErrorMsg('Please enter a valid WhatsApp phone number (e.g. 0348 9593671)');
+    if (!cleanPhone || cleanPhone.replace(/\D/g, '').length < 7) {
+      setErrorMsg('Please enter a valid WhatsApp phone number (e.g. 0300 1234567)');
+      return;
+    }
+
+    const cleanAddress = address.trim();
+    if (!cleanAddress || cleanAddress.length < 5) {
+      setErrorMsg('Please enter your complete delivery address (e.g. House #12, Street 4, Gulberg)');
       return;
     }
 
     const name = customerName.trim() || 'WhatsApp Customer';
+    const deliveryCity = city.trim() || 'Pakistan';
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('sth_customer_name', name);
       localStorage.setItem('sth_customer_phone', cleanPhone);
+      localStorage.setItem('sth_customer_address', cleanAddress);
+      localStorage.setItem('sth_customer_city', deliveryCity);
     }
 
     setLoading(true);
     try {
-      await onSubmit(name, cleanPhone);
+      await onSubmit(name, cleanPhone, cleanAddress, deliveryCity);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to submit order.');
@@ -90,7 +105,7 @@ export default function QuickWhatsAppModal({
         <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
           {errorMsg && (
             <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-2.5 text-xs text-rose-400 font-semibold">
-              {errorMsg}
+              ⚠️ {errorMsg}
             </div>
           )}
 
@@ -110,15 +125,44 @@ export default function QuickWhatsAppModal({
 
           <div>
             <label className="block text-xs font-bold text-silver-bright mb-1">
-              Your Name <span className="text-slate-500 font-normal">(Optional)</span>
+              Delivery Address <span className="text-rose-400">*</span>
             </label>
-            <input
-              type="text"
-              placeholder="e.g. Ali Khan"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
+            <textarea
+              required
+              rows={2}
+              placeholder="e.g. House #12, Street 4, Block C, Gulberg"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
               className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00C4CC] focus:outline-none"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-silver-bright mb-1">
+                City <span className="text-slate-500 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Lahore"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00C4CC] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-silver-bright mb-1">
+                Your Name <span className="text-slate-500 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Ali Khan"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-[#00C4CC] focus:outline-none"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">

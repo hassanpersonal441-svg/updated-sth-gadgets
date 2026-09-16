@@ -372,7 +372,7 @@ function CreateInvoiceContent() {
 
   return (
     <div className="space-y-6 text-[#C9D2DB] pb-12">
-      {/* Module Switcher Bar (Orders vs Invoices vs Invoice) */}
+      {/* Module Switcher Bar */}
       <div className="flex flex-wrap items-center gap-2 bg-[#0C1420] p-1.5 rounded-2xl border border-slate-800">
         <Link
           href="/admin/orders"
@@ -385,12 +385,6 @@ function CreateInvoiceContent() {
           className="px-4 py-2 rounded-xl text-xs font-bold text-silver-dim hover:text-white hover:bg-slate-800 transition"
         >
           📄 Invoices List & Dashboard
-        </Link>
-        <Link
-          href="/admin/invoices/new"
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-[#00C4CC] text-black shadow-sm"
-        >
-          📄 Invoice
         </Link>
       </div>
 

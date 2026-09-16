@@ -25,6 +25,26 @@ export interface ProductImage {
   created_at: string;
 }
 
+export interface KeyFeature {
+  icon?: string;
+  title: string;
+  subtitle?: string;
+}
+
+export interface BundleOfferItem {
+  name: string;
+  detail?: string;
+}
+
+export interface BundleOffer {
+  id?: string;
+  title: string;
+  badge_text?: string;
+  bundle_price: number;
+  original_price?: number;
+  items: BundleOfferItem[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -32,6 +52,8 @@ export interface Product {
   description: string;
   short_description: string;
   specifications: Specification[];
+  key_features?: KeyFeature[];
+  bundle_offers?: BundleOffer[];
   price: number;
   old_price: number | null;
   discount: number;
@@ -272,4 +294,48 @@ export interface RestorePreviewData {
   totalRecords: number;
 }
 
+export type BorrowingStatus = 'active' | 'partially_paid' | 'fully_paid';
+export type RepaymentMethod = 'Cash' | 'Bank Transfer' | 'Other';
+
+export interface Repayment {
+  id: string;
+  repayment_number?: string;
+  borrowing_id: string;
+  amount: number;
+  repayment_date: string;
+  payment_method: RepaymentMethod;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface Borrowing {
+  id: string;
+  borrowing_number: string;
+  lender_name: string;
+  whatsapp_number: string;
+  email?: string | null;
+  borrowed_amount: number;
+  total_repaid: number;
+  remaining_amount: number;
+  borrowing_date: string;
+  purpose?: string | null;
+  related_order_id?: string | null;
+  related_order_number?: string | null;
+  notes?: string | null;
+  status: BorrowingStatus;
+  created_at: string;
+  updated_at: string;
+  repayments?: Repayment[];
+}
+
+export interface FinanceSummary {
+  totalBorrowed: number;
+  totalRepaid: number;
+  totalOutstanding: number;
+  activeCount: number;
+  partiallyPaidCount: number;
+  fullyPaidCount: number;
+  recentBorrowings: Borrowing[];
+  recentRepayments: Repayment[];
+}
 

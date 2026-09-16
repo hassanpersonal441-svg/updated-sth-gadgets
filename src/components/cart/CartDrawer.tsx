@@ -42,12 +42,14 @@ export default function CartDrawer() {
     if (success) setInputCode('');
   }
 
-  async function handleWhatsAppCartSubmit(custName: string, custPhone: string) {
+  async function handleWhatsAppCartSubmit(
+    custName: string,
+    custPhone: string,
+    custAddress?: string,
+    custCity?: string
+  ) {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
-    // Pre-open tab in click event context to avoid browser popup blocker
-    const newTab = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
 
     const storePhone = '923489593671';
     let fallbackMsg = `🛒 *STH GADGETS — WHATSAPP CART ORDER*\n\n`;
@@ -56,6 +58,7 @@ export default function CartDrawer() {
     });
     fallbackMsg += `\n--------------------\n`;
     fallbackMsg += `*Customer:* ${custName} (${custPhone})\n`;
+    if (custAddress) fallbackMsg += `*Address:* ${custAddress}${custCity ? `, ${custCity}` : ''}\n`;
     fallbackMsg += `*Subtotal:* PKR ${subtotal.toLocaleString('en-PK')}\n`;
     if (couponDiscount > 0) fallbackMsg += `*Coupon Discount (${couponCode}):* -PKR ${couponDiscount.toLocaleString('en-PK')}\n`;
     if (bundleDiscount > 0) fallbackMsg += `*Bundle Discount (${bundlePercentage}%):* -PKR ${bundleDiscount.toLocaleString('en-PK')}\n`;
@@ -72,8 +75,8 @@ export default function CartDrawer() {
         body: JSON.stringify({
           customer_name: custName,
           phone: custPhone,
-          city: 'Pakistan',
-          address: 'WhatsApp Cart Quick Order',
+          city: custCity || 'Pakistan',
+          address: custAddress || 'WhatsApp Cart Quick Order',
           coupon_code: couponCode || null,
           items: items.map((i) => ({
             product_id: i.productId,
@@ -92,9 +95,7 @@ export default function CartDrawer() {
       clearCart();
       closeCart();
 
-      if (newTab && !newTab.closed) {
-        newTab.location.href = targetUrl;
-      } else {
+      if (typeof window !== 'undefined') {
         window.location.href = targetUrl;
       }
     }
@@ -103,9 +104,11 @@ export default function CartDrawer() {
   function handleQuickOrderClick() {
     const savedName = localStorage.getItem('sth_customer_name');
     const savedPhone = localStorage.getItem('sth_customer_phone');
+    const savedAddress = localStorage.getItem('sth_customer_address');
+    const savedCity = localStorage.getItem('sth_customer_city');
 
-    if (savedName && savedPhone) {
-      handleWhatsAppCartSubmit(savedName, savedPhone);
+    if (savedName && savedPhone && savedAddress) {
+      handleWhatsAppCartSubmit(savedName, savedPhone, savedAddress, savedCity || 'Pakistan');
     } else {
       setIsModalOpen(true);
     }
@@ -116,9 +119,9 @@ export default function CartDrawer() {
       <QuickWhatsAppModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={async (name, phone) => {
+        onSubmit={async (name, phone, address, city) => {
           setIsModalOpen(false);
-          await handleWhatsAppCartSubmit(name, phone);
+          await handleWhatsAppCartSubmit(name, phone, address, city);
         }}
       />
       <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm transition-opacity animate-fadeIn">

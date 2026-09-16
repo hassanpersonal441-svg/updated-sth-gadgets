@@ -112,13 +112,22 @@ export default function AdminProductsPage() {
             Total {products.length} products listed in your store catalog
           </p>
         </div>
-        <Link
-          href="/admin/products/new"
-          className="flex items-center justify-center gap-2 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-black shadow-[0_0_15px_rgba(0,196,204,0.3)] transition hover:scale-[1.02]"
-        >
-          <span>+</span>
-          <span>Add New Product</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/products/bundles"
+            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-white hover:border-[#00C4CC] transition shadow-sm"
+          >
+            <span>🎁</span>
+            <span>Bundle Deals</span>
+          </Link>
+          <Link
+            href="/admin/products/new"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-black shadow-[0_0_15px_rgba(0,196,204,0.3)] transition hover:scale-[1.02]"
+          >
+            <span>+</span>
+            <span>Add New Product</span>
+          </Link>
+        </div>
       </div>
 
       {/* Filter Toolbar */}

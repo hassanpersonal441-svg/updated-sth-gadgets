@@ -53,6 +53,8 @@ create table public.products (
   description text default '',
   short_description text default '',
   specifications jsonb not null default '[]'::jsonb, -- [{"label":"Battery","value":"10000mAh"}]
+  key_features jsonb default '[]'::jsonb,
+  bundle_offers jsonb default '[]'::jsonb,
   price numeric(12,2) not null check (price >= 0),
   old_price numeric(12,2) check (old_price >= 0),
   discount numeric(5,2) generated always as (

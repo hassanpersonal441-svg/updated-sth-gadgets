@@ -5,6 +5,23 @@ import { requireAdmin } from '@/lib/admin-guard';
 import { createServiceClient } from '@/lib/supabase/server';
 
 const specSchema = z.object({ label: z.string(), value: z.string() });
+const keyFeatureSchema = z.object({
+  icon: z.string().optional(),
+  title: z.string(),
+  subtitle: z.string().optional(),
+});
+const bundleOfferItemSchema = z.object({
+  name: z.string(),
+  detail: z.string().optional(),
+});
+const bundleOfferSchema = z.object({
+  id: z.string().optional(),
+  title: z.string(),
+  badge_text: z.string().optional(),
+  bundle_price: z.number().min(0),
+  original_price: z.number().min(0).optional(),
+  items: z.array(bundleOfferItemSchema).optional().default([]),
+});
 
 const productSchema = z.object({
   name: z.string().min(1),
@@ -13,6 +30,8 @@ const productSchema = z.object({
   description: z.string().optional().default(''),
   short_description: z.string().optional().default(''),
   specifications: z.array(specSchema).optional().default([]),
+  key_features: z.array(keyFeatureSchema).optional().default([]),
+  bundle_offers: z.array(bundleOfferSchema).optional().default([]),
   purchase_price: z.number().min(0).default(0),
   price: z.number().min(0),
   old_price: z.number().min(0).nullable().optional(),
@@ -69,7 +88,18 @@ export async function POST(request: Request) {
   }
 
   const { data: product, error } = await service.from('products').insert(productData).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (error.message.includes("Could not find the 'bundle_offers'") || error.message.includes("bundle_offers")) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing database column 'bundle_offers'. Please run this query in your Supabase SQL Editor: ALTER TABLE public.products ADD COLUMN IF NOT EXISTS bundle_offers jsonb DEFAULT '[]'::jsonb;",
+        },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   if (images.length > 0) {
     const rows = images.map((img, i) => ({

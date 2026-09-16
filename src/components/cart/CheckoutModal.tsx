@@ -89,7 +89,7 @@ export default function CheckoutModal() {
 
       // Open WhatsApp
       if (typeof window !== 'undefined' && data.whatsappUrl) {
-        window.open(data.whatsappUrl, '_blank');
+        window.location.href = data.whatsappUrl;
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred while creating your order.');

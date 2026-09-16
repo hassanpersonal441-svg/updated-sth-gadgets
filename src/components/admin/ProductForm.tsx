@@ -1,16 +1,46 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import type { Category, Product, Specification } from '@/types/database';
+import { useState, useEffect } from 'react';
+import type { Category, Product, Specification, KeyFeature, BundleOffer, BundleOfferItem } from '@/types/database';
 import { slugify } from '@/lib/utils';
 import ImageUploader, { UploadedImage } from './ImageUploader';
 import { useToast, setFlashToast } from '@/context/ToastContext';
 
-export default function ProductForm({ categories, product }: { categories: Category[]; product?: Product }) {
+export default function ProductForm({
+  categories,
+  product,
+  allProducts = [],
+}: {
+  categories: Category[];
+  product?: Product;
+  allProducts?: Partial<Product>[];
+}) {
   const router = useRouter();
   const { success: showSuccessToast, error: showErrorToast } = useToast();
   const isEdit = !!product;
+
+  const [storeProducts, setStoreProducts] = useState<Partial<Product>[]>(allProducts || []);
+
+  useEffect(() => {
+    if (!allProducts || allProducts.length === 0) {
+      async function loadStoreProducts() {
+        try {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          const { data } = await supabase
+            .from('products')
+            .select('id, name, price, short_description, sku')
+            .eq('active', true)
+            .order('name');
+          if (data) setStoreProducts(data);
+        } catch (err) {
+          console.error('Failed to load store products:', err);
+        }
+      }
+      loadStoreProducts();
+    }
+  }, [allProducts]);
 
   const [name, setName] = useState(product?.name || '');
   const [slug, setSlug] = useState(product?.slug || '');
@@ -30,6 +60,17 @@ export default function ProductForm({ categories, product }: { categories: Categ
   const [active, setActive] = useState(product?.active ?? true);
   const [specs, setSpecs] = useState<Specification[]>(
     product?.specifications?.length ? product.specifications : [{ label: '', value: '' }]
+  );
+  const [keyFeatures, setKeyFeatures] = useState<KeyFeature[]>(
+    product?.key_features?.length
+      ? product.key_features
+      : [
+          { icon: '⚡', title: 'Fast Charging', subtitle: 'Quick Power Delivery' },
+          { icon: '🔋', title: 'High Capacity', subtitle: 'Long Battery Life' },
+        ]
+  );
+  const [bundleOffers, setBundleOffers] = useState<BundleOffer[]>(
+    product?.bundle_offers?.length ? product.bundle_offers : []
   );
   const [images, setImages] = useState<UploadedImage[]>(
     product?.product_images?.map((i) => ({ image_url: i.image_url, is_primary: i.is_primary })) || []
@@ -68,6 +109,81 @@ export default function ProductForm({ categories, product }: { categories: Categ
     setSpecs((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function updateKeyFeature(index: number, field: keyof KeyFeature, value: string) {
+    setKeyFeatures((prev) => prev.map((kf, i) => (i === index ? { ...kf, [field]: value } : kf)));
+  }
+  function addKeyFeature() {
+    setKeyFeatures((prev) => [...prev, { icon: '⚡', title: '', subtitle: '' }]);
+  }
+  function removeKeyFeature(index: number) {
+    setKeyFeatures((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addBundleOffer() {
+    setBundleOffers((prev) => [
+      ...prev,
+      {
+        title: 'Special 2-in-1 Combo Pack',
+        badge_text: 'SAVE RS. 500 EXTRA',
+        bundle_price: numSelling > 0 ? Math.round(numSelling * 0.85) : 0,
+        original_price: numSelling > 0 ? numSelling + 1000 : 0,
+        items: [
+          { name: name || 'Main Product', detail: 'Primary Item' },
+          { name: '65W Fast Charging Cable', detail: 'Type-C Braided Cable' },
+        ],
+      },
+    ]);
+  }
+
+  function removeBundleOffer(index: number) {
+    setBundleOffers((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateBundleOfferField(index: number, field: keyof BundleOffer, value: any) {
+    setBundleOffers((prev) => prev.map((bo, i) => (i === index ? { ...bo, [field]: value } : bo)));
+  }
+
+  function addBundleItem(bundleIndex: number) {
+    setBundleOffers((prev) =>
+      prev.map((bo, i) => {
+        if (i === bundleIndex) {
+          if (bo.items.length >= 4) return bo;
+          return {
+            ...bo,
+            items: [...bo.items, { name: '', detail: '' }],
+          };
+        }
+        return bo;
+      })
+    );
+  }
+
+  function removeBundleItem(bundleIndex: number, itemIndex: number) {
+    setBundleOffers((prev) =>
+      prev.map((bo, i) => {
+        if (i === bundleIndex) {
+          return {
+            ...bo,
+            items: bo.items.filter((_, j) => j !== itemIndex),
+          };
+        }
+        return bo;
+      })
+    );
+  }
+
+  function updateBundleItemField(bundleIndex: number, itemIndex: number, field: keyof BundleOfferItem, value: string) {
+    setBundleOffers((prev) =>
+      prev.map((bo, i) => {
+        if (i === bundleIndex) {
+          const updatedItems = bo.items.map((it, j) => (j === itemIndex ? { ...it, [field]: value } : it));
+          return { ...bo, items: updatedItems };
+        }
+        return bo;
+      })
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -90,6 +206,13 @@ export default function ProductForm({ categories, product }: { categories: Categ
       new_arrival: newArrival,
       active,
       specifications: specs.filter((s) => s.label.trim() && s.value.trim()),
+      key_features: keyFeatures.filter((f) => f.title.trim()),
+      bundle_offers: bundleOffers
+        .filter((bo) => bo.title.trim() && bo.bundle_price > 0)
+        .map((bo) => ({
+          ...bo,
+          items: bo.items.filter((it) => it.name.trim()),
+        })),
       images,
     };
 
@@ -396,6 +519,217 @@ export default function ProductForm({ categories, product }: { categories: Categ
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Key Features & Highlights Card */}
+      <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚡</span>
+            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+              Key Features & Highlights
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={addKeyFeature}
+            className="text-xs font-bold text-[#00C4CC] hover:underline"
+          >
+            + Add Feature
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {keyFeatures.map((kf, i) => (
+            <div key={i} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-[#080D15] p-3 rounded-xl border border-slate-800/80">
+              <input
+                placeholder="Icon (⚡)"
+                value={kf.icon || ''}
+                onChange={(e) => updateKeyFeature(i, 'icon', e.target.value)}
+                className="w-full sm:w-20 rounded-lg border border-slate-700/80 bg-[#0C1420] px-3 py-2 text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none text-center"
+              />
+              <input
+                placeholder="Feature Title (e.g. Fast Charging)"
+                value={kf.title}
+                onChange={(e) => updateKeyFeature(i, 'title', e.target.value)}
+                className="w-full sm:w-1/3 rounded-lg border border-slate-700/80 bg-[#0C1420] px-3 py-2 text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+              />
+              <input
+                placeholder="Subtitle / Detail (e.g. 22.5W Power Delivery)"
+                value={kf.subtitle || ''}
+                onChange={(e) => updateKeyFeature(i, 'subtitle', e.target.value)}
+                className="flex-1 rounded-lg border border-slate-700/80 bg-[#0C1420] px-3 py-2 text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+              />
+              {keyFeatures.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeKeyFeature(i)}
+                  className="self-end sm:self-center rounded-lg border border-slate-800 px-3 py-2 text-xs text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Special Bundle Offers Card */}
+      <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🎁</span>
+            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+              Special Bundle Offers (2-in-1 / 3-in-1 Deals)
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={addBundleOffer}
+            className="text-xs font-bold text-[#00C4CC] hover:underline"
+          >
+            + Add Bundle Offer
+          </button>
+        </div>
+
+        {bundleOffers.length === 0 ? (
+          <p className="text-xs text-silver-dim italic">
+            No bundle offers created yet. Click "+ Add Bundle Offer" to create a 2-in-1 or 3-in-1 combo package deal!
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {bundleOffers.map((bo, bIndex) => (
+              <div key={bIndex} className="rounded-xl border border-slate-800/90 bg-[#080D15] p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                  <span className="text-xs font-bold text-[#00C4CC]">Bundle #{bIndex + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeBundleOffer(bIndex)}
+                    className="text-xs text-rose-400 hover:underline"
+                  >
+                    ✕ Remove Bundle
+                  </button>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-silver-dim">Bundle Title</label>
+                    <input
+                      placeholder="e.g. Mega Power Combo: Power Bank + 65W Cable + Earbuds"
+                      value={bo.title}
+                      onChange={(e) => updateBundleOfferField(bIndex, 'title', e.target.value)}
+                      className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] px-3.5 py-2 text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-silver-dim">Promotional Badge / Tag</label>
+                    <input
+                      placeholder="e.g. SAVE RS. 800 (MEGA DEAL)"
+                      value={bo.badge_text || ''}
+                      onChange={(e) => updateBundleOfferField(bIndex, 'badge_text', e.target.value)}
+                      className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] px-3.5 py-2 text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-silver-dim">Discounted Bundle Price (Rs.)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 3500"
+                      value={bo.bundle_price || ''}
+                      onChange={(e) => updateBundleOfferField(bIndex, 'bundle_price', Number(e.target.value))}
+                      className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] px-3.5 py-2 text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-silver-dim">Original Combined Total (Rs.)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 4300"
+                      value={bo.original_price || ''}
+                      onChange={(e) => updateBundleOfferField(bIndex, 'original_price', Number(e.target.value))}
+                      className="w-full rounded-xl border border-slate-700/80 bg-[#0C1420] px-3.5 py-2 text-xs sm:text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Bundled Items Section */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-silver-bright">Bundled Items (2-3 Products Included):</span>
+                    {bo.items.length < 4 && (
+                      <button
+                        type="button"
+                        onClick={() => addBundleItem(bIndex)}
+                        className="text-[11px] font-bold text-[#00C4CC] hover:underline"
+                      >
+                        + Add Bundled Item
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {bo.items.map((item, iIndex) => (
+                      <div key={iIndex} className="rounded-xl border border-slate-800 bg-[#0C1420] p-3 space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-silver-dim">Item #{iIndex + 1}</span>
+                          {storeProducts.length > 0 && (
+                            <select
+                              onChange={(e) => {
+                                const selectedId = e.target.value;
+                                if (!selectedId) return;
+                                const foundProd = storeProducts.find((p) => p.id === selectedId);
+                                if (foundProd) {
+                                  updateBundleItemField(bIndex, iIndex, 'name', foundProd.name || '');
+                                  updateBundleItemField(
+                                    bIndex,
+                                    iIndex,
+                                    'detail',
+                                    foundProd.short_description || (foundProd.price ? `Rs. ${foundProd.price}` : '')
+                                  );
+                                }
+                              }}
+                              className="rounded-lg border border-[#00C4CC]/40 bg-[#080D15] px-2.5 py-1 text-xs text-[#00C4CC] font-bold focus:outline-none cursor-pointer"
+                            >
+                              <option value="">🔍 Search & Pick Product from Catalog... ▾</option>
+                              {storeProducts.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} — Rs. {p.price} {p.sku ? `(${p.sku})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {bo.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeBundleItem(bIndex, iIndex)}
+                              className="text-xs text-rose-400 hover:text-rose-300 self-end sm:self-auto"
+                            >
+                              ✕ Remove Item
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center gap-2">
+                          <input
+                            placeholder="Item Name (e.g. 20,000mAh Power Bank)"
+                            value={item.name}
+                            onChange={(e) => updateBundleItemField(bIndex, iIndex, 'name', e.target.value)}
+                            className="w-full sm:flex-1 rounded-lg border border-slate-700/80 bg-[#080D15] px-3 py-1.5 text-xs text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                          />
+                          <input
+                            placeholder="Short Detail (e.g. 22.5W Fast Charge)"
+                            value={item.detail || ''}
+                            onChange={(e) => updateBundleItemField(bIndex, iIndex, 'detail', e.target.value)}
+                            className="w-full sm:w-1/3 rounded-lg border border-slate-700/80 bg-[#080D15] px-3 py-1.5 text-xs text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Images Card */}

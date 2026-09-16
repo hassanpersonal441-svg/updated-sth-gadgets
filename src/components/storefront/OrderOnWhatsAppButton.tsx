@@ -47,8 +47,12 @@ export default function OrderOnWhatsAppButton({
     currencySymbol: settings?.currency_symbol || 'Rs.',
   });
 
-  async function executeOrderSubmit(customerName: string, customerPhone: string) {
-    const newTab = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
+  async function executeOrderSubmit(
+    customerName: string,
+    customerPhone: string,
+    customerAddress?: string,
+    customerCity?: string
+  ) {
     let targetUrl = defaultLink;
 
     try {
@@ -58,8 +62,8 @@ export default function OrderOnWhatsAppButton({
         body: JSON.stringify({
           customer_name: customerName,
           phone: customerPhone,
-          city: 'Pakistan',
-          address: `Direct WhatsApp Order for "${productName}"`,
+          city: customerCity || 'Pakistan',
+          address: customerAddress || `Direct WhatsApp Order for "${productName}"`,
           coupon_code: null,
           items: [{ product_id: productId, quantity: quantity || 1 }],
         }),
@@ -72,9 +76,7 @@ export default function OrderOnWhatsAppButton({
     } catch (err) {
       console.error('Order submit error:', err);
     } finally {
-      if (newTab && !newTab.closed) {
-        newTab.location.href = targetUrl;
-      } else {
+      if (typeof window !== 'undefined') {
         window.location.href = targetUrl;
       }
     }
@@ -87,11 +89,13 @@ export default function OrderOnWhatsAppButton({
     if (typeof window !== 'undefined') {
       const savedPhone = localStorage.getItem('sth_customer_phone');
       const savedName = localStorage.getItem('sth_customer_name') || 'WhatsApp Customer';
+      const savedAddress = localStorage.getItem('sth_customer_address');
+      const savedCity = localStorage.getItem('sth_customer_city') || 'Pakistan';
 
-      if (savedPhone && savedPhone.trim()) {
+      if (savedPhone && savedPhone.trim() && savedAddress && savedAddress.trim()) {
         setLoading(true);
         try {
-          await executeOrderSubmit(savedName, savedPhone.trim());
+          await executeOrderSubmit(savedName, savedPhone.trim(), savedAddress.trim(), savedCity);
         } finally {
           setLoading(false);
         }
@@ -99,7 +103,7 @@ export default function OrderOnWhatsAppButton({
       }
     }
 
-    // If no saved phone number, open quick modal
+    // If no saved phone number or address, open quick modal
     setShowModal(true);
   }
 
@@ -127,8 +131,8 @@ export default function OrderOnWhatsAppButton({
         <QuickWhatsAppModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          onSubmit={async (name, phone) => {
-            await executeOrderSubmit(name, phone);
+          onSubmit={async (name, phone, address, city) => {
+            await executeOrderSubmit(name, phone, address, city);
           }}
           title={`Order ${productName}`}
         />
