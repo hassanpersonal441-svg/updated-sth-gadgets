@@ -11,12 +11,12 @@ export default function Footer({ settings }: { settings: Settings | null }) {
         {/* Col 1: Store Brand & About */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] p-0.5 shadow-[0_0_10px_rgba(0,196,204,0.3)]">
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-[#00C4CC]/60 bg-black/70 p-0.5 shadow-[0_0_10px_rgba(0,196,204,0.3)]">
               <Image
                 src={settings?.logo_url || '/images/logo.png'}
                 alt={settings?.business_name || 'STH Gadgets'}
                 fill
-                className="object-cover rounded-full"
+                className="object-contain"
               />
             </div>
             <div>

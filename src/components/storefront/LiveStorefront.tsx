@@ -372,12 +372,12 @@ export default function LiveStorefront({
           {/* Brand Left */}
           <div className="flex items-center gap-3.5">
             <Link href="/" className="group relative flex shrink-0 items-center justify-center">
-              <div className="relative h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-full border-2 border-[#00C4CC] bg-black p-0.5 shadow-[0_0_16px_rgba(0,196,204,0.45)] transition group-hover:scale-105">
+              <div className="relative h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-2xl border border-[#00C4CC]/60 bg-black/70 p-0.5 shadow-[0_0_16px_rgba(0,196,204,0.45)] transition group-hover:scale-105">
                 <Image
                   src={settings?.logo_url || '/images/logo.png'}
                   alt={settings?.business_name || 'STH Gadgets'}
                   fill
-                  className="object-cover rounded-full"
+                  className="object-contain"
                   priority
                 />
               </div>

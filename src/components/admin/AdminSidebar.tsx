@@ -155,8 +155,8 @@ export default function AdminSidebar({ mobileOpen = false, onCloseMobile }: Admi
         {/* Brand Header */}
         <div className="flex items-center justify-between border-b border-slate-800/80 px-5 py-5">
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] p-0.5 shadow-[0_0_12px_rgba(0,196,204,0.4)]">
-              <Image src="/images/logo.png" alt="STH Gadgets" fill className="object-cover rounded-full" />
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-[#00C4CC]/60 bg-black/60 p-0.5 shadow-[0_0_12px_rgba(0,196,204,0.4)]">
+              <Image src="/images/logo.png" alt="STH Gadgets" fill className="object-contain" />
             </div>
             <div>
               <span className="block font-display text-sm font-black tracking-wider uppercase text-silver-bright">
