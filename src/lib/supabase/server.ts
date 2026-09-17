@@ -2,8 +2,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ttktpavtgfrndvvrlwoa.supabase.co';
+const SUPABASE_URL = (
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ttktpavtgfrndvvrlwoa.supabase.co'
+)
+  .replace(/\/rest\/v1\/?$/, '')
+  .replace(/\/$/, '');
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0a3RwYXZ0Z2ZybmR2dnJsd29hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzcwNzAsImV4cCI6MjEwNDYxMzA3MH0.0OiLDfU1Whk1S-qVf1OAvBDGGv391rVe58FdZRmKklU';

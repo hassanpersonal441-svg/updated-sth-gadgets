@@ -5,14 +5,18 @@ import { createClient } from '@/lib/supabase/server';
  *  admin-only API route before performing any write.
  */
 export async function requireAdmin(): Promise<{ userId: string } | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-  if (!profile) return null;
+    const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+    if (!profile) return null;
 
-  return { userId: user.id };
+    return { userId: user.id };
+  } catch {
+    return null;
+  }
 }
