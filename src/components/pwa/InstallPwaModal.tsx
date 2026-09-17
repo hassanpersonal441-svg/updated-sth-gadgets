@@ -97,7 +97,7 @@ export default function InstallPwaModal() {
         <div className="flex items-center gap-3">
           <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
             <Image
-              src="/images/logo.png"
+              src="/images/pwa-icon-192.png"
               alt="STH Gadgets Logo"
               fill
               className="object-contain p-1"
@@ -142,7 +142,7 @@ export default function InstallPwaModal() {
           <div className="max-w-sm w-full rounded-2xl border border-[#00C4CC]/40 bg-[#0C1420] p-6 space-y-4 text-center">
             <div className="relative h-16 w-16 mx-auto overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
               <Image
-                src="/images/logo.png"
+                src="/images/pwa-icon-192.png"
                 alt="STH Gadgets"
                 fill
                 className="object-contain p-1.5"

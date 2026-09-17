@@ -93,12 +93,12 @@ export default function Navbar({ categories, settings }: NavbarProps) {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         {/* Brand Section */}
         <Link href="/" className="flex shrink-0 items-center gap-3.5 group">
-          <div className="relative h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-xl border border-[#00C4CC]/60 bg-black/70 p-0.5 shadow-[0_0_16px_rgba(0,196,204,0.45)] transition group-hover:scale-105">
+          <div className="relative h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-full border-2 border-[#00C4CC]/70 shadow-[0_0_16px_rgba(0,196,204,0.45)] transition group-hover:scale-105">
             <Image
               src={settings?.logo_url || '/images/logo.png'}
               alt={settings?.business_name || 'STH Gadgets'}
               fill
-              className="object-contain"
+              className="object-cover rounded-full"
               priority
             />
           </div>
