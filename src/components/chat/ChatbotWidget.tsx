@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import type { Product } from '@/types/database';
@@ -25,6 +26,8 @@ const QUICK_PROMPTS = [
 ];
 
 export default function ChatbotWidget() {
+  const pathname = usePathname();
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -38,6 +41,11 @@ export default function ChatbotWidget() {
   const { addToCart, openCart } = useCart();
   const { theme } = useTheme();
   const isLight = theme === 'light';
+
+  // Completely hide chatbot from the Admin Panel
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   // Initial welcome message matching the user's reference design
   useEffect(() => {
@@ -141,15 +149,19 @@ export default function ChatbotWidget() {
   return (
     <>
       {/* ========================================================================= */}
-      {/* 1. FLOATING ROBOT / LAUNCHER BUTTON (MATCHING REFERENCE SPEECH BUBBLE & MASCOT) */}
+      {/* 1. FLOATING LAUNCHER BUTTON WITH SLEEK ROBOT AVATAR & GLOW               */}
       {/* ========================================================================= */}
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
-          {/* Subtle Speech Balloon on Desktop to invite interaction */}
+          {/* Subtle invitation pill on desktop */}
           {!hasInteracted && (
             <button
               onClick={() => setIsOpen(true)}
-              className="hidden md:flex items-center gap-2 rounded-2xl border border-[#00C4CC]/50 bg-[#0C1420]/95 px-3.5 py-2 text-xs font-semibold text-white shadow-[0_4px_20px_rgba(0,196,204,0.3)] backdrop-blur-md transition hover:scale-105 hover:border-[#00C4CC]"
+              className={`hidden md:flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-xs font-semibold shadow-lg backdrop-blur-md transition hover:scale-105 ${
+                isLight
+                  ? 'border-[#00C4CC]/50 bg-white/95 text-slate-800 hover:border-[#00C4CC]'
+                  : 'border-[#00C4CC]/50 bg-[#0C1420]/95 text-white hover:border-[#00C4CC]'
+              }`}
             >
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00C4CC] opacity-75"></span>
@@ -164,20 +176,20 @@ export default function ChatbotWidget() {
             type="button"
             onClick={() => setIsOpen(true)}
             aria-label="Open STH Gadgets AI Shopping Assistant"
-            className="group relative flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1526] via-[#050C17] to-[#01060F] p-1 shadow-[0_0_25px_rgba(0,196,204,0.6)] ring-4 ring-[#00C4CC]/70 transition duration-300 hover:scale-110 hover:ring-[#00C4CC] hover:shadow-[0_0_35px_rgba(0,196,204,0.85)] active:scale-95"
+            className="group relative flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0B1526] via-[#050C17] to-[#01060F] p-1 shadow-[0_0_25px_rgba(0,196,204,0.6)] ring-4 ring-[#00C4CC]/70 transition duration-300 hover:scale-110 hover:ring-[#00C4CC] hover:shadow-[0_0_35px_rgba(0,196,204,0.9)] active:scale-95"
           >
             {/* Pulsing Glow Ring */}
-            <span className="absolute -inset-1 -z-10 rounded-full bg-[#00C4CC] opacity-30 blur-md transition duration-500 group-hover:opacity-75"></span>
+            <span className="absolute -inset-1 -z-10 rounded-full bg-[#00C4CC] opacity-35 blur-md transition duration-500 group-hover:opacity-80"></span>
 
-            {/* Speech Bubble Icon matching the Reference Image */}
-            <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-[#00C4CC] shadow-[0_0_15px_rgba(0,196,204,0.8)] transition group-hover:bg-[#00D9E3]">
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-6 w-6 text-black"
-              >
-                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-6 9h-4V9h4v2zm4 0h-2V9h2v2zm-8 0H6V9h4v2z" />
-              </svg>
+            {/* Robot Head Mascot inside the floating button */}
+            <div className="relative h-11 w-11 sm:h-12 sm:w-12 overflow-hidden rounded-full border border-[#00C4CC]/80 bg-[#060D17] shadow-inner">
+              <Image
+                src="/images/robot-head.png"
+                alt="STH AI Assistant"
+                fill
+                sizes="48px"
+                className="object-cover transition duration-300 group-hover:scale-110"
+              />
             </div>
 
             {/* Unread notification ping */}
@@ -192,53 +204,39 @@ export default function ChatbotWidget() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. CHAT MODAL / INTERFACE (DESKTOP WITH ROBOT MASCOT + MOBILE DOCKED)     */}
+      {/* 2. CHAT MODAL / WINDOW (CLEAN, INTEGRATED UI WITHOUT AWKWARD EXTERNAL CUTS) */}
       {/* ========================================================================= */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-end sm:justify-end sm:p-6 md:p-8 pointer-events-none">
           <div className="pointer-events-auto flex items-end justify-end max-w-full relative">
-            
-            {/* Desktop Mascot: 3D Robot Pointing Directly at the Chat Interface */}
-            <div className="hidden lg:block relative -mr-16 mb-4 w-64 h-80 shrink-0 pointer-events-none z-10 animate-fade-in select-none">
-              <div className="relative w-full h-full drop-shadow-[0_10px_25px_rgba(0,196,204,0.35)]">
-                <Image
-                  src="/images/chatbot-robot.png"
-                  alt="STH Gadgets 3D Robot Assistant"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </div>
-
-            {/* Chat Window Card (Matching the Reference UI Layout & Styling) */}
+            {/* Chat Window Card (Matching Reference Proportions & Theme) */}
             <div
               className={`relative flex flex-col overflow-hidden transition-all duration-300 ${
                 isLight
                   ? 'bg-white/95 border-2 border-[#00C4CC] text-slate-900 shadow-[0_15px_45px_rgba(0,196,204,0.25)]'
                   : 'bg-[#0B1320]/95 border-2 border-[#00C4CC]/75 text-slate-200 shadow-[0_0_40px_rgba(0,196,204,0.4)]'
-              } w-full h-[100dvh] sm:h-[620px] sm:w-[410px] sm:rounded-3xl backdrop-blur-xl`}
+              } w-full h-[100dvh] sm:h-[620px] sm:w-[410px] sm:rounded-3xl backdrop-blur-xl animate-fade-in`}
             >
               {/* Top Electric Glow Accent Line */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#00C4CC] to-transparent opacity-80" />
 
               {/* ------------------------------------------------------------- */}
-              {/* HEADER: STH Gadgets Logo + Name + Online Dot + Close Button   */}
+              {/* HEADER: Robot Avatar + STH Gadgets + Online Dot + Close Button */}
               {/* ------------------------------------------------------------- */}
               <div
                 className={`flex items-center justify-between border-b px-4 py-3.5 sm:px-5 ${
-                  isLight ? 'border-slate-200 bg-white/80' : 'border-slate-800/80 bg-black/40'
+                  isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800/80 bg-black/40'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  {/* Circular STH Gadgets Logo with Cyan Border */}
-                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] bg-black/80 shadow-[0_0_12px_rgba(0,196,204,0.5)]">
+                  {/* Clean Circular Robot Avatar with Glowing Cyan Rim */}
+                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] bg-[#070E1A] shadow-[0_0_12px_rgba(0,196,204,0.5)]">
                     <Image
-                      src="/images/logo.png"
-                      alt="STH Gadgets"
+                      src="/images/robot-head.png"
+                      alt="STH AI Assistant"
                       fill
                       sizes="44px"
-                      className="object-cover rounded-full"
+                      className="object-cover"
                     />
                   </div>
                   <div>
@@ -267,7 +265,7 @@ export default function ChatbotWidget() {
                   </div>
                 </div>
 
-                {/* Close Button matching reference style */}
+                {/* Close Button */}
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
@@ -301,14 +299,43 @@ export default function ChatbotWidget() {
                   isLight ? 'bg-slate-50/70 scrollbar-thumb-slate-300' : 'scrollbar-thumb-slate-700'
                 } scrollbar-track-transparent`}
               >
+                {/* Robot Welcome Hero Banner Inside Chat (Adjusted, looks natural & not weird) */}
+                <div
+                  className={`flex items-center gap-3.5 rounded-2xl border p-3 shadow-md ${
+                    isLight
+                      ? 'border-[#00C4CC]/40 bg-gradient-to-r from-sky-50 via-white to-sky-50 text-slate-800'
+                      : 'border-[#00C4CC]/40 bg-gradient-to-r from-[#0C1524] via-[#0E1A2C] to-[#0A111E] text-slate-200'
+                  }`}
+                >
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-[#00C4CC]/60 bg-black/60 shadow-[0_0_12px_rgba(0,196,204,0.4)]">
+                    <Image
+                      src="/images/robot-clean.png"
+                      alt="STH Robot Assistant"
+                      fill
+                      sizes="56px"
+                      className="object-cover object-top"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-display font-bold text-xs text-[#00C4CC] uppercase tracking-wider">
+                        Official AI Shopping Assistant
+                      </span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed mt-0.5 opacity-90">
+                      Ask me about 100% original earbuds, power banks, chargers, live rates & fast WhatsApp delivery!
+                    </p>
+                  </div>
+                </div>
+
                 {messages.map((msg) => (
                   <div key={msg.id} className="space-y-2 animate-fade-in">
                     {msg.role === 'assistant' ? (
-                      /* Assistant Bubble with Avatar Icon */
+                      /* Assistant Bubble with Robot Avatar Icon */
                       <div className="flex items-start gap-2.5">
                         <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#00C4CC]/70 bg-black/90 p-0.5 shadow-[0_0_8px_rgba(0,196,204,0.4)]">
                           <Image
-                            src="/images/logo.png"
+                            src="/images/robot-head.png"
                             alt="STH Assistant"
                             fill
                             sizes="32px"
@@ -435,7 +462,7 @@ export default function ChatbotWidget() {
                   <div className="flex items-start gap-2.5 animate-fade-in">
                     <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#00C4CC]/70 bg-black/90 p-0.5">
                       <Image
-                        src="/images/logo.png"
+                        src="/images/robot-head.png"
                         alt="STH Assistant"
                         fill
                         sizes="32px"
