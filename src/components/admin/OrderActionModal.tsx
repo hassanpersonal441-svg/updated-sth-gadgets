@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Order } from '@/types/database';
 import { useToast } from '@/context/ToastContext';
+import { formatOrderDateTime } from '@/lib/utils';
 
 interface OrderActionModalProps {
   order: Order | null;
@@ -274,8 +275,10 @@ export default function OrderActionModal({
                 {isEditing ? '✕ Cancel Edit' : '✏️ Edit Details'}
               </button>
             </div>
-            <p className="mt-1 text-[11px] sm:text-xs text-silver-dim truncate max-w-xs sm:max-w-md">
-              Ref ID: <span className="font-mono text-silver-bright">{order.id}</span> • {new Date(order.created_at).toLocaleString()}
+            <p className="mt-1 text-[11px] sm:text-xs text-silver-dim truncate max-w-xs sm:max-w-md" suppressHydrationWarning>
+              Ref ID: <span className="font-mono text-silver-bright">{order.id}</span>
+              {' • '}
+              <span className="text-[#00C4CC] font-mono">🕒 {formatOrderDateTime(order.created_at).full}</span>
             </p>
           </div>
 

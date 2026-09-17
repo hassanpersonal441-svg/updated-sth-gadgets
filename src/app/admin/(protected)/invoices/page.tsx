@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { Invoice, InvoiceStatus, InvoicePaymentStatus, InvoicePaymentMethod } from '@/types/database';
 import ConfirmModal from '@/components/admin/ConfirmModal';
+import { formatOrderDateTime } from '@/lib/utils';
 
 interface InvoiceStats {
   totalInvoices: number;
@@ -290,7 +291,7 @@ export default function AdminInvoicesPage() {
               <tr>
                 <th className="py-3.5 px-4">Invoice #</th>
                 <th className="py-3.5 px-4">Customer</th>
-                <th className="py-3.5 px-4">Date</th>
+                <th className="py-3.5 px-4">Date & Time</th>
                 <th className="py-3.5 px-4 text-right">Grand Total</th>
                 <th className="py-3.5 px-4 text-right">Paid / Bal</th>
                 <th className="py-3.5 px-4 text-center">Status</th>
@@ -323,8 +324,21 @@ export default function AdminInvoicesPage() {
                       <div className="font-bold text-white">{inv.customer_name}</div>
                       <div className="text-[11px] text-silver-dim">📞 {inv.customer_phone} ({inv.customer_city})</div>
                     </td>
-                    <td className="py-3.5 px-4 text-silver-dim font-mono">
-                      {inv.invoice_date ? inv.invoice_date.split('T')[0] : ''}
+                    <td className="py-3.5 px-4 whitespace-nowrap" suppressHydrationWarning>
+                      {(() => {
+                        const dt = formatOrderDateTime(inv.invoice_date || inv.created_at);
+                        return (
+                          <div>
+                            <div className="font-semibold text-silver-bright">{dt.date}</div>
+                            {dt.time && (
+                              <div className="text-[11px] font-mono text-[#00C4CC] flex items-center gap-1">
+                                <span>🕒</span>
+                                <span>{dt.time}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="py-3.5 px-4 text-right font-mono font-bold text-white">
                       Rs. {inv.grand_total.toLocaleString()}

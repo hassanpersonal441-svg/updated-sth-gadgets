@@ -26,6 +26,7 @@ export const EMOJI = {
   CARD: String.fromCodePoint(0x1F4B3),       // 💳
   WAVE: String.fromCodePoint(0x1F44B),       // 👋
   LINK: String.fromCodePoint(0x1F517),       // 🔗
+  CLOCK: String.fromCodePoint(0x1F552),      // 🕒
 };
 
 export function buildWhatsAppCheckoutMessage(params: {
@@ -39,6 +40,7 @@ export function buildWhatsAppCheckoutMessage(params: {
   bundle_discount: number;
   delivery_charges: number;
   total_amount: number;
+  order_time?: string;
   items: Array<{
     product_name: string;
     variant_name?: string | null;
@@ -58,8 +60,26 @@ export function buildWhatsAppCheckoutMessage(params: {
     bundle_discount,
     delivery_charges,
     total_amount,
+    order_time,
     items,
   } = params;
+
+  // Format current Pakistan time if order_time not provided
+  let formattedTime = order_time;
+  if (!formattedTime) {
+    const pktTime = new Date(Date.now() + 5 * 60 * 60 * 1000);
+    const day = pktTime.getUTCDate();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[pktTime.getUTCMonth()];
+    const year = pktTime.getUTCFullYear();
+    let hours = pktTime.getUTCHours();
+    const minutes = pktTime.getUTCMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const strHours = hours < 10 ? `0${hours}` : `${hours}`;
+    const strMinutes = minutes < 10 ? `0${minutes}` : `${minutes}`;
+    formattedTime = `${day} ${month} ${year}, ${strHours}:${strMinutes} ${ampm}`;
+  }
 
   const itemsText = items
     .map(
@@ -71,6 +91,7 @@ export function buildWhatsAppCheckoutMessage(params: {
   return [
     `${EMOJI.BAGS} *STH GADGETS — NEW ORDER* ${EMOJI.CART}`,
     '━━━━━━━━━━━━━━━━━━━━━━━━━',
+    `${EMOJI.CLOCK} *Order Placed:* ${formattedTime}`,
     `${EMOJI.CUSTOMER} *Customer Name:* ${customer_name}`,
     `${EMOJI.PHONE} *WhatsApp Number:* ${phone}`,
     `${EMOJI.CITY} *City:* ${city}`,
@@ -103,6 +124,7 @@ export function buildWhatsAppApprovalMessage(params: {
   bundle_discount: number;
   delivery_charges: number;
   total_amount: number;
+  order_time?: string;
   items: Array<{
     product_name: string;
     variant_name?: string | null;
@@ -122,6 +144,7 @@ export function buildWhatsAppApprovalMessage(params: {
     bundle_discount,
     delivery_charges,
     total_amount,
+    order_time,
     items,
   } = params;
 
@@ -136,6 +159,7 @@ export function buildWhatsAppApprovalMessage(params: {
     `${EMOJI.BAGS} *STH GADGETS — ORDER CONFIRMED* ${EMOJI.CHECK}`,
     '━━━━━━━━━━━━━━━━━━━━━━━━━',
     `${EMOJI.NUMBERS} *Official Order No:* ${order_number}`,
+    ...(order_time ? [`${EMOJI.CLOCK} *Order Time:* ${order_time}`] : []),
     `${EMOJI.CUSTOMER} *Customer Name:* ${customer_name}`,
     `${EMOJI.PHONE} *WhatsApp Number:* ${phone}`,
     `${EMOJI.CITY} *City:* ${city}`,

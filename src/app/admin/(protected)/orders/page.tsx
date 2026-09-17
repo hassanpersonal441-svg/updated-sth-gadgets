@@ -7,7 +7,7 @@ import Link from 'next/link';
 import type { Order } from '@/types/database';
 import OrderActionModal from '@/components/admin/OrderActionModal';
 import { useToast } from '@/context/ToastContext';
-import { formatInvoiceDate, formatNumber } from '@/lib/utils';
+import { formatInvoiceDate, formatOrderDateTime, formatNumber } from '@/lib/utils';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 
 const TABS = [
@@ -350,7 +350,15 @@ export default function AdminOrdersPage() {
                           ({itemsCount} item{itemsCount > 1 ? 's' : ''})
                         </span>
                       </div>
-                      <span className="text-[11px]" suppressHydrationWarning>{formatInvoiceDate(order.created_at)}</span>
+                      {(() => {
+                        const dt = formatOrderDateTime(order.created_at);
+                        return (
+                          <div className="text-right" suppressHydrationWarning>
+                            <span className="text-[11px] text-silver-bright font-medium">{dt.date}</span>
+                            <span className="ml-1.5 text-[10px] font-mono text-[#00C4CC]">🕒 {dt.time}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Mobile Card Action Buttons */}
@@ -387,7 +395,7 @@ export default function AdminOrdersPage() {
                     <th className="px-4 py-3">City</th>
                     <th className="px-4 py-3">Items</th>
                     <th className="px-4 py-3">Total Amount</th>
-                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Order Date & Time</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -430,9 +438,20 @@ export default function AdminOrdersPage() {
                           PKR {formatNumber(order.total_amount)}
                         </td>
 
-                        {/* Date */}
-                        <td className="px-4 py-3.5 text-silver-dim whitespace-nowrap" suppressHydrationWarning>
-                          {formatInvoiceDate(order.created_at)}
+                        {/* Date & Time */}
+                        <td className="px-4 py-3.5 whitespace-nowrap" suppressHydrationWarning>
+                          {(() => {
+                            const dt = formatOrderDateTime(order.created_at);
+                            return (
+                              <div>
+                                <div className="font-semibold text-silver-bright">{dt.date}</div>
+                                <div className="text-[11px] font-mono text-[#00C4CC] flex items-center gap-1">
+                                  <span>🕒</span>
+                                  <span>{dt.time}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Status */}

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import { formatOrderDateTime } from '@/lib/utils';
 import QuickWhatsAppModal from './QuickWhatsAppModal';
 import ExclusiveBundleModal from './ExclusiveBundleModal';
 
@@ -55,7 +56,9 @@ export default function CartDrawer() {
     setIsSubmitting(true);
 
     const storePhone = '923489593671';
+    const currentFormattedTime = formatOrderDateTime(new Date()).full;
     let fallbackMsg = `🛍️ *STH GADGETS — WHATSAPP CART ORDER* 🛒\n━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    fallbackMsg += `🕒 *Order Placed:* ${currentFormattedTime}\n`;
     fallbackMsg += `👤 *Customer:* ${custName} (${custPhone})\n`;
     if (custAddress) fallbackMsg += `📍 *Address:* ${custAddress}${custCity ? `, ${custCity}` : ''}\n`;
     fallbackMsg += `━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *ORDER ITEMS:*\n`;

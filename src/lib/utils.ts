@@ -120,6 +120,42 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+/** Deterministic Date & Time formatter in Pakistan Time (PKT, UTC+5) to prevent React Hydration mismatch */
+export function formatOrderDateTime(dateInput: string | Date | null | undefined): {
+  date: string;
+  time: string;
+  full: string;
+} {
+  if (!dateInput) return { date: '', time: '', full: '' };
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return { date: '', time: '', full: '' };
+
+  // Shift to Pakistan Standard Time (UTC+5)
+  const pktTime = new Date(d.getTime() + 5 * 60 * 60 * 1000);
+  const day = pktTime.getUTCDate();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = monthNames[pktTime.getUTCMonth()];
+  const year = pktTime.getUTCFullYear();
+
+  let hours = pktTime.getUTCHours();
+  const minutes = pktTime.getUTCMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const strHours = hours < 10 ? `0${hours}` : `${hours}`;
+  const strMinutes = minutes < 10 ? `0${minutes}` : `${minutes}`;
+
+  const dateStr = `${day} ${month} ${year}`;
+  const timeStr = `${strHours}:${strMinutes} ${ampm}`;
+  const fullStr = `${dateStr}, ${timeStr}`;
+
+  return {
+    date: dateStr,
+    time: timeStr,
+    full: fullStr,
+  };
+}
+
 /** Deterministic UTC date formatter to prevent React Hydration Error between server & client */
 export function formatInvoiceDate(dateInput: string | Date | null | undefined): string {
   if (!dateInput) return '';
@@ -141,3 +177,4 @@ export function formatPrice(amount: number, settings?: Pick<Settings, 'currency_
   const symbol = settings?.currency_symbol ?? 'Rs.';
   return `${symbol} ${formatNumber(amount)}`;
 }
+
