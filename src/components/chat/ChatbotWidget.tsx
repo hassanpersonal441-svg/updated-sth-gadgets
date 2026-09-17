@@ -257,19 +257,15 @@ export default function ChatbotWidget() {
               </div>
 
               {/* ------------------------------------------------------------- */}
-              {/* HEADER: Robot Avatar + STH Gadgets + Online Dot + Close Button */}
+              {/* HEADER: STH Gadgets Logo + Bright Title + Online Dot + Close */}
               {/* ------------------------------------------------------------- */}
-              <div
-                className={`flex shrink-0 items-center justify-between border-b px-4 py-3 sm:px-5 ${
-                  isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800/80 bg-black/40'
-                }`}
-              >
+              <div className="flex shrink-0 items-center justify-between border-b px-4 py-3 sm:px-5 border-[#00C4CC]/30 bg-[#070E1A]">
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* Clean Circular Robot Avatar */}
-                  <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] bg-[#070E1A] shadow-[0_0_12px_rgba(0,196,204,0.5)]">
+                  {/* Clean Circular STH Gadgets Logo */}
+                  <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 border-[#00C4CC] bg-[#050A14] shadow-[0_0_15px_rgba(0,196,204,0.6)]">
                     <Image
-                      src="/images/robot-head.png"
-                      alt="STH AI Assistant"
+                      src="/images/logo.png"
+                      alt="STH Gadgets"
                       fill
                       sizes="44px"
                       className="object-cover"
@@ -277,14 +273,10 @@ export default function ChatbotWidget() {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3
-                        className={`font-display text-sm sm:text-base font-extrabold tracking-wide uppercase truncate ${
-                          isLight ? 'text-slate-900' : 'text-white'
-                        }`}
-                      >
+                      <h3 className="font-display text-sm sm:text-base font-extrabold tracking-wide uppercase truncate text-white drop-shadow-sm">
                         STH Gadgets
                       </h3>
-                      <span className="shrink-0 rounded bg-[#00C4CC]/20 px-1.5 py-0.2 text-[10px] font-black tracking-wider text-[#00C4CC] uppercase">
+                      <span className="shrink-0 rounded bg-[#00C4CC]/20 px-2 py-0.5 text-[10px] font-black tracking-wider text-[#00C4CC] uppercase border border-[#00C4CC]/40">
                         AI
                       </span>
                     </div>
@@ -294,7 +286,7 @@ export default function ChatbotWidget() {
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
                       </span>
-                      <span className="text-[11px] font-semibold text-emerald-500 tracking-wide">
+                      <span className="text-[11px] font-bold text-emerald-400 tracking-wide">
                         Online
                       </span>
                     </div>
@@ -306,11 +298,7 @@ export default function ChatbotWidget() {
                   type="button"
                   onClick={() => setIsOpen(false)}
                   aria-label="Close chat"
-                  className={`rounded-xl p-2.5 transition active:scale-95 touch-manipulation ${
-                    isLight
-                      ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-800'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                  }`}
+                  className="rounded-xl p-2.5 text-slate-300 hover:text-white hover:bg-white/10 transition active:scale-95 touch-manipulation"
                 >
                   <svg
                     viewBox="0 0 24 24"
