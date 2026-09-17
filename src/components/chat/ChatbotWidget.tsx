@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import type { Product } from '@/types/database';
+import { ChatMessageContent } from './ChatMessageContent';
 
 interface Message {
   id: string;
@@ -377,13 +378,13 @@ export default function ChatbotWidget() {
                         </div>
                         <div className="max-w-[88%] sm:max-w-[85%] space-y-2">
                           <div
-                            className={`rounded-2xl rounded-tl-none p-3 sm:p-3.5 shadow-md whitespace-pre-wrap leading-relaxed ${
+                            className={`rounded-2xl rounded-tl-none p-3 sm:p-3.5 shadow-md leading-relaxed ${
                               isLight
                                 ? 'bg-white border border-slate-200 text-slate-800'
                                 : 'bg-[#162235] border border-slate-700/60 text-slate-100'
                             }`}
                           >
-                            {msg.content}
+                            <ChatMessageContent content={msg.content} isLight={isLight} />
                           </div>
 
                           {/* Interactive Product Cards inside Chat (Mobile Responsive Layout) */}
