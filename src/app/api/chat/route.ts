@@ -50,11 +50,56 @@ export async function POST(req: NextRequest) {
     const whatsappNumber = (settings?.whatsapp_number || '923489593671').replace(/[^0-9]/g, '');
     const businessName = settings?.business_name || 'STH Gadgets';
 
-    // 2. Intelligent Product Filtering
+    // 2. Intelligent Product Filtering & Intent Detection
     const lower = userMessage.toLowerCase();
     const isDealsQuery = lower.includes('deal') || lower.includes('discount') || lower.includes('sale') || lower.includes('offer');
     const isNewArrivalsQuery = lower.includes('new') || lower.includes('latest') || lower.includes('arrival');
     const isBestSellerQuery = lower.includes('best') || lower.includes('popular') || lower.includes('top');
+
+    // Price Intent (Cheap / Sasta vs Expensive / Premium)
+    const isCheapQuery =
+      lower.includes('cheap') ||
+      lower.includes('cheapest') ||
+      lower.includes('sasta') ||
+      lower.includes('sastay') ||
+      lower.includes('sasti') ||
+      lower.includes('budget') ||
+      lower.includes('low price') ||
+      lower.includes('lowest price') ||
+      lower.includes('affordable') ||
+      lower.includes('kam rate') ||
+      lower.includes('kam price') ||
+      lower.includes('kam qeemat');
+
+    const isExpensiveQuery =
+      lower.includes('expensive') ||
+      lower.includes('premium') ||
+      lower.includes('mehnga') ||
+      lower.includes('mehenga') ||
+      lower.includes('high end') ||
+      lower.includes('flagship');
+
+    // Roman Urdu detection
+    const isUrduQuery =
+      lower.includes('dekho') ||
+      lower.includes('dikhao') ||
+      lower.includes('batao') ||
+      lower.includes('wala') ||
+      lower.includes('walay') ||
+      lower.includes('wali') ||
+      lower.includes('sasta') ||
+      lower.includes('sastay') ||
+      lower.includes('sasti') ||
+      lower.includes('chahye') ||
+      lower.includes('chaiye') ||
+      lower.includes('kya') ||
+      lower.includes('hai') ||
+      lower.includes('hein') ||
+      lower.includes('mujhe') ||
+      lower.includes('kon sa') ||
+      lower.includes('konsa') ||
+      lower.includes('kese') ||
+      lower.includes('kitne ka');
     
     // Price match like "under 3000", "under 5000", "below 2000"
     const priceMatch = lower.match(/(?:under|below|less than|upto|up to|max|within)\s*(?:rs\.?|pkr)?\s*(\d+)/i);
@@ -124,7 +169,8 @@ export async function POST(req: NextRequest) {
         'the', 'and', 'for', 'with', 'show', 'need', 'want', 'what', 'which', 'have',
         'are', 'you', 'under', 'below', 'less', 'than', 'upto', 'from', 'some', 'give',
         'tell', 'about', 'find', 'looking', 'good', 'best', 'pkr', 'rs', 'rupees', 'product',
-        'products', 'available', 'items', 'item'
+        'products', 'available', 'items', 'item', 'dekho', 'dikhao', 'wala', 'walay', 'wali',
+        'chahye', 'chaiye', 'sasta', 'sastay', 'cheap'
       ]);
       const keywords = userMessage
         .replace(/[^\w\s]/gi, ' ')
@@ -138,6 +184,33 @@ export async function POST(req: NextRequest) {
           return keywords.some((k) => text.includes(k));
         });
       }
+    }
+
+    // Sort & filter products based on user intent (Cheap / Sasta vs Expensive / Premium)
+    const isSingularCheap =
+      lower.includes('wala') ||
+      lower.includes('wali') ||
+      lower.includes('cheapest') ||
+      lower.includes('sab se sasta') ||
+      lower.includes('sab say sasta') ||
+      lower.includes('lowest');
+
+    if (isCheapQuery && relevantProducts.length > 0) {
+      relevantProducts.sort((a, b) => a.price - b.price);
+      const minPrice = relevantProducts[0].price;
+      if (isSingularCheap) {
+        // User asked for "cheap wala" / "sasta wala" / "cheapest" -> ONLY show the single cheapest product
+        relevantProducts = relevantProducts.filter((p) => p.price <= minPrice * 1.05).slice(0, 1);
+      } else {
+        // Plural / general budget request -> show ONLY products in the lowest budget tier
+        const budgetThreshold = Math.max(minPrice * 1.25, minPrice + 400);
+        const budgetItems = relevantProducts.filter((p) => p.price <= budgetThreshold);
+        relevantProducts = budgetItems.length > 0 ? budgetItems.slice(0, 3) : relevantProducts.slice(0, 1);
+      }
+    } else if (isExpensiveQuery && relevantProducts.length > 0) {
+      relevantProducts.sort((a, b) => b.price - a.price);
+      const maxPrice = relevantProducts[0].price;
+      relevantProducts = relevantProducts.filter((p) => p.price >= maxPrice * 0.85).slice(0, 2);
     }
 
     // 3. Out-of-Scope non-store query check
@@ -200,6 +273,8 @@ CRITICAL RULES:
 8. Official WhatsApp Support: +${whatsappNumber}.
 9. Keep responses friendly, professional, concise, with helpful bullet points and emojis. Don't write overly long essays.
 10. When mentioning products, mention their real price in Pakistani Rupees (Rs.).
+11. LANGUAGE & ROMAN URDU: If the customer writes in Roman Urdu or Urdu (e.g. 'cheap wala power bank dekho', 'sasta wala speaker', 'kya price hai', 'kese order karun'), reply in natural, polite Roman Urdu!
+12. CHEAP / SASTA REQUESTS: When the customer asks for "cheap", "sasta", "cheap wala", "budget", or lowest price, recommend and discuss ONLY the affordable/cheapest option(s) provided in the database list below. Do NOT suggest, mention, or invent any expensive alternatives!
 
 CURRENT AVAILABLE PRODUCTS FROM DATABASE:
 ${productContextStr || 'No specific products match the current filter.'}
@@ -216,22 +291,36 @@ ${productContextStr || 'No specific products match the current filter.'}
         }
         conversationPrompt += `Customer: ${userMessage}\nAssistant:`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: conversationPrompt,
-          config: {
-            systemInstruction,
-            temperature: 0.4,
-            maxOutputTokens: 600,
-          },
-        });
+        let response;
+        try {
+          response = await ai.models.generateContent({
+            model: 'gemini-3.6-flash',
+            contents: conversationPrompt,
+            config: {
+              systemInstruction,
+              temperature: 0.3,
+              maxOutputTokens: 800,
+            },
+          });
+        } catch (mErr) {
+          console.warn('gemini-3.6-flash failed, trying gemini-3.5-flash-lite:', mErr);
+          response = await ai.models.generateContent({
+            model: 'gemini-3.5-flash-lite',
+            contents: conversationPrompt,
+            config: {
+              systemInstruction,
+              temperature: 0.3,
+              maxOutputTokens: 800,
+            },
+          });
+        }
 
         const reply = response.text?.trim();
 
         if (reply) {
           return NextResponse.json({
             reply,
-            products: relevantProducts.slice(0, 4), // Attach top 4 matching product cards
+            products: relevantProducts.slice(0, 4), // Attach top matching product cards (only cheapest ones for cheap queries)
           });
         }
       } catch (geminiErr) {
@@ -244,24 +333,42 @@ ${productContextStr || 'No specific products match the current filter.'}
     let fallbackReply = '';
 
     if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey') || lower.includes('salam')) {
-      fallbackReply = `Hello! 👋 Welcome to ${businessName}. I'm your AI Shopping Assistant. How can I help you today? You can ask me for product recommendations, check prices, or browse our top deals! ⚡`;
+      fallbackReply = isUrduQuery
+        ? `Salam! 👋 ${businessName} par khush aamdeed! Main aap ka AI Shopping Assistant hoon. Main aap ko products, prices aur deals check karne me help kar sakta hoon. ⚡`
+        : `Hello! 👋 Welcome to ${businessName}. I'm your AI Shopping Assistant. How can I help you today? You can ask me for product recommendations, check prices, or browse our top deals! ⚡`;
       relevantProducts = [];
     } else if (lower.includes('order') || lower.includes('buy') || lower.includes('how to')) {
-      fallbackReply = `Ordering at ${businessName} is quick and easy! 🛒\n\n1. Add your favorite items to the cart.\n2. Click "Checkout" to place your order online, or tap "Order on WhatsApp" to chat directly with us on +${whatsappNumber}.\n3. Standard delivery is Rs. 200 nationwide, and FREE for orders over Rs. 5,000! 🚚`;
+      fallbackReply = isUrduQuery
+        ? `Ordering at ${businessName} bohat asan hai! 🛒\n\n1. Apni pasandeeda product ko Cart me add karein.\n2. Online Checkout karein ya seedha "Order on WhatsApp" tap kar ke hum se +${whatsappNumber} par rabta karein.\n3. Poore Pakistan me delivery Rs. 200 hai, aur Rs. 5,000 se ziaada orders par FREE Delivery hai! 🚚`
+        : `Ordering at ${businessName} is quick and easy! 🛒\n\n1. Add your favorite items to the cart.\n2. Click "Checkout" to place your order online, or tap "Order on WhatsApp" to chat directly with us on +${whatsappNumber}.\n3. Standard delivery is Rs. 200 nationwide, and FREE for orders over Rs. 5,000! 🚚`;
       relevantProducts = [];
     } else if (lower.includes('delivery') || lower.includes('ship') || lower.includes('charg')) {
-      fallbackReply = `🚚 **Delivery Information**:\n• Nationwide delivery across Pakistan in 2-4 business days.\n• Standard shipping fee: **Rs. 200**.\n• **FREE Shipping** on all orders above **Rs. 5,000**!\n• Cash on Delivery (COD) is available.`;
+      fallbackReply = isUrduQuery
+        ? `🚚 **Delivery Information**:\n• Poore Pakistan me 2-4 dino me delivery.\n• Delivery charges sirf: **Rs. 200**.\n• **Rs. 5,000 se ziaada ke orders par FREE Delivery**!\n• Cash on Delivery (COD) available hai.`
+        : `🚚 **Delivery Information**:\n• Nationwide delivery across Pakistan in 2-4 business days.\n• Standard shipping fee: **Rs. 200**.\n• **FREE Shipping** on all orders above **Rs. 5,000**!\n• Cash on Delivery (COD) is available.`;
       relevantProducts = [];
     } else if (lower.includes('return') || lower.includes('refund') || lower.includes('warranty')) {
-      fallbackReply = `🛡️ **Warranty & Return Policy**:\n• All products are 100% original and thoroughly tested.\n• We offer a **7-day return/replacement policy** for any manufacturing defects.\n• Need assistance? Contact our team on WhatsApp anytime at +${whatsappNumber}.`;
+      fallbackReply = isUrduQuery
+        ? `🛡️ **Warranty & Return Policy**:\n• Saare gadgets 100% original aur quality tested hotay hain.\n• Hum **7-day return/replacement guarantee** dete hain manufacturing defect par.\n• Kisi bhi help ke liye WhatsApp par rabta karein: +${whatsappNumber}.`
+        : `🛡️ **Warranty & Return Policy**:\n• All products are 100% original and thoroughly tested.\n• We offer a **7-day return/replacement policy** for any manufacturing defects.\n• Need assistance? Contact our team on WhatsApp anytime at +${whatsappNumber}.`;
       relevantProducts = [];
     } else if (lower.includes('located') || lower.includes('address') || lower.includes('location') || lower.includes('shop') || lower.includes('store')) {
       fallbackReply = `📍 **STH Gadgets Location & Contact**:\n• We deliver 100% original gadgets nationwide across Pakistan.\n• Official WhatsApp: +${whatsappNumber}\n• Customer Support available daily.`;
       relevantProducts = [];
     } else if (relevantProducts.length > 0) {
-      fallbackReply = `Here are the top products available at ${businessName} matching your request:`;
+      if (isCheapQuery) {
+        fallbackReply = isUrduQuery
+          ? `Ye raha ${businessName} par sab se sasta aur best value option sirf **Rs. ${relevantProducts[0].price.toLocaleString()}** me:`
+          : `Here is the most affordable and budget-friendly option at ${businessName} for **Rs. ${relevantProducts[0].price.toLocaleString()}**:`;
+      } else {
+        fallbackReply = isUrduQuery
+          ? `Ye rahay ${businessName} par available products aap ki request ke mutabiq:`
+          : `Here are the top products available at ${businessName} matching your request:`;
+      }
     } else {
-      fallbackReply = `I'm here to help with ${businessName} products, orders, delivery and store information. Please let me know what tech gadget or accessory you're looking for! ⚡`;
+      fallbackReply = isUrduQuery
+        ? `Main ${businessName} ke products, live prices aur delivery ke baray me madad ke liye hazir hoon. Aap ko konsa tech gadget ya accessory chahye? ⚡`
+        : `I'm here to help with ${businessName} products, orders, delivery and store information. Please let me know what tech gadget or accessory you're looking for! ⚡`;
     }
 
     return NextResponse.json({
