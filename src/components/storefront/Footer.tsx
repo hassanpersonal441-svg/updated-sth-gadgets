@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import type { Settings } from '@/types/database';
 
 export default function Footer({ settings }: { settings: Settings | null }) {
@@ -6,7 +7,7 @@ export default function Footer({ settings }: { settings: Settings | null }) {
 
   return (
     <footer className="border-t border-slate-800/80 bg-[#060A10] text-[#C9D2DB] pb-16 lg:pb-0">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         {/* Col 1: Store Brand & About */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -32,6 +33,34 @@ export default function Footer({ settings }: { settings: Settings | null }) {
           </p>
         </div>
 
+        {/* Col 2: Quick Links */}
+        <div>
+          <h4 className="font-display text-xs font-bold uppercase tracking-wider text-[#00C4CC]">
+            Quick Links
+          </h4>
+          <ul className="mt-3 space-y-2 text-xs text-slate-300">
+            <li>
+              <Link href="/products" className="hover:text-[#00C4CC] transition">
+                All Products & Catalog
+              </Link>
+            </li>
+            <li>
+              <Link href="/about" className="hover:text-[#00C4CC] transition">
+                About STH Gadgets
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:text-[#00C4CC] transition">
+                Contact Customer Support
+              </Link>
+            </li>
+            <li>
+              <Link href="/products?sort=discount" className="hover:text-[#00C4CC] transition">
+                Hot Deals & Promotions
+              </Link>
+            </li>
+          </ul>
+        </div>
 
         {/* Col 3: Customer Support & Contact Info */}
         <div>
@@ -45,9 +74,14 @@ export default function Footer({ settings }: { settings: Settings | null }) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[#00C4CC]">📞</span>
-              <span className="text-slate-300 font-mono font-medium">
+              <a
+                href={`https://wa.me/${cleanPhone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-300 hover:text-[#00C4CC] font-mono font-medium transition"
+              >
                 {settings?.whatsapp_number || '+92 348 9593671'}
-              </span>
+              </a>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[#00C4CC]">✉️</span>
@@ -58,23 +92,31 @@ export default function Footer({ settings }: { settings: Settings | null }) {
           </div>
         </div>
 
-        {/* Col 4: Trust & Warranty */}
+        {/* Col 4: Store Policy & Guarantee */}
         <div>
           <h4 className="font-display text-xs font-bold uppercase tracking-wider text-[#00C4CC]">
-            Store Policy & Guarantee
+            Store Policies
           </h4>
           <ul className="mt-3 space-y-2 text-xs text-slate-300">
-            <li className="flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">✓</span>
-              <span>Cash on Delivery Nationwide</span>
+            <li>
+              <Link href="/shipping-policy" className="hover:text-[#00C4CC] transition">
+                Shipping & Delivery Policy
+              </Link>
             </li>
-            <li className="flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">✓</span>
-              <span>2–4 Day Fast Courier Shipping</span>
+            <li>
+              <Link href="/return-policy" className="hover:text-[#00C4CC] transition">
+                Return & Replacement Guarantee
+              </Link>
             </li>
-            <li className="flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">✓</span>
-              <span>100% Genuine Sealed Products</span>
+            <li>
+              <Link href="/privacy-policy" className="hover:text-[#00C4CC] transition">
+                Privacy Policy
+              </Link>
+            </li>
+            <li>
+              <Link href="/terms" className="hover:text-[#00C4CC] transition">
+                Terms & Conditions
+              </Link>
             </li>
           </ul>
         </div>

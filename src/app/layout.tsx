@@ -27,34 +27,117 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sthgadgets.store';
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: 'STH Gadgets — Premium Mobile Accessories',
+    default: 'STH Gadgets | Premium Mobile Accessories & Tech Gadgets in Pakistan',
     template: '%s | STH Gadgets',
   },
   description:
-    'STH Gadgets — power banks, wireless earbuds, chargers, cables, covers, speakers and smart watches. Order directly on WhatsApp.',
+    'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan. Discover power banks, chargers, cables, earbuds, headphones, speakers and more.',
+  keywords: [
+    'mobile accessories Pakistan',
+    'power bank Pakistan',
+    'fast charger Pakistan',
+    'wireless earbuds Pakistan',
+    'USB C cable Pakistan',
+    'Bluetooth headphones Pakistan',
+    'STH Gadgets',
+    'STH Gadgets Pakistan',
+  ],
+  authors: [{ name: 'STH Gadgets', url: siteUrl }],
+  creator: 'STH Gadgets',
+  publisher: 'STH Gadgets',
   manifest: '/manifest.json',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'STH Gadgets',
   },
   openGraph: {
-    title: 'STH Gadgets — Premium Mobile Accessories',
-    description: 'Power banks, earbuds, chargers, cables, covers, speakers and smart watches.',
+    title: 'STH Gadgets | Premium Mobile Accessories & Tech Gadgets in Pakistan',
+    description:
+      'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan. Discover power banks, chargers, cables, earbuds, headphones, speakers and more.',
+    url: siteUrl,
     siteName: 'STH Gadgets',
     type: 'website',
-    images: ['/images/logo.png'],
+    locale: 'en_PK',
+    images: [
+      {
+        url: `${siteUrl}/images/logo.png`,
+        width: 800,
+        height: 800,
+        alt: 'STH Gadgets Logo',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'STH Gadgets | Premium Mobile Accessories & Tech Gadgets in Pakistan',
+    description: 'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan.',
+    images: [`${siteUrl}/images/logo.png`],
   },
   icons: { icon: '/images/logo.png', apple: '/images/logo.png' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const jsonLdSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${siteUrl}/#organization`,
+        name: 'STH Gadgets',
+        url: siteUrl,
+        logo: `${siteUrl}/images/logo.png`,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          telephone: '+923489593671',
+          contactType: 'customer service',
+          areaServed: 'PK',
+          availableLanguage: ['en', 'ur'],
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        url: siteUrl,
+        name: 'STH Gadgets',
+        description:
+          'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan. Discover power banks, chargers, cables, earbuds, headphones, speakers and more.',
+        publisher: { '@id': `${siteUrl}/#organization` },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${siteUrl}/products?q={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
+      },
+    ],
+  };
+
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdSchema) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
