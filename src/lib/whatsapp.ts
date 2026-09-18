@@ -172,7 +172,7 @@ export function buildWhatsAppApprovalMessage(params: {
     '',
     '━━━━━━━━━━━━━━━━━━━━━━━━━',
     `${EMOJI.CASH} *Subtotal:* PKR ${Number(subtotal).toLocaleString('en-PK')}`,
-    ...(Number(coupon_discount) > 0 ? [`${EMOJI.TAG} *Coupon Discount:* -PKR ${Number(coupon_discount).toLocaleString('en-PK')}`] : []),
+    ...(Number(coupon_discount) > 0 ? [`${EMOJI.TAG} *Special / VIP Discount:* -PKR ${Number(coupon_discount).toLocaleString('en-PK')}`] : []),
     ...(Number(bundle_discount) > 0 ? [`${EMOJI.GIFT} *Bundle Discount:* -PKR ${Number(bundle_discount).toLocaleString('en-PK')}`] : []),
     `${EMOJI.TRUCK} *Delivery Charges:* ${Number(delivery_charges) === 0 ? `FREE ${EMOJI.SPARKLES}` : `PKR ${Number(delivery_charges).toLocaleString('en-PK')}`}`,
     `${EMOJI.MONEY_BAG} *TOTAL AMOUNT:* PKR ${Number(total_amount).toLocaleString('en-PK')}`,

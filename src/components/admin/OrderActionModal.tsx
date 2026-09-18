@@ -32,6 +32,12 @@ export default function OrderActionModal({
   const [editAddress, setEditAddress] = useState(order?.address || '');
   const [editOrderNumber, setEditOrderNumber] = useState(order?.order_number || '');
 
+  // VIP / Known Customer Custom Rate & Discount State
+  const initialBaseDiscount = (Number(order?.coupon_discount) || 0) + (Number(order?.bundle_discount) || 0);
+  const [vipDiscountAmount, setVipDiscountAmount] = useState(initialBaseDiscount);
+  const [vipDiscountPercent, setVipDiscountPercent] = useState<string>('0');
+  const [vipDeliveryCharges, setVipDeliveryCharges] = useState(Number(order?.delivery_charges) || 0);
+
   // Delete State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -44,6 +50,14 @@ export default function OrderActionModal({
       setEditCity(order.city || '');
       setEditAddress(order.address || '');
       setEditOrderNumber(order.order_number || '');
+      const baseDiscount = (Number(order.coupon_discount) || 0) + (Number(order.bundle_discount) || 0);
+      setVipDiscountAmount(baseDiscount);
+      setVipDiscountPercent(
+        order.subtotal > 0 && baseDiscount > 0
+          ? (Math.round((baseDiscount / order.subtotal) * 1000) / 10).toString()
+          : '0'
+      );
+      setVipDeliveryCharges(Number(order.delivery_charges) || 0);
       setIsEditing(false);
       setShowDeleteConfirm(false);
       setErrorMsg('');
@@ -52,6 +66,41 @@ export default function OrderActionModal({
   }, [order?.id]);
 
   if (!order) return null;
+
+  const orderSubtotal = Number(order.subtotal) || 0;
+  const currentDiscount = Number(vipDiscountAmount) || 0;
+  const currentDelivery = Number(vipDeliveryCharges) || 0;
+  const liveTotalAmount = Math.max(0, orderSubtotal - currentDiscount + currentDelivery);
+  const isCustomPriceApplied = currentDiscount !== initialBaseDiscount || currentDelivery !== (Number(order.delivery_charges) || 0);
+
+  function applyPresetPercent(pct: number) {
+    const calculatedDiscount = Math.round((orderSubtotal * pct) / 100);
+    setVipDiscountAmount(calculatedDiscount);
+    setVipDiscountPercent(pct.toString());
+  }
+
+  function applyCustomPercent(pctStr: string) {
+    setVipDiscountPercent(pctStr);
+    const num = parseFloat(pctStr);
+    if (!isNaN(num) && num >= 0 && num <= 100) {
+      const calculatedDiscount = Math.round((orderSubtotal * num) / 100);
+      setVipDiscountAmount(calculatedDiscount);
+    }
+  }
+
+  function applyCustomPkrDiscount(pkr: number) {
+    const val = Math.max(0, Math.min(pkr, orderSubtotal));
+    setVipDiscountAmount(val);
+    if (orderSubtotal > 0) {
+      setVipDiscountPercent((Math.round((val / orderSubtotal) * 1000) / 10).toString());
+    }
+  }
+
+  function resetToOriginalWebRate() {
+    setVipDiscountAmount(initialBaseDiscount);
+    setVipDiscountPercent('0');
+    setVipDeliveryCharges(Number(order?.delivery_charges) || 0);
+  }
 
   async function handleApprove() {
     if (!order) return;
@@ -62,7 +111,13 @@ export default function OrderActionModal({
       const res = await fetch(`/api/admin/orders/${order.id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_notes: notes }),
+        body: JSON.stringify({
+          admin_notes: notes,
+          coupon_discount: currentDiscount,
+          bundle_discount: 0,
+          delivery_charges: currentDelivery,
+          total_amount: liveTotalAmount,
+        }),
       });
 
       const data = await res.json();
@@ -72,7 +127,7 @@ export default function OrderActionModal({
 
       onOrderUpdated(data.order);
       setConfirmationUrl(data.confirmationWhatsAppUrl);
-      success('Order approved successfully.');
+      success(`Order approved with final total PKR ${liveTotalAmount.toLocaleString('en-PK')}!`);
     } catch (err: any) {
       const msg = err.message || 'Error approving order';
       setErrorMsg(msg);
@@ -177,6 +232,10 @@ export default function OrderActionModal({
           address: editAddress.trim(),
           order_number: editOrderNumber.trim() ? editOrderNumber.trim() : null,
           admin_notes: notes,
+          coupon_discount: currentDiscount,
+          bundle_discount: 0,
+          delivery_charges: currentDelivery,
+          total_amount: liveTotalAmount,
         }),
       });
 
@@ -187,7 +246,7 @@ export default function OrderActionModal({
 
       onOrderUpdated(data.order);
       setIsEditing(false);
-      success('Order details updated successfully!');
+      success(`Order details & custom total (PKR ${liveTotalAmount.toLocaleString('en-PK')}) updated successfully!`);
     } catch (err: any) {
       const msg = err.message || 'Error updating order';
       setErrorMsg(msg);
@@ -466,41 +525,176 @@ export default function OrderActionModal({
               ))}
             </div>
 
-            {/* Financial Breakdown */}
-            <div className="border-t border-slate-800 pt-3 space-y-1 text-xs">
-              <div className="flex justify-between text-silver-dim">
-                <span>Subtotal</span>
-                <span>PKR {Number(order.subtotal).toLocaleString('en-PK')}</span>
-              </div>
-              {Number(order.coupon_discount) > 0 && (
-                <div className="flex justify-between text-emerald-400">
-                  <span>Coupon Discount</span>
-                  <span>-PKR {Number(order.coupon_discount).toLocaleString('en-PK')}</span>
+            {/* VIP & Acquaintance Custom Rate Adjustment Panel */}
+            <div className="rounded-xl border border-cyan-500/40 bg-[#06101D] p-3.5 sm:p-4 space-y-3.5 mt-3 shadow-md">
+              <div className="flex items-center justify-between border-b border-cyan-500/20 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🤝</span>
+                  <h3 className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-[#00C4CC]">
+                    VIP / Known Customer Custom Rate
+                  </h3>
                 </div>
-              )}
-              {Number(order.bundle_discount) > 0 && (
-                <div className="flex justify-between text-amber-400">
-                  <span>Bundle Discount</span>
-                  <span>-PKR {Number(order.bundle_discount).toLocaleString('en-PK')}</span>
+                {isCustomPriceApplied && (
+                  <span className="rounded-full bg-[#00C4CC]/20 border border-[#00C4CC]/50 px-2.5 py-0.5 text-[10px] font-black text-[#00C4CC] animate-pulse">
+                    ● Custom Rate Active
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[11px] text-silver-dim leading-relaxed">
+                Give special discounted rates to friends or known customers. Total amount and profit recalculate instantly in real-time.
+              </p>
+
+              {/* 1-Click Quick Preset Buttons */}
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Quick Discount Presets:
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyPresetPercent(5)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      vipDiscountPercent === '5'
+                        ? 'bg-[#00C4CC] text-slate-950 shadow-[0_0_10px_rgba(0,196,204,0.5)]'
+                        : 'border border-cyan-500/40 bg-cyan-500/10 text-[#00C4CC] hover:bg-cyan-500/20'
+                    }`}
+                  >
+                    ⚡ -5% VIP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPresetPercent(10)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      vipDiscountPercent === '10'
+                        ? 'bg-[#00C4CC] text-slate-950 shadow-[0_0_10px_rgba(0,196,204,0.5)]'
+                        : 'border border-cyan-500/40 bg-cyan-500/10 text-[#00C4CC] hover:bg-cyan-500/20'
+                    }`}
+                  >
+                    ⚡ -10% VIP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPresetPercent(15)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      vipDiscountPercent === '15'
+                        ? 'bg-[#00C4CC] text-slate-950 shadow-[0_0_10px_rgba(0,196,204,0.5)]'
+                        : 'border border-cyan-500/40 bg-cyan-500/10 text-[#00C4CC] hover:bg-cyan-500/20'
+                    }`}
+                  >
+                    ⚡ -15% VIP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVipDeliveryCharges(0)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      currentDelivery === 0
+                        ? 'bg-emerald-500 text-slate-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                        : 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                    }`}
+                  >
+                    🚚 Free Delivery
+                  </button>
+                  {isCustomPriceApplied && (
+                    <button
+                      type="button"
+                      onClick={resetToOriginalWebRate}
+                      className="rounded-lg border border-slate-700 bg-[#0C1420] hover:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
+                      title="Reset to original website rate"
+                    >
+                      🔄 Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Custom Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <div>
+                  <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                    Discount Percentage (%)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={vipDiscountPercent}
+                      onChange={(e) => applyCustomPercent(e.target.value)}
+                      placeholder="e.g. 5"
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] pl-3 pr-7 py-1.5 text-xs font-mono text-[#00C4CC] focus:border-[#00C4CC] focus:outline-none"
+                    />
+                    <span className="pointer-events-none absolute right-2.5 top-1.5 text-xs text-slate-500">%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                    Discount Amount (PKR)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max={orderSubtotal}
+                      value={currentDiscount}
+                      onChange={(e) => applyCustomPkrDiscount(Number(e.target.value) || 0)}
+                      placeholder="0"
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] pl-3 pr-10 py-1.5 text-xs font-mono text-emerald-400 focus:border-[#00C4CC] focus:outline-none"
+                    />
+                    <span className="pointer-events-none absolute right-2.5 top-1.5 text-[10px] text-slate-500">PKR</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                    Delivery Charges (PKR)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={currentDelivery}
+                      onChange={(e) => setVipDeliveryCharges(Number(e.target.value) || 0)}
+                      placeholder="200"
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] pl-3 pr-10 py-1.5 text-xs font-mono text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                    />
+                    <span className="pointer-events-none absolute right-2.5 top-1.5 text-[10px] text-slate-500">PKR</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Breakdown (Live Recalculation) */}
+            <div className="border-t border-slate-800 pt-3 space-y-1.5 text-xs">
+              <div className="flex justify-between text-silver-dim">
+                <span>Subtotal (Standard Catalog Rate)</span>
+                <span>PKR {orderSubtotal.toLocaleString('en-PK')}</span>
+              </div>
+              {currentDiscount > 0 && (
+                <div className="flex justify-between text-emerald-400 font-semibold">
+                  <span>Total Discount {vipDiscountPercent !== '0' ? `(${vipDiscountPercent}%)` : ''}</span>
+                  <span>-PKR {currentDiscount.toLocaleString('en-PK')}</span>
                 </div>
               )}
               <div className="flex justify-between text-silver-dim">
                 <span>Delivery Charges</span>
-                <span>PKR {Number(order.delivery_charges).toLocaleString('en-PK')}</span>
+                <span>{currentDelivery === 0 ? <strong className="text-emerald-400">FREE</strong> : `PKR ${currentDelivery.toLocaleString('en-PK')}`}</span>
               </div>
               <div className="flex justify-between border-t border-slate-800 pt-2 font-display text-sm sm:text-base font-black text-silver-bright">
-                <span>Total Amount</span>
-                <span className="text-[#00C4CC]">
-                  PKR {Number(order.total_amount).toLocaleString('en-PK')}
+                <span>Final Approved Total</span>
+                <span className="text-[#00C4CC] font-mono">
+                  PKR {liveTotalAmount.toLocaleString('en-PK')}
                 </span>
               </div>
             </div>
 
-            {/* Admin Financial Profit Box */}
+            {/* Admin Financial Profit Box (Recalculates against live custom total) */}
             <div className="rounded-xl border border-slate-800 bg-[#0C1420] p-3 space-y-2 mt-3">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                  🔒 Order Profit & Cost Analysis
+                  🔒 Live Order Profit &amp; Cost Analysis
                 </span>
                 <span className="text-[10px] text-silver-dim">Private Financials</span>
               </div>
@@ -508,8 +702,7 @@ export default function OrderActionModal({
                 const totalItemCost = (order.order_items || []).reduce((sum, i) => {
                   return sum + ((Number(i.purchase_price) || 0) * (i.quantity || 1));
                 }, 0);
-                const orderSubtotal = Number(order.subtotal) || 0;
-                const netProductRevenue = Math.max(0, orderSubtotal - (Number(order.coupon_discount) || 0) - (Number(order.bundle_discount) || 0));
+                const netProductRevenue = Math.max(0, orderSubtotal - currentDiscount);
                 const orderProfit = netProductRevenue - totalItemCost;
                 const orderMargin = netProductRevenue > 0 ? Math.round((orderProfit / netProductRevenue) * 10000) / 100 : 0;
                 const isLoss = orderProfit < 0;
@@ -517,21 +710,21 @@ export default function OrderActionModal({
                 return (
                   <div className="grid grid-cols-3 gap-2 text-xs pt-1">
                     <div className="rounded-lg bg-[#080D15] p-2">
-                      <span className="text-[10px] text-silver-dim block">Cost</span>
+                      <span className="text-[10px] text-silver-dim block">Product Cost</span>
                       <span className="font-mono font-bold text-amber-300 text-[11px] sm:text-xs">
                         PKR {totalItemCost.toLocaleString('en-PK')}
                       </span>
                     </div>
 
                     <div className={`rounded-lg p-2 ${isLoss ? 'bg-rose-500/10' : 'bg-emerald-500/10'}`}>
-                      <span className="text-[10px] text-silver-dim block">Profit</span>
+                      <span className="text-[10px] text-silver-dim block">Net Profit</span>
                       <span className={`font-mono font-bold text-[11px] sm:text-xs ${isLoss ? 'text-rose-400' : 'text-emerald-400'}`}>
                         {orderProfit >= 0 ? '+' : ''}PKR {orderProfit.toLocaleString('en-PK')}
                       </span>
                     </div>
 
                     <div className={`rounded-lg p-2 ${isLoss ? 'bg-rose-500/10' : 'bg-[#00C4CC]/10'}`}>
-                      <span className="text-[10px] text-silver-dim block">Margin</span>
+                      <span className="text-[10px] text-silver-dim block">Profit Margin</span>
                       <span className={`font-mono font-bold text-[11px] sm:text-xs ${isLoss ? 'text-rose-400' : 'text-[#00C4CC]'}`}>
                         {orderMargin}%
                       </span>
@@ -636,9 +829,10 @@ export default function OrderActionModal({
                     type="button"
                     onClick={handleApprove}
                     disabled={loading}
-                    className="rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-4 py-2 font-display text-xs font-bold text-white shadow-[0_0_15px_rgba(37,211,102,0.3)] transition hover:scale-[1.02] disabled:opacity-50"
+                    className="rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-4 py-2 font-display text-xs font-bold text-white shadow-[0_0_15px_rgba(37,211,102,0.3)] transition hover:scale-[1.02] disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    {loading ? 'Approving...' : '✓ APPROVE ORDER'}
+                    <span>✓</span>
+                    <span>{loading ? 'Approving...' : `APPROVE ORDER (PKR ${liveTotalAmount.toLocaleString('en-PK')})`}</span>
                   </button>
 
                   <button
@@ -647,7 +841,7 @@ export default function OrderActionModal({
                     disabled={loading}
                     className="rounded-xl border border-rose-800/80 bg-rose-950/30 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-900/50 transition disabled:opacity-50"
                   >
-                    {loading ? 'Rejecting...' : 'REJECT ORDER'}
+                    {loading ? 'Rejecting...' : 'REJECT'}
                   </button>
 
                   <button
@@ -663,6 +857,25 @@ export default function OrderActionModal({
 
               {isApprovedOrActive && (
                 <>
+                  {isCustomPriceApplied && (
+                    <button
+                      type="button"
+                      onClick={() => handleSaveEdit()}
+                      disabled={loading}
+                      className="rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] px-4 py-2 font-display text-xs font-bold text-black shadow-[0_0_15px_rgba(0,196,204,0.3)] transition hover:scale-[1.02] disabled:opacity-50"
+                    >
+                      {loading ? 'Saving...' : `💾 Save Custom Total (PKR ${liveTotalAmount.toLocaleString('en-PK')})`}
+                    </button>
+                  )}
+                  <a
+                    href={`/invoice/${order.order_number || order.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-3.5 py-2 text-xs font-bold text-[#00C4CC] transition inline-flex items-center gap-1.5"
+                  >
+                    <span>📄</span>
+                    <span>View Official Invoice</span>
+                  </a>
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus('processing')}

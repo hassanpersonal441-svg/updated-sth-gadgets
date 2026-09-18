@@ -59,9 +59,14 @@ const updateOrderSchema = z.object({
   address: z.string().min(1, 'Address is required').max(300).optional(),
   admin_notes: z.string().nullable().optional(),
   order_number: z.string().nullable().optional(),
+  subtotal: z.number().min(0).optional(),
+  coupon_discount: z.number().min(0).optional(),
+  bundle_discount: z.number().min(0).optional(),
+  delivery_charges: z.number().min(0).optional(),
+  total_amount: z.number().min(0).optional(),
 });
 
-// PATCH: Update order details (customer info, admin notes, order number)
+// PATCH: Update order details (customer info, admin notes, order number, custom prices/discounts)
 export async function PATCH(
   request: Request,
   { params }: { params: any }
@@ -93,7 +98,7 @@ export async function PATCH(
     // Verify order exists
     const { data: existingOrder, error: fetchErr } = await service
       .from('orders')
-      .select('id, order_number')
+      .select('id, order_number, subtotal, coupon_discount, bundle_discount, delivery_charges, total_amount')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -110,6 +115,12 @@ export async function PATCH(
     if (parsed.data.city !== undefined) updateData.city = parsed.data.city.trim();
     if (parsed.data.address !== undefined) updateData.address = parsed.data.address.trim();
     if (parsed.data.admin_notes !== undefined) updateData.admin_notes = parsed.data.admin_notes;
+
+    if (parsed.data.subtotal !== undefined) updateData.subtotal = parsed.data.subtotal;
+    if (parsed.data.coupon_discount !== undefined) updateData.coupon_discount = parsed.data.coupon_discount;
+    if (parsed.data.bundle_discount !== undefined) updateData.bundle_discount = parsed.data.bundle_discount;
+    if (parsed.data.delivery_charges !== undefined) updateData.delivery_charges = parsed.data.delivery_charges;
+    if (parsed.data.total_amount !== undefined) updateData.total_amount = parsed.data.total_amount;
 
     // Handle order_number update / reassignment
     if (parsed.data.order_number !== undefined) {

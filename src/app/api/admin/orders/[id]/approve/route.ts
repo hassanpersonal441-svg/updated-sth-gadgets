@@ -49,69 +49,76 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}));
     const adminNotes = body.admin_notes || null;
+    const customCouponDiscount = typeof body.coupon_discount === 'number' ? body.coupon_discount : undefined;
+    const customBundleDiscount = typeof body.bundle_discount === 'number' ? body.bundle_discount : undefined;
+    const customDeliveryCharges = typeof body.delivery_charges === 'number' ? body.delivery_charges : undefined;
+    const customTotalAmount = typeof body.total_amount === 'number' ? body.total_amount : undefined;
 
     let approvedOrder: any = null;
 
-    // 2. Attempt atomic approval via PostgreSQL stored procedure `approve_order`
-    const { data: rpcData, error: rpcErr } = await service.rpc('approve_order', {
-      p_order_id: orderId,
-      p_admin_id: user.id,
-      p_admin_notes: adminNotes,
-    });
+    // Determine lowest available unused sequence number starting from 1 (STH-001 format)
+    const { data: existingApproved } = await service
+      .from('orders')
+      .select('order_number')
+      .not('order_number', 'is', null)
+      .order('created_at', { ascending: false });
 
-    if (!rpcErr && rpcData) {
-      approvedOrder = rpcData;
-    } else {
-      // Fallback in case PostgreSQL function is pending user SQL execution:
-      // Concurrency-safe atomic update using sequence or sequential order count
-      const { data: existingApproved } = await service
-        .from('orders')
-        .select('order_number')
-        .not('order_number', 'is', null)
-        .order('created_at', { ascending: false });
-
-      // Determine lowest available unused sequence number starting from 1 (STH-001 format)
-      let nextNumber = 1;
-      if (existingApproved && existingApproved.length > 0) {
-        const numbers = existingApproved
-          .map((o) => {
-            const m = (o.order_number || '').match(/^STH-(\d+)$/i);
-            return m ? parseInt(m[1], 10) : 0;
-          })
-          .filter((n) => n > 0);
-
-        const usedSet = new Set(numbers);
-        while (usedSet.has(nextNumber)) {
-          nextNumber++;
-        }
-      }
-
-      const formattedOrderNumber = `STH-${String(nextNumber).padStart(3, '0')}`;
-
-      const { data: updated, error: updateErr } = await service
-        .from('orders')
-        .update({
-          order_number: formattedOrderNumber,
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: user.id,
-          admin_notes: adminNotes || order.admin_notes,
-          updated_at: new Date().toISOString(),
+    let nextNumber = 1;
+    if (existingApproved && existingApproved.length > 0) {
+      const numbers = existingApproved
+        .map((o) => {
+          const m = (o.order_number || '').match(/^STH-(\d+)$/i);
+          return m ? parseInt(m[1], 10) : 0;
         })
-        .eq('id', orderId)
-        .eq('status', 'pending')
-        .select('*, order_items(*)')
-        .single();
+        .filter((n) => n > 0);
 
-      if (updateErr || !updated) {
-        return NextResponse.json(
-          { error: updateErr?.message || 'Failed to approve order' },
-          { status: 500 }
-        );
+      const usedSet = new Set(numbers);
+      while (usedSet.has(nextNumber)) {
+        nextNumber++;
       }
-
-      approvedOrder = updated;
     }
+
+    const formattedOrderNumber = `STH-${String(nextNumber).padStart(3, '0')}`;
+
+    // Prepare update payload with optional custom rate/discount adjustments
+    const orderUpdatePayload: Record<string, any> = {
+      order_number: formattedOrderNumber,
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: user.id,
+      admin_notes: adminNotes || order.admin_notes,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (customCouponDiscount !== undefined) orderUpdatePayload.coupon_discount = customCouponDiscount;
+    if (customBundleDiscount !== undefined) orderUpdatePayload.bundle_discount = customBundleDiscount;
+    if (customDeliveryCharges !== undefined) orderUpdatePayload.delivery_charges = customDeliveryCharges;
+    if (customTotalAmount !== undefined) {
+      orderUpdatePayload.total_amount = customTotalAmount;
+    } else if (customCouponDiscount !== undefined || customBundleDiscount !== undefined || customDeliveryCharges !== undefined) {
+      const sub = Number(order.subtotal) || 0;
+      const coup = customCouponDiscount !== undefined ? customCouponDiscount : (Number(order.coupon_discount) || 0);
+      const bund = customBundleDiscount !== undefined ? customBundleDiscount : (Number(order.bundle_discount) || 0);
+      const deliv = customDeliveryCharges !== undefined ? customDeliveryCharges : (Number(order.delivery_charges) || 0);
+      orderUpdatePayload.total_amount = Math.max(0, sub - coup - bund + deliv);
+    }
+
+    const { data: updated, error: updateErr } = await service
+      .from('orders')
+      .update(orderUpdatePayload)
+      .eq('id', orderId)
+      .eq('status', 'pending')
+      .select('*, order_items(*)')
+      .single();
+
+    if (updateErr || !updated) {
+      return NextResponse.json(
+        { error: updateErr?.message || 'Failed to approve order' },
+        { status: 500 }
+      );
+    }
+
+    approvedOrder = updated;
 
     // Re-fetch order with items if needed
     if (!approvedOrder.order_items) {
