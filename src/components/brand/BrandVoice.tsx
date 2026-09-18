@@ -5,17 +5,16 @@ import { useEffect, useRef } from 'react';
 /**
  * BrandVoice — invisible, home-page-only brand audio experience.
  *
- * Strategy:
- *  1. Preload the audio immediately so it's ready to play.
- *  2. Try direct autoplay (works if browser/OS allows it).
- *  3. If autoplay is blocked (most browsers), silently attach a ONE-TIME
- *     listener to the first user interaction (click / scroll / keydown / touchstart)
- *     and play at that moment — still invisible, no UI, feels instant.
- *  4. Plays on every home page refresh.
- *  5. React re-renders never cause a double-play.
+ * Multi-strategy autoplay handling:
+ *  1. Try direct unmuted play (works if browser allows it).
+ *  2. Try muted autoplay → unmute on first user interaction (Chrome trick).
+ *  3. Wait for first user interaction (click/scroll/touch/key) → play unmuted.
+ *  Renders zero UI. Plays every home page refresh.
  */
 export default function BrandVoice() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasAttempted = useRef(false);
+  const played = useRef(false);
 
   useEffect(() => {
     if (hasAttempted.current) return;
@@ -24,33 +23,55 @@ export default function BrandVoice() {
     const audio = new Audio('/audio/sth-gadgets-voice.mp3');
     audio.preload = 'auto';
     audio.volume = 1;
-
-    let played = false;
-
-    const playOnce = () => {
-      if (played) return;
-      played = true;
-      removeListeners();
-      audio.play().catch(() => {/* still silent */});
-    };
+    audioRef.current = audio;
 
     const removeListeners = () => {
-      window.removeEventListener('click',      playOnce);
-      window.removeEventListener('scroll',     playOnce);
-      window.removeEventListener('keydown',    playOnce);
-      window.removeEventListener('touchstart', playOnce);
+      window.removeEventListener('click',      onInteraction);
+      window.removeEventListener('scroll',     onInteraction);
+      window.removeEventListener('keydown',    onInteraction);
+      window.removeEventListener('touchstart', onInteraction);
+      window.removeEventListener('touchend',   onInteraction);
+      window.removeEventListener('mousemove',  onInteraction);
     };
 
-    // 1. Try direct autoplay first
-    audio.play().then(() => {
-      played = true; // autoplay succeeded — no need for interaction listeners
-    }).catch(() => {
-      // 2. Autoplay blocked — wait for first user interaction
-      window.addEventListener('click',      playOnce, { once: true, passive: true });
-      window.addEventListener('scroll',     playOnce, { once: true, passive: true });
-      window.addEventListener('keydown',    playOnce, { once: true, passive: true });
-      window.addEventListener('touchstart', playOnce, { once: true, passive: true });
-    });
+    const onInteraction = () => {
+      if (played.current) return;
+      played.current = true;
+      removeListeners();
+      audio.muted = false;
+      audio.volume = 1;
+      audio.play().catch(() => {});
+    };
+
+    const attachInteractionListeners = () => {
+      const opts = { once: true, passive: true } as const;
+      window.addEventListener('click',      onInteraction, opts);
+      window.addEventListener('scroll',     onInteraction, opts);
+      window.addEventListener('keydown',    onInteraction, opts);
+      window.addEventListener('touchstart', onInteraction, opts);
+      window.addEventListener('touchend',   onInteraction, opts);
+      window.addEventListener('mousemove',  onInteraction, opts);
+    };
+
+    // Strategy 1: Direct unmuted autoplay
+    audio.play()
+      .then(() => {
+        played.current = true; // success — nothing else needed
+      })
+      .catch(() => {
+        // Strategy 2: Muted autoplay (browsers allow this more often)
+        audio.muted = true;
+        audio.play()
+          .then(() => {
+            // Muted play started — unmute on first interaction
+            attachInteractionListeners();
+          })
+          .catch(() => {
+            // Strategy 3: Both blocked — wait for interaction then play unmuted
+            audio.muted = false;
+            attachInteractionListeners();
+          });
+      });
 
     return () => {
       removeListeners();
