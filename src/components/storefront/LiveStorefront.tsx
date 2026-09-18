@@ -366,13 +366,14 @@ export default function LiveStorefront({
     <div className={`min-h-screen transition-colors duration-300 ${themeClasses}`}>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* ============================================================ */}
-        {/* HEADER: STH GADGETS + LIGHT MODE + LIVE RATES + WHATSAPP SHOP */}
+        {/* EXECUTIVE BRAND HEADER: BRAND + CENTERED SEARCH + CONTROLS  */}
         {/* ============================================================ */}
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Brand Left */}
-          <div className="flex items-center gap-3.5">
-            <Link href="/" className="group relative flex shrink-0 items-center justify-center">
-              <div className="relative h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-full border-2 border-[#00C4CC]/70 shadow-[0_0_16px_rgba(0,196,204,0.45)] transition group-hover:scale-105">
+        <header className="flex flex-col gap-3.5">
+          {/* Main Top Bar */}
+          <div className="flex items-center justify-between gap-3 sm:gap-6">
+            {/* Brand Left */}
+            <Link href="/" className="group flex shrink-0 items-center gap-3">
+              <div className="relative h-12 w-12 sm:h-13 sm:w-13 overflow-hidden rounded-full border-2 border-[#00C4CC]/80 shadow-[0_0_16px_rgba(0,196,204,0.4)] transition group-hover:scale-105">
                 <Image
                   src={settings?.logo_url || '/images/logo.png'}
                   alt={settings?.business_name || 'STH Gadgets'}
@@ -381,113 +382,142 @@ export default function LiveStorefront({
                   priority
                 />
               </div>
-            </Link>
-            <div>
-              <Link href="/">
-                <h1 className="font-display text-2xl sm:text-3xl font-black tracking-wider uppercase text-silver-bright">
+              <div>
+                <span className="block font-display text-xl sm:text-2xl font-black tracking-wider uppercase text-silver-bright group-hover:text-[#00C4CC] transition">
                   {settings?.business_name || 'STH GADGETS'}
-                </h1>
-              </Link>
-              <p className="text-xs sm:text-sm font-medium text-[#00C4CC] tracking-wide">
-                Mobile Accessories & Gadgets — Official Rates
-              </p>
+                </span>
+                <span className="block text-[11px] sm:text-xs font-semibold text-[#00C4CC] tracking-wide">
+                  Mobile Accessories &amp; Official Rates
+                </span>
+              </div>
+            </Link>
+
+            {/* Desktop Centered Search Bar */}
+            <div className="relative hidden md:block flex-1 max-w-lg lg:max-w-xl xl:max-w-2xl mx-2" data-tour="customer-search">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-silver-dim">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search fast chargers, power banks, earbuds, speakers..."
+                className={`w-full rounded-full border py-2.5 pl-10 pr-9 text-xs sm:text-sm focus:border-[#00C4CC] focus:outline-none focus:ring-2 focus:ring-[#00C4CC]/30 transition shadow-inner font-medium ${cardBg}`}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-silver-dim hover:text-silver-bright transition"
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Action Controls Right */}
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+              {/* Live Rates Badge */}
+              <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-[#071915] px-3 py-1.5 text-xs font-medium text-emerald-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                </span>
+                <span>Live Rates</span>
+              </div>
+
+              {/* Special Offers Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setOffersOnly((prev) => !prev)}
+                className={`hidden sm:flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold shadow-md transition hover:scale-105 active:scale-95 ${
+                  offersOnly
+                    ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white ring-2 ring-rose-400'
+                    : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+                }`}
+              >
+                <span>🔥</span>
+                <span>{offersOnly ? 'All Items' : 'Offers'}</span>
+              </button>
+
+              {/* Rate Sheet PDF Button */}
+              <button
+                type="button"
+                onClick={handleDownloadRateSheet}
+                className="hidden lg:flex items-center gap-1.5 rounded-full bg-[#00C4CC] hover:bg-[#00B2B9] px-3.5 py-1.5 text-xs font-bold text-black shadow-md transition hover:scale-105 active:scale-95"
+                title="Download / Print Catalog Rate Sheet"
+              >
+                <span>📄</span>
+                <span>Rate Sheet</span>
+              </button>
+
+              {/* Theme Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:scale-105 active:scale-95 ${
+                  isLight
+                    ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
+                    : 'border-slate-700/80 bg-[#0C1420] text-silver-bright hover:border-slate-600'
+                }`}
+                aria-label="Toggle Theme"
+              >
+                <span>{isLight ? '🌙' : '☀️'}</span>
+                <span className="hidden lg:inline">{isLight ? 'Dark' : 'Light'}</span>
+              </button>
+
+              {/* Shopping Cart Button */}
+              <button
+                type="button"
+                onClick={openCart}
+                data-tour="customer-cart"
+                className={`relative flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition hover:scale-105 active:scale-95 ${
+                  isLight
+                    ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
+                    : 'border-[#00C4CC]/50 bg-[#0C1420] text-[#00C4CC] hover:bg-[#00C4CC]/10'
+                }`}
+                aria-label="Shopping Cart"
+              >
+                <span>🛒</span>
+                <span className="hidden sm:inline">Cart</span>
+                {totalItems > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#00C4CC] px-1 text-[11px] font-black text-black shadow-[0_0_8px_rgba(0,196,204,0.6)]">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Controls Right */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Light / Dark Mode Button */}
-            <button
-              onClick={toggleTheme}
-              className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold shadow-sm transition ${
-                isLight
-                  ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
-                  : 'border-slate-700/80 bg-[#0C1420] text-silver-bright hover:border-slate-600'
-              }`}
-            >
-              <span>{isLight ? '🌙' : '☀️'}</span>
-              <span>{isLight ? 'Dark Mode' : 'Light Mode'}</span>
-            </button>
-
-            {/* Live Rates Badge */}
-            <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-[#071915] px-3.5 py-1.5 text-xs font-medium text-emerald-400">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-              </span>
-              <span>Live Rates</span>
+          {/* Mobile Search Bar (Full Width, Sleek) */}
+          <div className="relative block md:hidden w-full" data-tour="customer-search-mobile">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-silver-dim">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
             </div>
-
-            {/* Shopping Cart Button */}
-            <button
-              onClick={openCart}
-              data-tour="customer-cart"
-              className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition hover:scale-105 ${
-                isLight
-                  ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
-                  : 'border-[#00C4CC]/50 bg-[#0C1420] text-[#00C4CC] hover:bg-[#00C4CC]/10'
-              }`}
-            >
-              <span>🛒 Cart</span>
-              {totalItems > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#00C4CC] px-1.5 text-[11px] font-black text-black">
-                  {totalItems}
-                </span>
-              )}
-            </button>
-
-            {/* Special Offers Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setOffersOnly((prev) => !prev)}
-              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-md transition hover:scale-[1.02] ${
-                offersOnly
-                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white ring-2 ring-rose-400'
-                  : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-              }`}
-            >
-              <span>🔥</span>
-              <span>{offersOnly ? 'All Items' : 'Special Offers'}</span>
-            </button>
-
-            {/* Rate Sheet PDF Download / Print Button */}
-            <button
-              type="button"
-              onClick={handleDownloadRateSheet}
-              className="flex items-center gap-1.5 rounded-full bg-[#00C4CC] hover:bg-[#00B2B9] px-4 py-1.5 text-xs sm:text-sm font-bold text-black shadow-md transition hover:scale-[1.02]"
-              title="Download / Print Catalog Rate Sheet"
-            >
-              <span>📄</span>
-              <span>Rate Sheet</span>
-            </button>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search fast chargers, power banks, earbuds, speakers..."
+              className={`w-full rounded-full border py-2.5 pl-10 pr-9 text-xs focus:border-[#00C4CC] focus:outline-none focus:ring-2 focus:ring-[#00C4CC]/30 transition shadow-inner font-medium ${cardBg}`}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-silver-dim hover:text-silver-bright transition"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </header>
-
-        {/* ============================================================ */}
-        {/* SEARCH BAR */}
-        {/* ============================================================ */}
-        <div className="mt-5 relative w-full" data-tour="customer-search">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-silver-dim">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search rates by product name, brand, model or specification..."
-            className={`w-full rounded-xl border py-3 pl-11 pr-10 text-sm focus:border-[#00C4CC] focus:outline-none focus:ring-1 focus:ring-[#00C4CC] transition ${cardBg}`}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-silver-dim hover:text-silver-bright"
-            >
-              ✕
-            </button>
-          )}
-        </div>
 
 
         {/* ============================================================ */}

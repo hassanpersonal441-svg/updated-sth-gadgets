@@ -90,10 +90,10 @@ export default function Navbar({ categories, settings }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-[#080D15]/95 backdrop-blur-md text-[#C9D2DB]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        {/* Brand Section */}
-        <Link href="/" className="flex shrink-0 items-center gap-3.5 group">
-          <div className="relative h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-full border-2 border-[#00C4CC]/70 shadow-[0_0_16px_rgba(0,196,204,0.45)] transition group-hover:scale-105">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 sm:gap-6 px-4 py-3 sm:px-6 lg:px-8">
+        {/* Brand Section Left */}
+        <Link href="/" className="group flex shrink-0 items-center gap-3">
+          <div className="relative h-12 w-12 sm:h-13 sm:w-13 overflow-hidden rounded-full border-2 border-[#00C4CC]/80 shadow-[0_0_16px_rgba(0,196,204,0.4)] transition group-hover:scale-105">
             <Image
               src={settings?.logo_url || '/images/logo.png'}
               alt={settings?.business_name || 'STH Gadgets'}
@@ -103,18 +103,23 @@ export default function Navbar({ categories, settings }: NavbarProps) {
             />
           </div>
           <div>
-            <span className="block font-display text-xl sm:text-2xl font-black tracking-wider text-white group-hover:text-[#00C4CC] transition uppercase">
+            <span className="block font-display text-xl sm:text-2xl font-black tracking-wider uppercase text-silver-bright group-hover:text-[#00C4CC] transition">
               {settings?.business_name || 'STH GADGETS'}
             </span>
-            <span className="hidden sm:block text-xs font-semibold text-[#00C4CC] tracking-wide">
-              Mobile Accessories & Gadgets — Official Rates
+            <span className="hidden sm:block text-[11px] sm:text-xs font-semibold text-[#00C4CC] tracking-wide">
+              Mobile Accessories &amp; Official Rates
             </span>
           </div>
         </Link>
 
-        {/* Search Bar (Desktop) */}
-        <div ref={searchContainerRef} className="relative hidden max-w-md flex-1 lg:block">
+        {/* Centered Search Bar (Desktop) */}
+        <div ref={searchContainerRef} className="relative hidden md:block flex-1 max-w-lg lg:max-w-xl xl:max-w-2xl mx-2">
           <form onSubmit={handleSearchSubmit} className="relative w-full">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-silver-dim">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <input
               type="text"
               value={query}
@@ -122,16 +127,22 @@ export default function Navbar({ categories, settings }: NavbarProps) {
               onFocus={() => {
                 if (query.trim() && searchResults.length > 0) setShowDropdown(true);
               }}
-              placeholder="Search fast chargers, power banks, earbuds..."
-              className="w-full rounded-xl border border-slate-800 bg-[#0C1420] py-2.5 pl-4 pr-10 text-xs text-white placeholder:text-slate-500 focus:border-[#00C4CC] focus:outline-none focus:ring-1 focus:ring-[#00C4CC] shadow-inner transition font-medium"
+              placeholder="Search fast chargers, power banks, earbuds, speakers..."
+              className="w-full rounded-full border border-slate-800 bg-[#0C1420] py-2.5 pl-10 pr-9 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:border-[#00C4CC] focus:outline-none focus:ring-2 focus:ring-[#00C4CC]/30 transition shadow-inner font-medium"
             />
-            <button
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-[#00C4CC] transition"
-              aria-label="Search"
-            >
-              🔍
-            </button>
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  setShowDropdown(false);
+                }}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-silver-dim hover:text-silver-bright transition"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </form>
 
           {/* Autocomplete Suggestions Dropdown (Desktop) */}
@@ -196,51 +207,41 @@ export default function Navbar({ categories, settings }: NavbarProps) {
           )}
         </div>
 
-        {/* Right Actions: Cart & Theme Toggle (Desktop & Mobile) */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Theme Toggle Button */}
-          {mounted && <ThemeToggle />}
-
-          {/* Mobile Search Toggle */}
-          <button
-            type="button"
-            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-[#0C1420] text-slate-300 lg:hidden hover:border-[#00C4CC] hover:text-[#00C4CC]"
-            aria-label="Search"
-          >
-            🔍
-          </button>
-
-          {/* Cart Button with Count Badge */}
-          <button
-            type="button"
-            onClick={openCart}
-            className="relative flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0C1420] px-3 py-2 text-xs font-bold text-white hover:border-[#00C4CC] hover:text-[#00C4CC] transition shadow-sm"
-            aria-label="Shopping Cart"
-          >
-            <span className="text-base">🛒</span>
-            <span className="hidden sm:inline">Cart</span>
-            {mounted && totalItems > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#00C4CC] text-[10px] font-black text-slate-950 shadow-[0_0_8px_rgba(0,196,204,0.6)]">
-                {totalItems}
-              </span>
-            )}
-          </button>
-
-          {/* All Products Catalog Button (Desktop & Tablet) */}
+        {/* Right Actions Cluster */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* All Products Catalog Button */}
           <Link
             href="/products"
-            className="hidden sm:flex items-center gap-2 rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] px-3.5 py-2 font-display text-xs font-bold text-[#00C4CC] hover:text-black shadow-[0_0_12px_rgba(0,196,204,0.2)] transition hover:scale-[1.02]"
+            className="hidden sm:flex items-center gap-1.5 rounded-full border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] px-3.5 py-1.5 font-display text-xs font-bold text-[#00C4CC] hover:text-black shadow-[0_0_12px_rgba(0,196,204,0.2)] transition hover:scale-105 active:scale-95"
           >
             <span>🛍️</span>
             <span>All Products</span>
           </Link>
 
+          {/* Theme Toggle Button */}
+          {mounted && <ThemeToggle className="flex items-center gap-1.5 rounded-full border border-slate-700/80 bg-[#0C1420] px-3 py-1.5 text-xs font-semibold text-silver-bright hover:border-slate-600 transition hover:scale-105 active:scale-95 cursor-pointer" />}
+
+          {/* Shopping Cart Button */}
+          <button
+            type="button"
+            onClick={openCart}
+            className="relative flex items-center gap-2 rounded-full border border-[#00C4CC]/50 bg-[#0C1420] px-3.5 py-1.5 text-xs sm:text-sm font-bold text-[#00C4CC] hover:bg-[#00C4CC]/10 transition hover:scale-105 active:scale-95 shadow-sm"
+            aria-label="Shopping Cart"
+          >
+            <span>🛒</span>
+            <span className="hidden sm:inline">Cart</span>
+            {mounted && totalItems > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#00C4CC] px-1 text-[11px] font-black text-black shadow-[0_0_8px_rgba(0,196,204,0.6)]">
+                {totalItems}
+              </span>
+            )}
+          </button>
+
           {/* Hamburger Menu Toggle for Mobile */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-[#0C1420] text-slate-300 md:hidden hover:border-[#00C4CC]"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-800 bg-[#0C1420] text-slate-300 md:hidden hover:border-[#00C4CC] transition hover:scale-105 active:scale-95"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? '✕' : '☰'}
@@ -248,45 +249,57 @@ export default function Navbar({ categories, settings }: NavbarProps) {
         </div>
       </div>
 
-      {/* Expandable Search Input (Mobile) */}
-      {mobileSearchOpen && (
-        <div className="relative border-t border-slate-800 bg-[#0C1420] p-3 lg:hidden animate-fadeIn">
-          <form onSubmit={handleSearchSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search products..."
-              className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-4 py-2 text-xs text-white placeholder:text-slate-500 focus:border-[#00C4CC] focus:outline-none"
-              autoFocus
-            />
+      {/* Mobile Search Bar (Always visible on mobile, matching LiveStorefront) */}
+      <div className="block md:hidden border-t border-slate-800/80 bg-[#080D15] px-4 py-2.5">
+        <form onSubmit={handleSearchSubmit} className="relative w-full">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-silver-dim">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => {
+              if (query.trim() && searchResults.length > 0) setShowDropdown(true);
+            }}
+            placeholder="Search fast chargers, power banks, earbuds..."
+            className="w-full rounded-full border border-slate-800 bg-[#0C1420] py-2 pl-9 pr-8 text-xs text-white placeholder:text-slate-500 focus:border-[#00C4CC] focus:outline-none font-medium"
+          />
+          {query && (
             <button
-              type="submit"
-              className="rounded-xl bg-[#00C4CC] px-4 py-2 text-xs font-bold text-slate-950 shrink-0"
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setShowDropdown(false);
+              }}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-silver-dim hover:text-silver-bright transition"
+              aria-label="Clear search"
             >
-              Search
+              ✕
             </button>
-          </form>
-
-          {/* Mobile Autocomplete Dropdown */}
-          {query.trim() && searchResults.length > 0 && (
-            <div className="mt-2 space-y-1 rounded-xl border border-slate-800 bg-[#080D15] p-2">
-              {searchResults.map((prod) => (
-                <button
-                  key={prod.id}
-                  onClick={() => handleSelectProduct(prod.slug)}
-                  className="flex w-full items-center justify-between rounded-lg p-2 text-xs text-white hover:bg-[#0C1420]"
-                >
-                  <span className="truncate font-bold">{prod.name}</span>
-                  <span className="font-mono text-[#00C4CC] shrink-0 ml-2">
-                    PKR {prod.price.toLocaleString('en-PK')}
-                  </span>
-                </button>
-              ))}
-            </div>
           )}
-        </div>
-      )}
+        </form>
+
+        {/* Mobile Autocomplete Dropdown */}
+        {showDropdown && query.trim() && searchResults.length > 0 && (
+          <div className="mt-2 space-y-1 rounded-xl border border-slate-800 bg-[#0C1420] p-2 shadow-xl">
+            {searchResults.map((prod) => (
+              <button
+                key={prod.id}
+                onClick={() => handleSelectProduct(prod.slug)}
+                className="flex w-full items-center justify-between rounded-lg p-2 text-xs text-white hover:bg-[#080D15] transition"
+              >
+                <span className="truncate font-bold">{prod.name}</span>
+                <span className="font-mono text-[#00C4CC] shrink-0 ml-2">
+                  PKR {prod.price.toLocaleString('en-PK')}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Mobile Slide-Over Drawer Navigation */}
       {mounted && mobileMenuOpen && (
