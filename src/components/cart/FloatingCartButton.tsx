@@ -14,10 +14,10 @@ export default function FloatingCartButton() {
   }
 
   return (
-    <div className="fixed bottom-20 right-5 z-40 animate-slideUp">
+    <div className="fixed bottom-36 sm:bottom-24 right-4 sm:right-6 z-40 animate-slideUp">
       <button
         onClick={openCart}
-        className="group flex items-center gap-3 rounded-full bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-4 py-3 shadow-[0_0_20px_rgba(0,196,204,0.4)] transition hover:scale-105"
+        className="group flex items-center gap-3 rounded-full bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-4 py-2.5 sm:py-3 shadow-[0_4px_25px_rgba(0,196,204,0.45)] transition hover:scale-105 active:scale-95"
         aria-label="View shopping cart"
       >
         <div className="relative flex items-center justify-center">

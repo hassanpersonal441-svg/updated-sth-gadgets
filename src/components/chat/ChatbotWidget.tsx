@@ -171,14 +171,10 @@ export default function ChatbotWidget() {
       {/* ========================================================================= */}
       {!isOpen && (
         <div
-          className={`fixed z-40 flex items-center gap-3 transition-all duration-300 ${
-            totalItems > 0
-              ? 'bottom-36 right-4 sm:bottom-6 sm:right-6' // Elevate above floating cart if items present
-              : 'bottom-20 right-4 sm:bottom-6 sm:right-6' // Sits above mobile bottom nav on phone, standard on desktop
-          }`}
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 flex items-center gap-3 transition-all duration-300"
         >
-          {/* Subtle invitation pill on desktop screens */}
-          {!hasInteracted && (
+          {/* Subtle invitation pill on desktop screens (hidden when cart items exist to prevent clash) */}
+          {!hasInteracted && totalItems === 0 && (
             <button
               onClick={() => setIsOpen(true)}
               className={`hidden md:flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-xs font-semibold shadow-lg backdrop-blur-md transition hover:scale-105 ${

@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import ClientCartOverlays from '@/components/cart/ClientCartOverlays';
 import PwaRegister from '@/components/pwa/PwaRegister';
 import InstallPwaModal from '@/components/pwa/InstallPwaModal';
-import ChatbotWidget from '@/components/chat/ChatbotWidget';
+
 
 const display = Space_Grotesk({
   subsets: ['latin'],
@@ -169,7 +169,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             <ClientCartOverlays />
             <InstallPwaModal />
-            <ChatbotWidget />
+
           </CartProvider>
         </ThemeProvider>
       </body>
