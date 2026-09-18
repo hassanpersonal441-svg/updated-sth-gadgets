@@ -241,12 +241,12 @@ export default function ProductDetailClient({
               {featurePills.map((pill, idx) => (
                 <div
                   key={idx}
-                  className="rounded-xl border border-[#00C4CC]/30 bg-[#0C1420] p-2 flex items-center gap-1.5"
+                  className="rounded-xl border border-[#00C4CC]/30 bg-[#0C1420] p-2 flex items-start gap-1.5"
                 >
-                  <span className="text-sm shrink-0">{pill.icon || '⚡'}</span>
+                  <span className="text-sm shrink-0 mt-0.5">{pill.icon || '⚡'}</span>
                   <div className="min-w-0">
-                    <div className="text-[10px] font-bold text-white truncate">{pill.title}</div>
-                    {pill.subtitle && <div className="text-[9px] text-slate-400 truncate">{pill.subtitle}</div>}
+                    <div className="text-[10px] font-bold text-white break-words leading-snug">{pill.title}</div>
+                    {pill.subtitle && <div className="text-[9px] text-slate-400 break-words leading-snug mt-0.5">{pill.subtitle}</div>}
                   </div>
                 </div>
               ))}
