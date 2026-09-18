@@ -113,6 +113,7 @@ export interface Settings {
   bundle_tier1_percent?: number;
   bundle_tier2_threshold?: number;
   bundle_tier2_percent?: number;
+  brand_voice_enabled?: boolean;
   updated_at: string;
 }
 

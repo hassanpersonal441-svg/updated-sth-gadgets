@@ -38,8 +38,8 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Brand voice — invisible, home-page-only, plays once per session */}
-      <BrandVoice />
+      {/* Brand voice — invisible, home-page-only, admin-controlled */}
+      <BrandVoice enabled={settings?.brand_voice_enabled !== false} />
 
       {/* Top Moving Text Banner */}
       <TopTicker settings={settings} />

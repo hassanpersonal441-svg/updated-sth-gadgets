@@ -685,7 +685,59 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        {/* Brand Voice Audio */}
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <span className="text-base">🔊</span>
+            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+              Brand Voice Audio
+            </h2>
+          </div>
+
+          <p className="text-xs text-silver-dim">
+            When enabled, the STH Gadgets brand voice audio —{' '}
+            <span className="font-semibold text-[#00C4CC]">&ldquo;STH Gadgets… naam hi kaafi hai.&rdquo;</span>{' '}
+            — plays automatically on every Home page visit. Completely invisible to the visitor (no player, no controls).
+          </p>
+
+          <label className="flex items-start gap-3 rounded-xl border border-slate-800 bg-[#080D15] p-3.5 cursor-pointer hover:border-slate-700 transition">
+            <input
+              type="checkbox"
+              checked={settings.brand_voice_enabled !== false}
+              onChange={(e) => update('brand_voice_enabled', e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded accent-[#00C4CC]"
+            />
+            <div>
+              <span className="font-semibold text-xs sm:text-sm text-silver-bright block">
+                Enable Brand Voice on Home Page
+              </span>
+              <p className="text-[11px] text-silver-dim mt-0.5">
+                Audio plays when allowed by the visitor&apos;s browser. If browser blocks autoplay, it plays on first interaction (scroll/click/touch). Disable to turn off completely.
+              </p>
+            </div>
+          </label>
+
+          {/* Audio preview for admin */}
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                const a = new Audio('/audio/sth-gadgets-voice.mp3');
+                a.volume = 1;
+                a.play().catch(() => {});
+              }}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00C4CC]/40 bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-4 py-2 text-xs font-bold text-[#00C4CC] transition cursor-pointer"
+            >
+              ▶ Preview Audio
+            </button>
+            <span className="text-[11px] text-silver-dim">
+              File: <code className="text-[#00C4CC]">/audio/sth-gadgets-voice.mp3</code>
+            </span>
+          </div>
+        </div>
+
         {/* Status Notification */}
+
         {message && (
           <div
             className={`rounded-xl border p-4 text-xs sm:text-sm font-semibold ${
