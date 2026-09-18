@@ -235,18 +235,20 @@ export default function ProductDetailClient({
             )}
           </div>
 
-          {/* Feature Pills Row (4 Horizontal Cards) */}
+          {/* Feature Pills — horizontal scrollable row, no truncation, no wrapping */}
           {featurePills.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
               {featurePills.map((pill, idx) => (
                 <div
                   key={idx}
-                  className="rounded-xl border border-[#00C4CC]/30 bg-[#0C1420] p-2 flex items-start gap-1.5"
+                  className="shrink-0 rounded-xl border border-[#00C4CC]/30 bg-[#0C1420] px-2.5 py-2 flex items-center gap-1.5"
                 >
-                  <span className="text-sm shrink-0 mt-0.5">{pill.icon || '⚡'}</span>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-bold text-white break-words leading-snug">{pill.title}</div>
-                    {pill.subtitle && <div className="text-[9px] text-slate-400 break-words leading-snug mt-0.5">{pill.subtitle}</div>}
+                  <span className="text-sm shrink-0">{pill.icon || '⚡'}</span>
+                  <div>
+                    <div className="text-[10px] font-bold text-white whitespace-nowrap leading-snug">{pill.title}</div>
+                    {pill.subtitle && (
+                      <div className="text-[9px] text-slate-400 whitespace-nowrap leading-snug mt-0.5">{pill.subtitle}</div>
+                    )}
                   </div>
                 </div>
               ))}
