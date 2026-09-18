@@ -38,6 +38,9 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Preload brand voice audio at highest browser priority — eliminates playback delay */}
+      <link rel="preload" href="/audio/sth-gadgets-voice.mp3" as="audio" type="audio/mpeg" />
+
       {/* Brand voice — invisible, home-page-only, admin-controlled */}
       <BrandVoice enabled={settings?.brand_voice_enabled !== false} />
 
