@@ -5,6 +5,7 @@ import Footer from '@/components/storefront/Footer';
 import WhatsAppFloatingButton from '@/components/storefront/WhatsAppFloatingButton';
 import { getSettings, getActiveCategories, getAllActiveProducts } from '@/lib/data';
 import Link from 'next/link';
+import BrandVoice from '@/components/brand/BrandVoice';
 
 export const revalidate = 60;
 
@@ -37,6 +38,9 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Brand voice — invisible, home-page-only, plays once per session */}
+      <BrandVoice />
+
       {/* Top Moving Text Banner */}
       <TopTicker settings={settings} />
 
