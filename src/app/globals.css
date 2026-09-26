@@ -403,3 +403,56 @@ img {
   }
 }
 
+/* Additional Mobile Responsive Utilities */
+@media (max-width: 480px) {
+  .text-responsive {
+    font-size: 0.875rem;
+  }
+  
+  .container-responsive {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* Touch-friendly tap targets */
+@media (hover: none) and (pointer: coarse) {
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  button:not([class*="h-"]), a:not([class*="h-"]) {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Improved mobile text rendering */
+@media (max-width: 640px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* Prevent horizontal scroll on mobile */
+  * {
+    max-width: 100%;
+  }
+  
+  /* Better mobile spacing */
+  .gap-responsive {
+    gap: 0.5rem;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 640px) and (orientation: landscape) {
+  .mobile-landscape-hide {
+    display: none;
+  }
+  
+  .mobile-landscape-compact {
+    padding: 0.5rem;
+  }
+}
+

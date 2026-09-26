@@ -303,7 +303,7 @@ export default function AdminSidebar({ mobileOpen = false, onCloseMobile }: Admi
           />
 
           {/* Drawer panel */}
-          <div className="relative z-10 flex h-full max-w-[80vw] animate-slideRight">
+          <div className="relative z-10 flex h-full max-w-[85vw] sm:max-w-[80vw] animate-slideRight">
             {renderSidebar(true, onCloseMobile)}
           </div>
         </div>

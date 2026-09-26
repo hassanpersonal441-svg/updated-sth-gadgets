@@ -25,7 +25,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
             onToggleMobileSidebar={() => setIsMobileOpen((prev) => !prev)}
           />
 
-          <main className="flex-1 overflow-y-auto bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,196,204,0.07),rgba(255,255,255,0))] p-4 sm:p-6 md:p-8 lg:p-10">
+          <main className="flex-1 overflow-y-auto bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,196,204,0.07),rgba(255,255,255,0))] p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10">
             <div className="mx-auto max-w-7xl">{children}</div>
           </main>
         </div>

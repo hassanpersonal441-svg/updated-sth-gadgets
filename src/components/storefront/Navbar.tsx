@@ -97,10 +97,10 @@ export default function Navbar({ categories, settings }: NavbarProps) {
         ? 'border-slate-200 bg-white/95 text-slate-800 shadow-sm'
         : 'border-slate-800/90 bg-[#080D15]/95 text-[#C9D2DB]'
     }`}>
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 sm:gap-6 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4 md:gap-6 px-3 sm:px-4 py-2 sm:py-3 md:px-6 lg:px-8">
         {/* Brand Section Left */}
-        <Link href="/" className="group flex shrink-0 items-center gap-3">
-          <div className="relative h-12 w-12 sm:h-13 sm:w-13 overflow-hidden rounded-full border-2 border-[#00C4CC]/80 shadow-[0_0_16px_rgba(0,196,204,0.4)] transition group-hover:scale-105">
+        <Link href="/" className="group flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="relative h-10 w-10 sm:h-12 sm:w-12 overflow-hidden rounded-full border-2 border-[#00C4CC]/80 shadow-[0_0_16px_rgba(0,196,204,0.4)] transition group-hover:scale-105">
             <Image
               src={settings?.logo_url || '/images/logo.png'}
               alt={settings?.business_name || 'STH Gadgets'}
@@ -109,14 +109,22 @@ export default function Navbar({ categories, settings }: NavbarProps) {
               priority
             />
           </div>
-          <div>
-            <span className={`block font-display text-xl sm:text-2xl font-black tracking-wider uppercase transition ${
+          <div className="hidden sm:block">
+            <span className={`block font-display text-lg sm:text-xl font-black tracking-wider uppercase transition ${
               isLight ? 'text-slate-900 group-hover:text-[#008B94]' : 'text-silver-bright group-hover:text-[#00C4CC]'
             }`}>
               {settings?.business_name || 'STH GADGETS'}
             </span>
-            <span className="hidden sm:block text-[11px] sm:text-xs font-semibold text-[#00C4CC] tracking-wide">
+            <span className="hidden sm:block text-[10px] sm:text-xs font-semibold text-[#00C4CC] tracking-wide">
               Mobile Accessories &amp; Official Rates
+            </span>
+          </div>
+          {/* Mobile-only brand name */}
+          <div className="sm:hidden">
+            <span className={`block font-display text-sm font-black tracking-wider uppercase transition ${
+              isLight ? 'text-slate-900 group-hover:text-[#008B94]' : 'text-silver-bright group-hover:text-[#00C4CC]'
+            }`}>
+              STH
             </span>
           </div>
         </Link>
@@ -237,11 +245,11 @@ export default function Navbar({ categories, settings }: NavbarProps) {
         </div>
 
         {/* Right Actions Cluster */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* All Products Catalog Button */}
           <Link
             href="/products"
-            className="hidden sm:flex items-center gap-1.5 rounded-full border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] px-3.5 py-1.5 font-display text-xs font-bold text-[#00C4CC] hover:text-black shadow-[0_0_12px_rgba(0,196,204,0.2)] transition hover:scale-105 active:scale-95"
+            className="hidden md:flex items-center gap-1.5 rounded-full border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] px-3.5 py-1.5 font-display text-xs font-bold text-[#00C4CC] hover:text-black shadow-[0_0_12px_rgba(0,196,204,0.2)] transition hover:scale-105 active:scale-95"
           >
             <span>🛍️</span>
             <span>All Products</span>
@@ -254,17 +262,17 @@ export default function Navbar({ categories, settings }: NavbarProps) {
           <button
             type="button"
             onClick={openCart}
-            className={`relative flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-bold transition hover:scale-105 active:scale-95 shadow-sm ${
+            className={`relative flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold transition hover:scale-105 active:scale-95 shadow-sm ${
               isLight
                 ? 'border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 hover:border-slate-400'
                 : 'border-[#00C4CC]/50 bg-[#0C1420] text-[#00C4CC] hover:bg-[#00C4CC]/10'
             }`}
             aria-label="Shopping Cart"
           >
-            <span>🛒</span>
+            <span className="text-sm sm:text-base">🛒</span>
             <span className="hidden sm:inline">Cart</span>
             {mounted && totalItems > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#00C4CC] px-1 text-[11px] font-black text-black shadow-[0_0_8px_rgba(0,196,204,0.6)]">
+              <span className="flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-full bg-[#00C4CC] px-1 text-[10px] sm:text-[11px] font-black text-black shadow-[0_0_8px_rgba(0,196,204,0.6)]">
                 {totalItems}
               </span>
             )}
@@ -274,7 +282,7 @@ export default function Navbar({ categories, settings }: NavbarProps) {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`flex h-9 w-9 items-center justify-center rounded-full border md:hidden transition hover:scale-105 active:scale-95 ${
+            className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border md:hidden transition hover:scale-105 active:scale-95 ${
               isLight
                 ? 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100'
                 : 'border-slate-800 bg-[#0C1420] text-slate-300 hover:border-[#00C4CC]'

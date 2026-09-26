@@ -18,19 +18,19 @@ export default function ProductSection({
   if (products.length === 0) return null;
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <div className="mb-6 flex items-end justify-between">
+    <section className="mx-auto max-w-7xl px-3 sm:px-4 py-6 sm:py-10 md:px-6">
+      <div className="mb-4 sm:mb-6 flex items-end justify-between">
         <div>
-          <h2 className="font-display text-2xl font-bold text-silver-bright">{title}</h2>
-          {subtitle && <p className="mt-1 text-sm text-silver-dim">{subtitle}</p>}
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-silver-bright">{title}</h2>
+          {subtitle && <p className="mt-1 text-xs sm:text-sm text-silver-dim">{subtitle}</p>}
         </div>
         {viewAllHref && (
-          <Link href={viewAllHref} className="font-display text-sm font-semibold text-electric-bright hover:underline">
+          <Link href={viewAllHref} className="font-display text-xs sm:text-sm font-semibold text-electric-bright hover:underline">
             View All
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {products.map((p) => (
           <ProductCard key={p.id} product={p} settings={settings} />
         ))}

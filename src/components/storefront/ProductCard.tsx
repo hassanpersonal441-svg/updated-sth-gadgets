@@ -59,27 +59,27 @@ function ProductCardComponent({
       {/* Clickable Card Link Container */}
       <Link href={productUrl} data-tour="customer-product-details" className="flex flex-1 flex-col justify-between cursor-pointer">
         {/* Top Badges */}
-        <div className="absolute left-2.5 top-2.5 z-10 flex flex-col gap-1 items-start">
+        <div className="absolute left-2 top-2 z-10 flex flex-col gap-1 items-start">
           {product.discount > 0 && (
-            <span className="rounded-full bg-[#00C4CC] px-2.5 py-0.5 font-display text-[10px] sm:text-xs font-black text-black shadow-md tracking-wider">
+            <span className="rounded-full bg-[#00C4CC] px-2 py-0.5 font-display text-[9px] sm:text-[10px] font-black text-black shadow-md tracking-wider">
               -{Math.round(product.discount)}% OFF
             </span>
           )}
           {product.bundle_offers && product.bundle_offers.length > 0 && (
-            <span className="rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-2.5 py-0.5 font-display text-[10px] sm:text-xs font-black text-white shadow-md tracking-wider">
-              🎁 BUNDLE DEAL
+            <span className="rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-2 py-0.5 font-display text-[9px] sm:text-[10px] font-black text-white shadow-md tracking-wider">
+              🎁 BUNDLE
             </span>
           )}
           {product.free_delivery && (
-            <span className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2.5 py-0.5 font-display text-[10px] sm:text-xs font-black text-white shadow-md tracking-wider">
-              🚚 FREE DELIVERY
+            <span className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 py-0.5 font-display text-[9px] sm:text-[10px] font-black text-white shadow-md tracking-wider">
+              🚚 FREE
             </span>
           )}
         </div>
 
-        <div className="absolute right-2.5 top-2.5 z-10">
+        <div className="absolute right-2 top-2 z-10">
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold shadow-sm ${
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-bold shadow-sm ${
               product.stock_status === 'in_stock'
                 ? isLight
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
@@ -94,7 +94,7 @@ function ProductCardComponent({
             }`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${
+              className={`h-1 w-1 rounded-full ${
                 product.stock_status === 'in_stock'
                   ? 'bg-emerald-400 animate-pulse'
                   : product.stock_status === 'low_stock'
@@ -102,12 +102,19 @@ function ProductCardComponent({
                   : 'bg-red-400'
               }`}
             ></span>
-            <span>
+            <span className="hidden sm:inline">
               {product.stock_status === 'in_stock'
                 ? 'In Stock'
                 : product.stock_status === 'low_stock'
                 ? 'Low Stock'
                 : 'Out of Stock'}
+            </span>
+            <span className="sm:hidden">
+              {product.stock_status === 'in_stock'
+                ? '✓'
+                : product.stock_status === 'low_stock'
+                ? '⚠'
+                : '✕'}
             </span>
           </span>
         </div>
@@ -130,26 +137,26 @@ function ProductCardComponent({
         </div>
 
         {/* Content Body */}
-        <div className="flex flex-1 flex-col justify-between p-3 sm:p-4 gap-2">
+        <div className="flex flex-1 flex-col justify-between p-2.5 sm:p-3 md:p-4 gap-1.5 sm:gap-2">
           <div>
             {/* Category tag & Rating stars */}
             <div className="flex items-center justify-between gap-1 mb-1">
               {product.category ? (
-                <span className="font-display text-[10px] uppercase tracking-widest text-[#00C4CC] font-extrabold truncate">
+                <span className="font-display text-[9px] sm:text-[10px] uppercase tracking-widest text-[#00C4CC] font-extrabold truncate">
                   {product.category.name}
                 </span>
               ) : (
                 <span></span>
               )}
-              <div className="flex items-center gap-0.5 text-[10px] font-bold text-amber-400 shrink-0 bg-amber-400/10 px-1.5 py-0.2 rounded border border-amber-400/20">
+              <div className="flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold text-amber-400 shrink-0 bg-amber-400/10 px-1.5 py-0.2 rounded border border-amber-400/20">
                 <span>★</span>
-                <span>5.0</span>
+                <span className="hidden sm:inline">5.0</span>
               </div>
             </div>
 
             {/* Title */}
             <h3
-              className={`line-clamp-2 font-display text-xs sm:text-sm font-bold group-hover:text-[#00C4CC] transition duration-200 leading-snug ${
+              className={`line-clamp-2 font-display text-[11px] sm:text-xs md:text-sm font-bold group-hover:text-[#00C4CC] transition duration-200 leading-snug ${
                 isLight ? 'text-slate-900' : 'text-white'
               }`}
             >
@@ -157,9 +164,9 @@ function ProductCardComponent({
             </h3>
 
             {/* Price Section */}
-            <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
+            <div className="mt-1.5 sm:mt-2 flex flex-wrap items-baseline gap-1 sm:gap-1.5">
               <span
-                className={`font-display text-base sm:text-lg font-black ${
+                className={`font-display text-sm sm:text-base md:text-lg font-black ${
                   isLight ? 'text-black' : 'text-white'
                 }`}
               >
@@ -167,7 +174,7 @@ function ProductCardComponent({
               </span>
               {hasDiscount && (
                 <span
-                  className={`text-[11px] sm:text-xs line-through ${
+                  className={`text-[10px] sm:text-[11px] md:text-xs line-through ${
                     isLight ? 'text-slate-500' : 'text-slate-400'
                   }`}
                 >
@@ -176,7 +183,7 @@ function ProductCardComponent({
               )}
               {savings > 0 && (
                 <span
-                  className={`text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border ${
+                  className={`text-[8px] sm:text-[9px] md:text-[10px] font-extrabold px-1 py-0.5 sm:px-1.5 rounded-md border ${
                     isLight
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                       : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
