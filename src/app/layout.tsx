@@ -1,0 +1,185 @@
+import type { Metadata, Viewport } from 'next';
+import { Space_Grotesk, Inter } from 'next/font/google';
+import './globals.css';
+import { CartProvider } from '@/context/CartContext';
+import { ToastProvider } from '@/context/ToastContext';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import ClientCartOverlays from '@/components/cart/ClientCartOverlays';
+import PwaRegister from '@/components/pwa/PwaRegister';
+import InstallPwaModal from '@/components/pwa/InstallPwaModal';
+
+
+const display = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['500', '600', '700'],
+  display: 'swap',
+  preload: true,
+});
+
+const body = Inter({
+  subsets: ['latin'],
+  variable: '--font-body',
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  preload: true,
+});
+
+export const viewport: Viewport = {
+  themeColor: '#00C4CC',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sthgadgets.store';
+
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: 'STH Gadgets | Premium Mobile Accessories & Tech Gadgets in Pakistan',
+    template: '%s | STH Gadgets',
+  },
+  description:
+    'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan. Discover power banks, chargers, cables, earbuds, headphones, speakers and more.',
+  keywords: [
+    'mobile accessories Pakistan',
+    'power bank Pakistan',
+    'fast charger Pakistan',
+    'wireless earbuds Pakistan',
+    'USB C cable Pakistan',
+    'Bluetooth headphones Pakistan',
+    'STH Gadgets',
+    'STH Gadgets Pakistan',
+  ],
+  authors: [{ name: 'STH Gadgets', url: siteUrl }],
+  creator: 'STH Gadgets',
+  publisher: 'STH Gadgets',
+  manifest: '/manifest.json',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'STH Gadgets',
+  },
+  openGraph: {
+    title: 'STH Gadgets | Premium Mobile Accessories & Tech Gadgets in Pakistan',
+    description:
+      'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan. Discover power banks, chargers, cables, earbuds, headphones, speakers and more.',
+    url: siteUrl,
+    siteName: 'STH Gadgets',
+    type: 'website',
+    locale: 'en_PK',
+    images: [
+      {
+        url: `${siteUrl}/images/logo.png`,
+        width: 800,
+        height: 800,
+        alt: 'STH Gadgets Logo',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'STH Gadgets | Premium Mobile Accessories & Tech Gadgets in Pakistan',
+    description: 'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan.',
+    images: [`${siteUrl}/images/logo.png`],
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const jsonLdSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${siteUrl}/#organization`,
+        name: 'STH Gadgets',
+        url: siteUrl,
+        logo: `${siteUrl}/images/logo.png`,
+        image: `${siteUrl}/images/logo.png`,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          telephone: '+923489593671',
+          contactType: 'customer service',
+          areaServed: 'PK',
+          availableLanguage: ['en', 'ur'],
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        url: siteUrl,
+        name: 'STH Gadgets',
+        description:
+          'Shop premium mobile accessories and tech gadgets at STH Gadgets in Pakistan. Discover power banks, chargers, cables, earbuds, headphones, speakers and more.',
+        publisher: { '@id': `${siteUrl}/#organization` },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${siteUrl}/products?q={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
+      },
+    ],
+  };
+
+  return (
+    <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <head>
+        {/* DNS Prefetch for performance */}
+        <link rel="dns-prefetch" href="https://*.supabase.co" />
+        
+        {/* Google Search Favicon & Browser Icons */}
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdSchema) }}
+        />
+      </head>
+      <body className="font-body bg-base text-silver antialiased" suppressHydrationWarning>
+        <ThemeProvider>
+          <PwaRegister />
+          <CartProvider>
+            <ToastProvider>
+              {children}
+              <ClientCartOverlays />
+              <InstallPwaModal />
+            </ToastProvider>
+          </CartProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}

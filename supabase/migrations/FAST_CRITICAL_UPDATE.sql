@@ -1,0 +1,15 @@
+BEGIN;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS product_type text NOT NULL DEFAULT 'product' CHECK (product_type IN ('product', 'series_model'));
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS series_id uuid REFERENCES public.product_series(id) ON DELETE SET NULL;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS model_number text;
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS brand_voice_enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS online_payment_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS payment_method_name TEXT DEFAULT 'JazzCash';
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS payment_account_name TEXT;
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS payment_account_number TEXT;
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS payment_instructions TEXT DEFAULT 'Send the exact order amount to the above account. After payment, take a screenshot of the successful transaction and send it to us on WhatsApp for verification.';
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS payment_whatsapp_number TEXT;
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS payment_verification_required BOOLEAN NOT NULL DEFAULT true;
+CREATE INDEX IF NOT EXISTS idx_products_product_type ON public.products(product_type);
+CREATE INDEX IF NOT EXISTS idx_products_series_id ON public.products(series_id);
+COMMIT;
