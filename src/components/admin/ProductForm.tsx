@@ -7,6 +7,7 @@ import type { ProductSeries, ProductType } from '@/types/database';
 import { slugify } from '@/lib/utils';
 import ImageUploader, { UploadedImage } from './ImageUploader';
 import ColorVariantManager from './ColorVariantManager';
+import SpecsTableImportModal from './SpecsTableImportModal';
 import { useToast, setFlashToast } from '@/context/ToastContext';
 
 export default function ProductForm({
@@ -129,6 +130,8 @@ export default function ProductForm({
   const [specs, setSpecs] = useState<Specification[]>(
     product?.specifications?.length ? product.specifications : [{ label: '', value: '' }]
   );
+  const [isSpecsModalOpen, setIsSpecsModalOpen] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [keyFeatures, setKeyFeatures] = useState<KeyFeature[]>(
     product?.key_features?.length
       ? product.key_features.map((feature) => ({ ...feature, icon: feature.icon === '⚡' ? '' : feature.icon }))
@@ -193,6 +196,74 @@ export default function ProductForm({
   }
   function removeSpec(index: number) {
     setSpecs((prev) => prev.filter((_, i) => i !== index));
+  }
+  function handleApplyImportedSpecs(imported: Specification[], mode: 'replace' | 'append') {
+    if (mode === 'replace') {
+      setSpecs(imported.length > 0 ? imported : [{ label: '', value: '' }]);
+    } else {
+      setSpecs((prev) => {
+        const existing = prev.filter((s) => s.label.trim() || s.value.trim());
+        return [...existing, ...imported];
+      });
+    }
+  }
+
+  async function handleAiAutoFill() {
+    const query = name.trim();
+    if (!query) {
+      showErrorToast('Please enter a product model or name first (e.g. Air31 Earbuds, T800 Ultra)');
+      return;
+    }
+
+    setIsAiGenerating(true);
+    try {
+      const selectedCat = categoryList.find((c) => c.id === categoryId);
+      const res = await fetch('/api/admin/ai/generate-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: query,
+          categoryName: selectedCat?.name || '',
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to generate product details');
+      }
+
+      const d = json.data;
+      if (!d) throw new Error('Invalid AI response received');
+
+      // Auto-populate fields
+      if (d.title && !isEdit) {
+        setName(d.title);
+        if (!slugTouched) {
+          setSlug(slugify(d.title));
+        }
+      }
+      if (d.short_description) {
+        setShortDescription(d.short_description);
+      }
+      if (d.description) {
+        setDescription(d.description);
+      }
+      if (Array.isArray(d.key_features) && d.key_features.length > 0) {
+        setKeyFeatures(d.key_features);
+      }
+      if (Array.isArray(d.specifications) && d.specifications.length > 0) {
+        const hasRealSpecs = specs.some((s) => s.label.trim() && s.value.trim());
+        if (!hasRealSpecs) {
+          setSpecs(d.specifications);
+        }
+      }
+
+      showSuccessToast('✨ Product details generated with AI! Please review & set your price.');
+    } catch (err: any) {
+      showErrorToast(err.message || 'AI generation failed');
+    } finally {
+      setIsAiGenerating(false);
+    }
   }
 
   function updateKeyFeature(index: number, field: keyof KeyFeature, value: string) {
@@ -362,11 +433,32 @@ export default function ProductForm({
     <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
       {/* Basic Info Card */}
       <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-          <span className="text-base">📦</span>
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
-            Basic Information
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📦</span>
+            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+              Basic Information
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={handleAiAutoFill}
+            disabled={isAiGenerating || !name.trim()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-[#00C4CC] px-3.5 py-1.5 text-xs font-bold text-white shadow-md hover:from-purple-500 hover:to-[#00b2b9] disabled:opacity-40 transition active:scale-95"
+            title="Type gadget model name in title and click to auto-fill description, key features, and specs"
+          >
+            {isAiGenerating ? (
+              <>
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>AI Generating Details...</span>
+              </>
+            ) : (
+              <>
+                <span>✨</span>
+                <span>AI Auto-Fill Entire Product</span>
+              </>
+            )}
+          </button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -382,12 +474,19 @@ export default function ProductForm({
             </div>}
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-silver-dim">Product Title *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-silver-dim">Product Title / Model *</label>
+              {!name.trim() && (
+                <span className="text-[10px] text-purple-400 font-medium">
+                  Type model & click ✨ AI Auto-Fill
+                </span>
+              )}
+            </div>
             <input
               required
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="e.g. 20000mAh Fast Charging Power Bank"
+              placeholder="e.g. M90 Pro Gaming Earbuds or T800 Ultra Smartwatch"
               className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
             />
           </div>
@@ -627,19 +726,32 @@ export default function ProductForm({
 
       {/* Specifications Card */}
       <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
               Specifications
             </h2>
+            <span className="text-xs text-silver-dim">
+              ({specs.filter((s) => s.label.trim() || s.value.trim()).length} rows)
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={addSpec}
-            className="text-xs font-bold text-[#00C4CC] hover:underline"
-          >
-            + Add Spec Row
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSpecsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#00C4CC]/40 bg-[#00C4CC]/10 px-3 py-1.5 text-xs font-bold text-[#00C4CC] hover:bg-[#00C4CC]/20 hover:border-[#00C4CC] transition"
+            >
+              <span>📋</span>
+              <span>Paste Table / AI Specs</span>
+            </button>
+            <button
+              type="button"
+              onClick={addSpec}
+              className="text-xs font-bold text-silver-bright hover:text-[#00C4CC] transition"
+            >
+              + Add Spec Row
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2.5">
@@ -994,6 +1106,14 @@ export default function ProductForm({
           Cancel
         </button>
       </div>
+
+      {/* Smart Paste & AI Specs Modal */}
+      <SpecsTableImportModal
+        isOpen={isSpecsModalOpen}
+        onClose={() => setIsSpecsModalOpen(false)}
+        onApply={handleApplyImportedSpecs}
+        currentSpecsCount={specs.filter((s) => s.label.trim() || s.value.trim()).length}
+      />
     </form>
   );
 }
