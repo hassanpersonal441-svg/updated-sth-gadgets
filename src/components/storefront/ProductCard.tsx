@@ -166,9 +166,7 @@ function ProductCardComponent({
             {/* Price Section */}
             <div className="mt-1.5 sm:mt-2 flex flex-wrap items-baseline gap-1 sm:gap-1.5">
               <span
-                className={`font-display text-sm sm:text-base md:text-lg font-black ${
-                  isLight ? 'text-black' : 'text-white'
-                }`}
+                className="font-display text-sm sm:text-base md:text-lg font-black text-[#00C4CC]"
               >
                 {formatPrice(product.price, settings)}
               </span>
@@ -183,7 +181,7 @@ function ProductCardComponent({
               )}
               {savings > 0 && (
                 <span
-                  className={`text-[8px] sm:text-[9px] md:text-[10px] font-extrabold px-1 py-0.5 sm:px-1.5 rounded-md border ${
+                  className={`text-[8px] sm:text-[9px] md:text-[10px] font-extrabold px-1 py-0.5 sm:px-1.5 rounded-md border shrink-0 whitespace-nowrap ${
                     isLight
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                       : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'

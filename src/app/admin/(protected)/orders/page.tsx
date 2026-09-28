@@ -6,6 +6,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import type { Order } from '@/types/database';
 import OrderActionModal from '@/components/admin/OrderActionModal';
+import CreateOrderModal from '@/components/admin/CreateOrderModal';
 import { useToast } from '@/context/ToastContext';
 import { formatInvoiceDate, formatOrderDateTime, formatNumber } from '@/lib/utils';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -31,11 +32,15 @@ export default function AdminOrdersPage() {
   const [selectedTab, setSelectedTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderSourceFilter, setOrderSourceFilter] = useState<'all' | 'web' | 'whatsapp' | 'random'>('all');
 
   // Direct table delete confirmation state
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deletingDirect, setDeletingDirect] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  // Create Order Modal state
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
 
   async function fetchOrders(showToast = false) {
     if (!cachedOrders) {
@@ -133,6 +138,26 @@ export default function AdminOrdersPage() {
     }
   }
 
+  async function handleCreateInvoice(order: Order, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    
+    // Build URL with order details pre-filled
+    const params = new URLSearchParams();
+    params.append('customer_name', order.customer_name);
+    params.append('customer_phone', order.phone);
+    params.append('customer_address', order.address);
+    params.append('customer_city', order.city);
+    params.append('delivery', order.delivery_charges.toString());
+    
+    // Store order items in localStorage for invoice creation
+    if (order.order_items && order.order_items.length > 0) {
+      localStorage.setItem('invoiceFromOrderItems', JSON.stringify(order.order_items));
+    }
+    
+    // Redirect to invoice creation page with pre-filled data
+    window.location.href = `/admin/invoices/new?${params.toString()}`;
+  }
+
   // Filter orders by tab and search
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -141,6 +166,11 @@ export default function AdminOrdersPage() {
         if (o.status !== 'cancelled' && o.status !== 'rejected') return false;
       } else if (selectedTab !== 'all') {
         if (o.status !== selectedTab) return false;
+      }
+
+      // Order source filter
+      if (orderSourceFilter !== 'all') {
+        if (o.order_source !== orderSourceFilter) return false;
       }
 
       // Search query
@@ -155,7 +185,7 @@ export default function AdminOrdersPage() {
 
       return true;
     });
-  }, [orders, selectedTab, searchQuery]);
+  }, [orders, selectedTab, searchQuery, orderSourceFilter]);
 
   // Counts per status
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
@@ -163,6 +193,17 @@ export default function AdminOrdersPage() {
   const approvedCount = orders.filter((o) => o.status === 'approved').length;
   const totalRevenue = orders
     .filter((o) => o.status === 'approved' || o.status === 'pending_payment' || o.status === 'processing' || o.status === 'shipped' || o.status === 'delivered')
+    .reduce((sum, o) => sum + Number(o.total_amount), 0);
+
+  // Revenue by source
+  const webRevenue = orders
+    .filter((o) => o.order_source === 'web' && (o.status === 'approved' || o.status === 'pending_payment' || o.status === 'processing' || o.status === 'shipped' || o.status === 'delivered'))
+    .reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const whatsappRevenue = orders
+    .filter((o) => o.order_source === 'whatsapp' && (o.status === 'approved' || o.status === 'pending_payment' || o.status === 'processing' || o.status === 'shipped' || o.status === 'delivered'))
+    .reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const randomRevenue = orders
+    .filter((o) => o.order_source === 'random' && (o.status === 'approved' || o.status === 'pending_payment' || o.status === 'processing' || o.status === 'shipped' || o.status === 'delivered'))
     .reduce((sum, o) => sum + Number(o.total_amount), 0);
 
   function handleOrderUpdated(updated: Order) {
@@ -188,11 +229,18 @@ export default function AdminOrdersPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/admin/invoices/new"
+          <button
+            onClick={() => setShowCreateOrderModal(true)}
             className="flex items-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-3.5 py-2 text-xs font-black transition shadow-sm hover:scale-105"
           >
             <span>➕</span>
+            <span>Create Order</span>
+          </button>
+          <Link
+            href="/admin/invoices/new"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-[#0C1420] hover:border-[#00C4CC] hover:text-[#00C4CC] text-silver-bright px-3.5 py-2 text-xs font-black transition shadow-sm"
+          >
+            <span>📄</span>
             <span>Create Invoice</span>
           </Link>
           <button
@@ -245,9 +293,30 @@ export default function AdminOrdersPage() {
         </div>
 
         <div className="rounded-2xl border border-[#00C4CC]/30 bg-[#00C4CC]/5 p-3.5 sm:p-4">
-          <span className="text-xs text-[#00C4CC] font-semibold">Approved Revenue</span>
+          <span className="text-xs text-[#00C4CC] font-semibold">Total Revenue</span>
           <div className="mt-1 font-display text-lg sm:text-2xl font-black text-[#00C4CC]">
             PKR {totalRevenue.toLocaleString('en-PK')}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-3.5 sm:p-4">
+          <span className="text-xs text-blue-400 font-semibold">🌐 Website Revenue</span>
+          <div className="mt-1 font-display text-lg sm:text-2xl font-black text-blue-300">
+            PKR {webRevenue.toLocaleString('en-PK')}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 sm:p-4">
+          <span className="text-xs text-emerald-400 font-semibold">📱 WhatsApp Revenue</span>
+          <div className="mt-1 font-display text-lg sm:text-2xl font-black text-emerald-300">
+            PKR {whatsappRevenue.toLocaleString('en-PK')}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3.5 sm:p-4">
+          <span className="text-xs text-amber-400 font-semibold">🎲 Random Revenue</span>
+          <div className="mt-1 font-display text-lg sm:text-2xl font-black text-amber-300">
+            PKR {randomRevenue.toLocaleString('en-PK')}
           </div>
         </div>
       </div>
@@ -288,14 +357,24 @@ export default function AdminOrdersPage() {
           })}
         </div>
 
-        {/* Search */}
-        <div className="w-full sm:w-72">
+        {/* Search & Filter */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <select
+            value={orderSourceFilter}
+            onChange={(e) => setOrderSourceFilter(e.target.value as 'all' | 'web' | 'whatsapp' | 'random')}
+            className="rounded-xl border border-slate-800 bg-[#080D15] px-3 py-2 text-xs font-semibold text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+          >
+            <option value="all">All Sources</option>
+            <option value="web">🌐 Website</option>
+            <option value="whatsapp">📱 WhatsApp</option>
+            <option value="random">🎲 Random/Other</option>
+          </select>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by customer, phone, STH #..."
-            className="w-full rounded-xl border border-slate-800 bg-[#080D15] px-3.5 py-2 text-xs text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none"
+            className="w-full sm:w-72 rounded-xl border border-slate-800 bg-[#080D15] px-3.5 py-2 text-xs text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none"
           />
         </div>
       </div>
@@ -338,6 +417,19 @@ export default function AdminOrdersPage() {
                           {order.customer_name}
                         </h4>
                         <span className="text-xs text-silver-dim">{order.phone} • {order.city}</span>
+                        <div className="mt-1">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                              order.order_source === 'web'
+                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : order.order_source === 'whatsapp'
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            }`}
+                          >
+                            {order.order_source === 'web' ? '🌐' : order.order_source === 'whatsapp' ? '📱' : '🎲'} {order.order_source}
+                          </span>
+                        </div>
                       </div>
 
                       <span
@@ -381,6 +473,15 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
+                        onClick={(e) => handleCreateInvoice(order, e)}
+                        className="rounded-xl border border-[#00C4CC] bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-3 py-2 text-xs font-semibold text-[#00C4CC] transition"
+                        title="Create Invoice from this Order"
+                      >
+                        📄
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => setSelectedOrder(order)}
                         className="flex-1 rounded-xl bg-[#00C4CC] hover:bg-[#00b2b9] py-2 text-xs font-bold text-black text-center transition"
                       >
@@ -409,6 +510,7 @@ export default function AdminOrdersPage() {
                     <th className="px-4 py-3">Official Order #</th>
                     <th className="px-4 py-3">Customer</th>
                     <th className="px-4 py-3">City</th>
+                    <th className="px-4 py-3">Source</th>
                     <th className="px-4 py-3">Items</th>
                     <th className="px-4 py-3">Total Amount</th>
                     <th className="px-4 py-3">Order Date & Time</th>
@@ -443,6 +545,21 @@ export default function AdminOrdersPage() {
 
                         {/* City */}
                         <td className="px-4 py-3.5 text-silver-bright">{order.city}</td>
+
+                        {/* Source */}
+                        <td className="px-4 py-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                              order.order_source === 'web'
+                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : order.order_source === 'whatsapp'
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            }`}
+                          >
+                            {order.order_source === 'web' ? '🌐' : order.order_source === 'whatsapp' ? '📱' : '🎲'} {order.order_source}
+                          </span>
+                        </td>
 
                         {/* Items */}
                         <td className="px-4 py-3.5 text-silver-dim">
@@ -522,6 +639,15 @@ export default function AdminOrdersPage() {
 
                             <button
                               type="button"
+                              onClick={(e) => handleCreateInvoice(order, e)}
+                              className="rounded-lg border border-[#00C4CC] bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-2 py-1 text-[11px] font-semibold text-[#00C4CC] transition"
+                              title="Create Invoice from this Order"
+                            >
+                              📄 Invoice
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedOrder(order);
@@ -563,6 +689,13 @@ export default function AdminOrdersPage() {
         description={`Are you sure you want to delete the order for "${orderToDelete?.customer_name}" (Ref: ${orderToDelete?.order_number || orderToDelete?.id}) amounting to PKR ${Number(orderToDelete?.total_amount || 0).toLocaleString('en-PK')}? This action cannot be undone.`}
         confirmText="Yes, Delete Order"
         isDeleting={deletingDirect}
+      />
+
+      {/* Create Order Modal */}
+      <CreateOrderModal
+        isOpen={showCreateOrderModal}
+        onClose={() => setShowCreateOrderModal(false)}
+        onOrderCreated={() => fetchOrders(true)}
       />
 
       {/* Action / Detail Modal */}

@@ -7,10 +7,14 @@ interface ProfitSummary {
   totalRevenue: number;
   totalProductCost: number;
   grossProfit: number;
+  netProfit?: number;
   averageProfitMargin: number;
   todayProfit: number;
   weekProfit: number;
   monthProfit: number;
+  totalCustomerDeliveryFees?: number;
+  totalActualCourierCost?: number;
+  totalStoreDeliveryExpense?: number;
   bestProfitProduct: {
     name: string;
     profit: number;
@@ -22,6 +26,16 @@ interface ProfitSummary {
     sellingPrice: number;
     purchasePrice: number;
   } | null;
+  // Unlisted / order-specific vendor products
+  unlistedProductCount?: number;
+  unlistedProductCost?: number;
+  // Profit by order source
+  webProfit?: number;
+  webRevenue?: number;
+  whatsappProfit?: number;
+  whatsappRevenue?: number;
+  randomProfit?: number;
+  randomRevenue?: number;
 }
 
 interface ProductProfitItem {
@@ -52,12 +66,14 @@ interface CategoryProfitItem {
 let cachedProfit: {
   summary: ProfitSummary | null;
   products: ProductProfitItem[];
+  unlistedProducts: ProductProfitItem[];
   categories: CategoryProfitItem[];
 } | null = null;
 
 export default function AdminProfitPage() {
   const [summary, setSummary] = useState<ProfitSummary | null>(cachedProfit?.summary || null);
   const [products, setProducts] = useState<ProductProfitItem[]>(cachedProfit?.products || []);
+  const [unlistedProducts, setUnlistedProducts] = useState<ProductProfitItem[]>(cachedProfit?.unlistedProducts || []);
   const [categories, setCategories] = useState<CategoryProfitItem[]>(cachedProfit?.categories || []);
   const [loading, setLoading] = useState(!cachedProfit);
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,10 +92,12 @@ export default function AdminProfitPage() {
         cachedProfit = {
           summary: data.summary,
           products: data.products || [],
+          unlistedProducts: data.unlistedProducts || [],
           categories: data.categories || [],
         };
         setSummary(data.summary);
         setProducts(data.products || []);
+        setUnlistedProducts(data.unlistedProducts || []);
         setCategories(data.categories || []);
       }
     } catch (err) {
@@ -180,19 +198,28 @@ export default function AdminProfitPage() {
               <div className="mt-2 font-display text-2xl font-black text-amber-300">
                 PKR {summary?.totalProductCost.toLocaleString('en-PK') || 0}
               </div>
-              <p className="mt-1 text-[11px] text-silver-dim">Snapshot supplier purchase cost</p>
+              <p className="mt-1 text-[11px] text-silver-dim">
+                Listed + vendor purchases (no double-counting)
+              </p>
+              {(summary?.unlistedProductCount ?? 0) > 0 && (
+                <p className="mt-1 text-[11px] text-amber-400/80">
+                  incl. {summary!.unlistedProductCount} unlisted item{summary!.unlistedProductCount === 1 ? '' : 's'} — PKR {(summary!.unlistedProductCost || 0).toLocaleString('en-PK')}
+                </p>
+              )}
             </div>
 
             {/* Gross Profit */}
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 shadow-sm">
-              <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold">
+            <div className={`rounded-2xl border ${(summary?.grossProfit ?? 0) >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-rose-500/30 bg-rose-500/5'} p-5 shadow-sm`}>
+              <div className={`flex items-center justify-between text-xs font-semibold ${(summary?.grossProfit ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 <span>Gross Profit</span>
-                <span className="text-base">📈</span>
+                <span className="text-base">{(summary?.grossProfit ?? 0) >= 0 ? '📈' : '📉'}</span>
               </div>
-              <div className="mt-2 font-display text-2xl font-black text-emerald-400">
-                PKR {summary?.grossProfit.toLocaleString('en-PK') || 0}
+              <div className={`mt-2 font-display text-2xl font-black ${(summary?.grossProfit ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {(summary?.grossProfit ?? 0) >= 0
+                  ? `PKR ${(summary?.grossProfit || 0).toLocaleString('en-PK')}`
+                  : `-PKR ${Math.abs(summary?.grossProfit || 0).toLocaleString('en-PK')}`}
               </div>
-              <p className="mt-1 text-[11px] text-silver-dim">Revenue − Total Purchase Cost</p>
+              <p className="mt-1 text-[11px] text-silver-dim">Revenue − Total Product Cost</p>
             </div>
 
             {/* Average Margin */}
@@ -205,6 +232,59 @@ export default function AdminProfitPage() {
                 {summary?.averageProfitMargin || 0}%
               </div>
               <p className="mt-1 text-[11px] text-silver-dim">(Gross Profit / Revenue) × 100</p>
+            </div>
+          </div>
+
+          {/* Delivery & Courier Shipping Accounting Section */}
+          <div className="rounded-2xl border border-sky-500/30 bg-[#0C1420] p-5 shadow-lg space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🚚</span>
+                <h2 className="font-display text-sm font-black uppercase tracking-wider text-sky-400">
+                  Delivery & Courier Expense Accounting
+                </h2>
+              </div>
+              <span className="text-[11px] text-slate-400 font-medium">
+                Customer Charges vs Actual Courier Bills Paid by Store
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-1">
+              <div className="rounded-xl border border-slate-800 bg-[#080D15] p-3.5 space-y-1">
+                <span className="text-slate-400 font-bold block text-[11px] uppercase">
+                  Customer Delivery Fees Collected
+                </span>
+                <div className="font-mono text-xl font-black text-white">
+                  PKR {(summary?.totalCustomerDeliveryFees || 0).toLocaleString('en-PK')}
+                </div>
+                <span className="text-[10px] text-slate-500 block">
+                  Delivery charges billed to customers
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-[#080D15] p-3.5 space-y-1">
+                <span className="text-amber-400 font-bold block text-[11px] uppercase">
+                  Actual Courier Costs Paid
+                </span>
+                <div className="font-mono text-xl font-black text-amber-300">
+                  PKR {(summary?.totalActualCourierCost || 0).toLocaleString('en-PK')}
+                </div>
+                <span className="text-[10px] text-slate-500 block">
+                  Actual shipping charges billed by courier companies
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-3.5 space-y-1">
+                <span className="text-orange-300 font-bold block text-[11px] uppercase">
+                  Net Delivery Expense (Deducted from Profit)
+                </span>
+                <div className="font-mono text-xl font-black text-orange-400">
+                  PKR {(summary?.totalStoreDeliveryExpense || 0).toLocaleString('en-PK')}
+                </div>
+                <span className="text-[10px] text-orange-200/80 block">
+                  Shipping subsidy paid by store out of net profit
+                </span>
+              </div>
             </div>
           </div>
 
@@ -253,6 +333,51 @@ export default function AdminProfitPage() {
               </div>
               <div className="text-[11px] text-amber-400 font-mono mt-0.5">
                 {summary?.lowestMarginProduct ? `${summary.lowestMarginProduct.margin}% margin` : '-'}
+              </div>
+            </div>
+          </div>
+
+          {/* Profit by Order Source Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Website Profit */}
+            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">🌐</span>
+                <span className="text-xs text-blue-400 font-semibold">Website Profit</span>
+              </div>
+              <div className="font-display text-2xl font-black text-blue-300">
+                PKR {summary?.webProfit?.toLocaleString('en-PK') || 0}
+              </div>
+              <div className="text-[11px] text-silver-dim mt-1">
+                Revenue: PKR {summary?.webRevenue?.toLocaleString('en-PK') || 0}
+              </div>
+            </div>
+
+            {/* WhatsApp Profit */}
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">📱</span>
+                <span className="text-xs text-emerald-400 font-semibold">WhatsApp Profit</span>
+              </div>
+              <div className="font-display text-2xl font-black text-emerald-300">
+                PKR {summary?.whatsappProfit?.toLocaleString('en-PK') || 0}
+              </div>
+              <div className="text-[11px] text-silver-dim mt-1">
+                Revenue: PKR {summary?.whatsappRevenue?.toLocaleString('en-PK') || 0}
+              </div>
+            </div>
+
+            {/* Random Profit */}
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">🎲</span>
+                <span className="text-xs text-amber-400 font-semibold">Random/Other Profit</span>
+              </div>
+              <div className="font-display text-2xl font-black text-amber-300">
+                PKR {summary?.randomProfit?.toLocaleString('en-PK') || 0}
+              </div>
+              <div className="text-[11px] text-silver-dim mt-1">
+                Revenue: PKR {summary?.randomRevenue?.toLocaleString('en-PK') || 0}
               </div>
             </div>
           </div>
@@ -370,6 +495,46 @@ export default function AdminProfitPage() {
               </table>
             </div>
           </div>
+
+          {/* Unlisted / Order-Specific Vendor Products */}
+          {unlistedProducts.length > 0 && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 shadow-sm space-y-4">
+              <div>
+                <h2 className="font-display text-base font-bold text-amber-300 flex items-center gap-2">
+                  <span>🛒</span>
+                  <span>Unlisted / Order-Specific Vendor Purchases</span>
+                </h2>
+                <p className="text-xs text-silver-dim mt-0.5">
+                  Products purchased from vendor for specific customer orders — not in the catalog. Their cost is included in Total Product Cost above.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-y border-amber-500/20 bg-[#080D15] text-[11px] font-bold uppercase tracking-wider text-amber-400/70">
+                    <tr>
+                      <th className="px-4 py-3">Product Name</th>
+                      <th className="px-4 py-3">Units</th>
+                      <th className="px-4 py-3">Unit Purchase Cost</th>
+                      <th className="px-4 py-3">Total Vendor Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-500/10">
+                    {unlistedProducts.map((u) => (
+                      <tr key={u.id} className="hover:bg-amber-500/5 transition">
+                        <td className="px-4 py-3 font-semibold text-silver-bright">
+                          {u.name}
+                          <span className="ml-2 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">UNLISTED</span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-silver-dim">{u.unitsSold}</td>
+                        <td className="px-4 py-3 font-mono text-amber-300">PKR {u.purchasePrice.toLocaleString('en-PK')}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-amber-300">PKR {u.cost.toLocaleString('en-PK')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Category Profit Analytics */}
           <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">

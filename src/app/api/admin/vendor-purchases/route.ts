@@ -76,6 +76,36 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+
+    // Support batch insert from Bill Scanner
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      const recordsToInsert = body.items.map((item: any) => ({
+        vendor_name: (item.vendor_name || 'Voltix Mobile').trim(),
+        order_number: (item.order_number || body.order_number || 'STH-BILL').trim().toUpperCase(),
+        product_name: String(item.product_name || 'Unnamed Item').trim(),
+        quantity: Math.max(1, Number(item.quantity) || 1),
+        wholesale_cost: Math.max(0, Number(item.wholesale_cost) || 0),
+        status: item.status === 'purchased' || body.status === 'purchased' ? 'purchased' : 'pending',
+        payment_status: ['unpaid', 'partial', 'paid'].includes(item.payment_status || body.payment_status)
+          ? item.payment_status || body.payment_status
+          : 'unpaid',
+        payment_method: ['cash', 'bank_transfer', 'easypaisa', 'jazzcash', 'other'].includes(item.payment_method || body.payment_method)
+          ? item.payment_method || body.payment_method
+          : 'cash',
+        amount_paid: Math.max(0, Number(item.amount_paid || body.amount_paid) || 0),
+        payment_due_date: item.payment_due_date || body.payment_due_date || null,
+        purchase_date: item.purchase_date || body.purchase_date || new Date().toISOString().split('T')[0],
+        notes: (item.notes || '').trim() || null,
+        created_at: new Date().toISOString(),
+      }));
+
+      const { data, error } = await supabase.from('vendor_purchases').insert(recordsToInsert).select();
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, count: data?.length || recordsToInsert.length, purchases: data });
+    }
+
     const { order_number, product_name, quantity, wholesale_cost, status, payment_status, payment_method, amount_paid, payment_due_date, purchase_date, notes } = body;
 
     if (!product_name || !product_name.trim()) {

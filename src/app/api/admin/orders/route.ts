@@ -85,3 +85,121 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const {
+      customer_name,
+      phone,
+      city,
+      address,
+      delivery_charges = 0,
+      payment_method = 'Cash on Delivery',
+      payment_status = 'unpaid',
+      amount_paid = 0,
+      notes,
+      order_items,
+      order_source = 'web',
+    } = body;
+
+    if (!customer_name || !phone) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!order_items || order_items.length === 0) {
+      return NextResponse.json({ error: 'Order must have at least one item' }, { status: 400 });
+    }
+
+    const service = createServiceClient();
+
+    // Calculate total amount
+    const subtotal = order_items.reduce((sum: number, item: any) => sum + item.line_total, 0);
+    const total_amount = subtotal + (delivery_charges || 0);
+
+    // Generate order number
+    const order_number = `STH-${Date.now().toString().slice(-8)}`;
+
+    // Create order
+    const { data: order, error: orderError } = await service
+      .from('orders')
+      .insert({
+        customer_name,
+        phone,
+        city,
+        address,
+        delivery_charges,
+        payment_method,
+        payment_status,
+        amount_paid,
+        total_amount,
+        notes,
+        order_number,
+        status: 'pending',
+        order_source,
+        admin_notification_sent: false,
+        customer_notification_sent: false,
+      })
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error('Error creating order:', orderError);
+      return NextResponse.json({ error: orderError.message }, { status: 500 });
+    }
+
+    // Create order items
+    const itemsToInsert = order_items.map((item: any) => ({
+      order_id: order.id,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      line_total: item.line_total,
+    }));
+
+    const { error: itemsError } = await service
+      .from('order_items')
+      .insert(itemsToInsert);
+
+    if (itemsError) {
+      console.error('Error creating order items:', itemsError);
+      // Rollback order if items fail
+      await service.from('orders').delete().eq('id', order.id);
+      return NextResponse.json({ error: itemsError.message }, { status: 500 });
+    }
+
+    // Fetch the complete order with items from database
+    const { data: completeOrder, error: fetchError } = await service
+      .from('orders')
+      .select('*, order_items(*)')
+      .eq('id', order.id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching complete order:', fetchError);
+      // Return the order with inserted items as fallback
+      return NextResponse.json({
+        success: true,
+        order: { ...order, order_items: itemsToInsert }
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      order: completeOrder
+    });
+  } catch (err: any) {
+    console.error('POST /api/admin/orders error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

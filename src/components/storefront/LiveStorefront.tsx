@@ -767,9 +767,7 @@ export default function LiveStorefront({
                       {/* Prices */}
                       <div className="text-right whitespace-nowrap">
                         <div
-                          className={`font-display text-sm sm:text-base font-black ${
-                            isLight ? 'text-black' : 'text-white'
-                          }`}
+                          className="font-display text-sm sm:text-base font-black text-[#00C4CC]"
                         >
                           {formatPrice(product.price, settings)}
                         </div>

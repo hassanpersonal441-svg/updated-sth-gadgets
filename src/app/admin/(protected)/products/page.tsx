@@ -19,6 +19,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(!cachedProducts);
   const [search, setSearch] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'out_of_stock' | 'low_stock'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'unlisted'>('all');
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
@@ -56,9 +57,14 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ active: !product.active }),
       });
       if (res.ok) {
-        admin(`Product visibility set to ${!product.active ? 'LIVE' : 'HIDDEN'}`, 'Product Status Updated');
+        const newStatus = !product.active;
+        if (newStatus) {
+          admin(`Product approved and now LIVE on website!`, 'Product Published');
+        } else {
+          admin(`Product set back to DRAFT`, 'Product Unpublished');
+        }
         setProducts((prev) => {
-          const next = prev.map((p) => (p.id === product.id ? { ...p, active: !product.active } : p));
+          const next = prev.map((p) => (p.id === product.id ? { ...p, active: newStatus } : p));
           cachedProducts = next;
           return next;
         });
@@ -150,9 +156,12 @@ export default function AdminProductsPage() {
         (p.category?.name || '').toLowerCase().includes(search.toLowerCase()) ||
         (p.sku || '').toLowerCase().includes(search.toLowerCase());
       const matchStock = stockFilter === 'all' || p.stock_status === stockFilter;
-      return matchSearch && matchStock;
+      const matchActive = activeFilter === 'all' || 
+        (activeFilter === 'active' && p.active) || 
+        (activeFilter === 'unlisted' && !p.active);
+      return matchSearch && matchStock && matchActive;
     });
-  }, [products, search, stockFilter]);
+  }, [products, search, stockFilter, activeFilter]);
 
   return (
     <div className="space-y-6">
@@ -162,11 +171,28 @@ export default function AdminProductsPage() {
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-silver-bright">
             Products Management
           </h1>
-          <p className="mt-1 text-xs sm:text-sm text-silver-dim">
-            Total {products.length} products listed in your store catalog
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+            <p className="text-silver-dim">
+              Total: <span className="font-bold text-white">{products.length}</span>
+            </p>
+            <p className="text-emerald-400">
+              Live: <span className="font-bold">{products.filter(p => p.active).length}</span>
+            </p>
+            <p className="text-amber-400">
+              Draft: <span className="font-bold">{products.filter(p => !p.active).length}</span>
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {products.filter(p => !p.active).length > 0 && (
+            <button
+              onClick={() => setActiveFilter('unlisted')}
+              className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-amber-400 hover:bg-amber-500/20 transition shadow-sm"
+            >
+              <span>📝</span>
+              <span>Draft: {products.filter(p => !p.active).length}</span>
+            </button>
+          )}
           <Link
             href="/admin/products/bundles"
             className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-white hover:border-[#00C4CC] transition shadow-sm"
@@ -215,6 +241,19 @@ export default function AdminProductsPage() {
             <option value="in_stock">In Stock</option>
             <option value="low_stock">Low Stock</option>
             <option value="out_of_stock">Out of Stock</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-silver-dim">Status:</span>
+          <select
+            value={activeFilter}
+            onChange={(e) => setActiveFilter(e.target.value as any)}
+            className="rounded-xl border border-slate-700/80 bg-[#080D15] px-3 py-2 text-xs font-semibold text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+          >
+            <option value="all">All Products</option>
+            <option value="active">Active Only</option>
+            <option value="unlisted">Draft (Hidden)</option>
           </select>
         </div>
       </div>
@@ -296,16 +335,22 @@ export default function AdminProductsPage() {
                           {p.stock_status.replace('_', ' ').toUpperCase()}
                         </span>
 
+                        {!p.active && (
+                          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-slate-700/50 text-slate-300 border border-slate-600">
+                            DRAFT
+                          </span>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => toggleActive(p)}
                           className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition ${
                             p.active
                               ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                              : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                           }`}
                         >
-                          {p.active ? '● Live' : '○ Hidden'}
+                          {p.active ? '● Live' : '○ Approve & Publish'}
                         </button>
                       </div>
 
@@ -419,17 +464,24 @@ export default function AdminProductsPage() {
                         </td>
 
                         <td className="px-5 py-4">
-                          <button
-                            onClick={() => toggleActive(p)}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                              p.active
-                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
-                                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25'
-                            }`}
-                          >
-                            <span className={`h-1.5 w-1.5 rounded-full ${p.active ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
-                            <span>{p.active ? 'Live' : 'Hidden'}</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {!p.active && (
+                              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-slate-700/50 text-slate-300 border border-slate-600">
+                                DRAFT
+                              </span>
+                            )}
+                            <button
+                              onClick={() => toggleActive(p)}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                p.active
+                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
+                                  : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25'
+                              }`}
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${p.active ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                              <span>{p.active ? 'Live' : 'Approve & Publish'}</span>
+                            </button>
+                          </div>
                         </td>
 
                         <td className="px-5 py-4 text-right">

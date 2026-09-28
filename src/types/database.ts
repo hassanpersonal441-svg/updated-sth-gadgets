@@ -184,7 +184,7 @@ export type OrderStatus =
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type OnlinePaymentStatus = 'awaiting_payment' | 'screenshot_sent' | 'under_verification' | 'paid' | 'rejected' | 'cancelled' | 'expired';
-export type OrderSource = 'whatsapp' | 'web';
+export type OrderSource = 'whatsapp' | 'web' | 'random';
 
 export interface OrderItem {
   id: string;
@@ -212,6 +212,8 @@ export interface Order {
   address: string;
   subtotal: number;
   delivery_charges: number;
+  actual_courier_cost?: number;
+  delivery_paid_by?: 'customer' | 'store' | 'partial';
   coupon_discount: number;
   bundle_discount: number;
   total_amount: number;
@@ -296,6 +298,8 @@ export interface Invoice {
   item_discount: number;
   coupon_discount: number;
   delivery_charges: number;
+  actual_courier_cost?: number;
+  delivery_paid_by?: 'customer' | 'store' | 'partial';
   grand_total: number;
   coupon_code?: string | null;
   coupon_id?: string | null;

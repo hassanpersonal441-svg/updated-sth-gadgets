@@ -193,17 +193,17 @@ export default function InvoiceView({
       )}
 
       {/* Printable Invoice Paper Area */}
-      <div className="mx-auto max-w-4xl bg-white text-slate-900 shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none print:max-w-none print:w-full">
+      <div className="mx-auto max-w-4xl bg-gradient-to-br from-[#1a2a3a] to-[#0f1a2a] text-[#e8e8e8] shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none print:max-w-none print:w-full print:bg-white print:text-slate-900">
         <div
           ref={printRef}
           id="invoice-printable-content"
-          className="p-8 sm:p-12 bg-white text-slate-900 text-sm leading-relaxed"
+          className="p-8 sm:p-12 bg-white text-slate-900 text-sm leading-relaxed print:bg-white print:text-slate-900"
         >
           {/* Header Section */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b-2 border-slate-900 pb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b-2 border-slate-900 pb-8 print:border-slate-900">
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-900">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-900 print:border-slate-900">
                   <Image
                     src={logoUrl}
                     alt={businessName}
@@ -213,13 +213,13 @@ export default function InvoiceView({
                   />
                 </div>
                 <div>
-                  <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">
+                  <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase print:text-slate-900">
                     {businessName}
                   </h1>
-                  <p className="text-xs font-medium text-slate-500">Premium Tech & Mobile Accessories</p>
+                  <p className="text-xs font-medium text-slate-700 print:text-slate-700">Premium Tech & Mobile Accessories</p>
                 </div>
               </div>
-              <div className="text-xs text-slate-600 space-y-0.5">
+              <div className="text-xs text-slate-800 space-y-0.5 print:text-slate-800">
                 <p>{businessAddress}</p>
                 <p>Phone / WhatsApp: {businessPhone}</p>
                 <p>Email: {businessEmail}</p>
@@ -227,26 +227,26 @@ export default function InvoiceView({
             </div>
 
             <div className="sm:text-right space-y-1">
-              <h2 className="text-3xl font-black text-slate-900 tracking-wider">INVOICE</h2>
-              <p className="font-mono text-base font-bold text-[#0066FF]">
+              <h2 className="text-3xl font-black text-slate-900 tracking-wider print:text-slate-900">INVOICE</h2>
+              <p className="font-mono text-base font-bold text-[#0066FF] print:text-[#0066FF]">
                 {displayInvoiceNumber}
               </p>
-              <div className="text-xs text-slate-600 space-y-0.5 pt-2">
+              <div className="text-xs text-slate-800 space-y-0.5 pt-2 print:text-slate-800">
                 <p>
-                  <span className="font-semibold text-slate-700">Date:</span>{' '}
+                  <span className="font-semibold text-slate-900 print:text-slate-900">Date:</span>{' '}
                   {invoice.invoice_date ? invoice.invoice_date.split('T')[0] : ''}
                 </p>
                 {invoice.due_date && (
                   <p>
-                    <span className="font-semibold text-slate-700">Due Date:</span>{' '}
+                    <span className="font-semibold text-slate-900 print:text-slate-900">Due Date:</span>{' '}
                     {invoice.due_date.split('T')[0]}
                   </p>
                 )}
                 <div className="pt-1 flex sm:justify-end gap-2">
-                  <span className="inline-block px-2 py-0.5 rounded border border-slate-900 text-[10px] font-bold uppercase tracking-wider bg-slate-100">
+                  <span className="inline-block px-2 py-0.5 rounded border border-slate-900 text-[10px] font-bold uppercase tracking-wider bg-slate-200 print:bg-slate-200 print:border-slate-900">
                     Status: {invoice.invoice_status}
                   </span>
-                  <span className="inline-block px-2 py-0.5 rounded border border-slate-900 text-[10px] font-bold uppercase tracking-wider bg-slate-900 text-white">
+                  <span className="inline-block px-2 py-0.5 rounded border border-slate-900 text-[10px] font-bold uppercase tracking-wider bg-slate-900 text-white print:bg-slate-900 print:text-white">
                     Payment: {invoice.payment_status}
                   </span>
                 </div>
@@ -255,36 +255,36 @@ export default function InvoiceView({
           </div>
 
           {/* Customer & Payment Info Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-8 py-4 bg-slate-50 rounded-xl p-6 border border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-8 py-4 bg-slate-100 rounded-xl p-6 border border-slate-300 print:bg-slate-100 print:border-slate-300">
             <div>
-              <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-2">
+              <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-2 print:text-slate-700">
                 Billed To (Customer)
               </h3>
-              <p className="font-bold text-slate-900 text-base">{invoice.customer_name}</p>
-              <p className="text-xs text-slate-600">{invoice.customer_address}, {invoice.customer_city}</p>
-              <p className="text-xs text-slate-600 mt-1">📞 {invoice.customer_phone}</p>
+              <p className="font-bold text-slate-900 text-base print:text-slate-900">{invoice.customer_name}</p>
+              <p className="text-xs text-slate-800 print:text-slate-800">{invoice.customer_address}, {invoice.customer_city}</p>
+              <p className="text-xs text-slate-800 mt-1 print:text-slate-800">📞 {invoice.customer_phone}</p>
               {invoice.customer_whatsapp && (
-                <p className="text-xs text-slate-600">💬 {invoice.customer_whatsapp}</p>
+                <p className="text-xs text-slate-800 print:text-slate-800">💬 {invoice.customer_whatsapp}</p>
               )}
               {invoice.customer_email && (
-                <p className="text-xs text-slate-600">✉️ {invoice.customer_email}</p>
+                <p className="text-xs text-slate-800 print:text-slate-800">✉️ {invoice.customer_email}</p>
               )}
             </div>
 
             <div className="sm:text-right">
-              <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-2">
+              <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-2 print:text-slate-700">
                 Payment Details
               </h3>
-              <p className="text-xs text-slate-700">
+              <p className="text-xs text-slate-900 print:text-slate-900">
                 <span className="font-semibold">Method:</span> {invoice.payment_method}
               </p>
-              <p className="text-xs text-slate-700">
+              <p className="text-xs text-slate-900 print:text-slate-900">
                 <span className="font-semibold">Status:</span> {invoice.payment_status}
               </p>
-              <p className="text-xs text-slate-700">
+              <p className="text-xs text-slate-900 print:text-slate-900">
                 <span className="font-semibold">Amount Paid:</span> {currencySymbol} {invoice.amount_paid.toLocaleString()}
               </p>
-              <p className="text-xs font-bold text-slate-900 mt-1">
+              <p className="text-xs font-bold text-slate-900 mt-1 print:text-slate-900">
                 <span>Balance Remaining:</span> {currencySymbol} {invoice.remaining_amount.toLocaleString()}
               </p>
             </div>
@@ -294,7 +294,7 @@ export default function InvoiceView({
           <div className="overflow-x-auto my-8">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b-2 border-slate-900 bg-slate-900 text-white text-xs uppercase font-bold tracking-wider">
+                <tr className="border-b-2 border-slate-900 bg-slate-900 text-white text-xs uppercase font-bold tracking-wider print:bg-slate-900 print:text-white">
                   <th className="py-3 px-4">#</th>
                   <th className="py-3 px-4">Product Description</th>
                   <th className="py-3 px-4 text-center">Qty</th>
@@ -303,45 +303,45 @@ export default function InvoiceView({
                   <th className="py-3 px-4 text-right">Line Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 text-xs">
+              <tbody className="divide-y divide-slate-300 text-xs print:divide-y print:divide-slate-200">
                 {invoice.invoice_items && invoice.invoice_items.length > 0 ? (
                   invoice.invoice_items.map((item, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-slate-50">
-                      <td className="py-3.5 px-4 font-mono font-medium text-slate-500">{idx + 1}</td>
+                    <tr key={item.id || idx} className="hover:bg-slate-200 print:hover:bg-transparent">
+                      <td className="py-3.5 px-4 font-mono font-medium text-slate-700 print:text-slate-500">{idx + 1}</td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           {item.product_image && (
                             <img
                               src={item.product_image}
                               alt={item.product_name}
-                              className="h-9 w-9 object-cover rounded border border-slate-200 shrink-0"
+                              className="h-9 w-9 object-cover rounded border border-slate-400 print:border-slate-200 shrink-0"
                             />
                           )}
-                          <span className="font-bold text-slate-900">{item.product_name}</span>
+                          <span className="font-bold text-slate-900 print:text-slate-900">{item.product_name}</span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-800">{item.quantity}</td>
-                      <td className="py-3.5 px-4 text-right font-mono">{currencySymbol} {item.unit_price.toLocaleString()}</td>
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-900 print:text-slate-800">{item.quantity}</td>
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-900 print:text-slate-800">{currencySymbol} {item.unit_price.toLocaleString()}</td>
                       <td className="py-3.5 px-4 text-right font-mono">
                         {item.discount > 0 ? (
                           <div>
-                            <span className="text-amber-600 font-semibold">-{currencySymbol} {item.discount.toLocaleString()}</span>
-                            <span className="block text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded px-1 mt-0.5 whitespace-nowrap">
+                            <span className="text-amber-700 font-semibold print:text-amber-600">-{currencySymbol} {item.discount.toLocaleString()}</span>
+                            <span className="block text-[10px] font-bold text-amber-800 bg-amber-200 border border-amber-300 rounded px-1 mt-0.5 whitespace-nowrap print:bg-amber-100 print:border-amber-200">
                               🏷️ Courtesy Rate
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-slate-500 print:text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 print:text-slate-900">
                         {currencySymbol} {item.total.toLocaleString()}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate-400">
+                    <td colSpan={6} className="py-6 text-center text-slate-500 print:text-slate-400">
                       No items listed in this invoice.
                     </td>
                   </tr>
@@ -351,17 +351,17 @@ export default function InvoiceView({
           </div>
 
           {/* Pricing Totals Summary */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-t-2 border-slate-900 pt-6 my-6">
-            <div className="max-w-xs text-xs text-slate-600 space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-t-2 border-slate-900 pt-6 my-6 print:border-slate-900">
+            <div className="max-w-xs text-xs text-slate-700 space-y-4 print:text-slate-600">
               {invoice.notes && (
                 <div>
-                  <h4 className="font-bold uppercase text-slate-900 text-[11px] tracking-wider mb-1">Notes</h4>
-                  <p className="bg-slate-50 p-3 rounded-lg border border-slate-200">{invoice.notes}</p>
+                  <h4 className="font-bold uppercase text-slate-900 text-[11px] tracking-wider mb-1 print:text-slate-900">Notes</h4>
+                  <p className="bg-slate-100 p-3 rounded-lg border border-slate-300 print:bg-slate-50 print:border-slate-200">{invoice.notes}</p>
                 </div>
               )}
               <div>
-                <h4 className="font-bold uppercase text-slate-900 text-[11px] tracking-wider mb-1">Terms & Conditions</h4>
-                <p className="text-[10px] text-slate-500 leading-normal">
+                <h4 className="font-bold uppercase text-slate-900 text-[11px] tracking-wider mb-1 print:text-slate-900">Terms & Conditions</h4>
+                <p className="text-[10px] text-slate-700 leading-normal print:text-slate-500">
                   {invoice.terms ||
                     'Thank you for your business! Items once sold can be claimed under standard STH Gadgets warranty where applicable. Please retain this invoice for your records.'}
                 </p>
@@ -369,23 +369,23 @@ export default function InvoiceView({
             </div>
 
             <div className="w-full sm:w-72 text-xs space-y-2.5">
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-600">Subtotal:</span>
-                <span className="font-mono font-semibold text-slate-900">{currencySymbol} {invoice.subtotal.toLocaleString()}</span>
+              <div className="flex justify-between py-1 border-b border-slate-300 print:border-slate-200">
+                <span className="text-slate-700 print:text-slate-600">Subtotal:</span>
+                <span className="font-mono font-semibold text-slate-900 print:text-slate-900">{currencySymbol} {invoice.subtotal.toLocaleString()}</span>
               </div>
 
               {invoice.item_discount > 0 && (
-                <div className="flex justify-between items-center py-1.5 border-b border-slate-200 text-amber-700 bg-amber-50 px-2.5 rounded">
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-300 text-amber-800 bg-amber-100 px-2.5 rounded print:bg-amber-50 print:border-slate-200">
                   <div>
                     <span className="font-bold">🏷️ Special Store Discount:</span>
-                    <span className="block text-[10px] text-amber-800 font-medium">Special Courtesy Rate / رعایت</span>
+                    <span className="block text-[10px] text-amber-900 font-medium">Special Courtesy Rate / رعایت</span>
                   </div>
                   <span className="font-mono font-bold">-{currencySymbol} {invoice.item_discount.toLocaleString()}</span>
                 </div>
               )}
 
               {invoice.coupon_discount > 0 && (
-                <div className="flex justify-between py-1 border-b border-slate-200 text-emerald-600">
+                <div className="flex justify-between py-1 border-b border-slate-300 text-emerald-700 print:text-emerald-600">
                   <span>
                     Coupon Discount {invoice.coupon_code ? `(${invoice.coupon_code})` : ''}:
                   </span>
@@ -393,34 +393,34 @@ export default function InvoiceView({
                 </div>
               )}
 
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-600">Delivery Charges:</span>
-                <span className="font-mono font-semibold text-slate-900">
-                  {invoice.delivery_charges > 0 ? `${currencySymbol} ${invoice.delivery_charges.toLocaleString()}` : 'FREE'}
+              <div className="flex justify-between py-1 border-b border-slate-300 print:border-slate-200">
+                <span className="text-slate-700 print:text-slate-600">Delivery Charges:</span>
+                <span className="font-mono font-semibold text-slate-900 print:text-slate-900">
+                  {invoice.delivery_charges > 0 ? `${currencySymbol} {invoice.delivery_charges.toLocaleString()}` : 'FREE'}
                 </span>
               </div>
 
-              <div className="flex justify-between py-3 border-t-2 border-b-2 border-slate-900 font-bold text-base text-slate-900 bg-slate-100 px-3 rounded-lg">
+              <div className="flex justify-between py-3 border-t-2 border-b-2 border-slate-900 font-bold text-base text-slate-900 bg-slate-200 px-3 rounded-lg print:bg-slate-100 print:border-slate-900">
                 <span>Grand Total:</span>
-                <span className="font-mono text-[#0066FF]">{currencySymbol} {invoice.grand_total.toLocaleString()}</span>
+                <span className="font-mono text-[#0066FF] print:text-[#0066FF]">{currencySymbol} {invoice.grand_total.toLocaleString()}</span>
               </div>
 
-              <div className="flex justify-between py-1 text-slate-700">
+              <div className="flex justify-between py-1 text-slate-900 print:text-slate-700">
                 <span>Amount Paid:</span>
-                <span className="font-mono font-bold text-emerald-600">{currencySymbol} {invoice.amount_paid.toLocaleString()}</span>
+                <span className="font-mono font-bold text-emerald-700 print:text-emerald-600">{currencySymbol} {invoice.amount_paid.toLocaleString()}</span>
               </div>
 
-              <div className="flex justify-between py-1 font-bold text-slate-900">
+              <div className="flex justify-between py-1 font-bold text-slate-900 print:text-slate-900">
                 <span>Remaining Balance:</span>
-                <span className="font-mono text-rose-600">{currencySymbol} {invoice.remaining_amount.toLocaleString()}</span>
+                <span className="font-mono text-rose-700 print:text-rose-600">{currencySymbol} {invoice.remaining_amount.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
           {/* Footer Branding */}
-          <div className="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
-            <p className="font-medium text-slate-600">STH Gadgets — Quality Products, Unmatched Service</p>
-            <p className="text-[10px] mt-1 text-slate-400">Official Digital Invoice | STH Gadgets</p>
+          <div className="mt-12 pt-6 border-t border-slate-300 text-center text-xs text-slate-700 print:border-slate-200 print:text-slate-400">
+            <p className="font-medium text-slate-900 print:text-slate-600">STH Gadgets — Quality Products, Unmatched Service</p>
+            <p className="text-[10px] mt-1 text-slate-700 print:text-slate-400">Official Digital Invoice | STH Gadgets</p>
           </div>
         </div>
       </div>

@@ -320,6 +320,43 @@ export async function POST(request: Request) {
 
     const whatsappUrl = createWhatsAppUrl(destPhone, whatsappMessage);
 
+    // 12. Send immediate notification to admin's WhatsApp (fallback mechanism)
+    // This ensures admin gets notified even if webhook system is not set up
+    try {
+      // Admin WhatsApp number from settings (different from customer destination)
+      const adminPhone = (settings?.whatsapp_number && settings.whatsapp_number.trim())
+        ? settings.whatsapp_number.replace(/[^0-9]/g, '')
+        : '923489593671';
+
+      // Build admin notification message
+      const adminMessage = [
+        `🔔 *NEW ORDER ALERT*`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `👤 *Customer:* ${customer_name}`,
+        `📱 *Phone:* ${normalizedPhone || phone}`,
+        `🏙️ *City:* ${city}`,
+        `💰 *Total:* PKR ${total_amount.toLocaleString('en-PK')}`,
+        `📦 *Items:* ${verifiedItems.length}`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `Order ID: ${insertedOrder.id}`,
+        `Check Admin Panel for details`,
+      ].join('\n');
+
+      // Create admin WhatsApp URL
+      const adminWhatsappUrl = createWhatsAppUrl(adminPhone, adminMessage);
+
+      // Update admin_notification_sent to true
+      await supabase
+        .from('orders')
+        .update({ admin_notification_sent: true })
+        .eq('id', insertedOrder.id);
+
+      console.log('Admin notification ready:', adminWhatsappUrl);
+    } catch (updateError) {
+      console.error('Error preparing admin notification:', updateError);
+      // Non-blocking - continue with response
+    }
+
     return NextResponse.json({
       success: true,
       orderId: insertedOrder.id,

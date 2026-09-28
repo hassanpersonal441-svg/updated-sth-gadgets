@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import InvoiceView from '@/components/admin/InvoiceView';
+import { useToast } from '@/context/ToastContext';
 import type { Product, Coupon, Invoice, InvoicePaymentMethod, InvoicePaymentStatus, InvoiceStatus } from '@/types/database';
 
 interface InvoiceFormItem {
@@ -20,6 +21,7 @@ interface InvoiceFormItem {
 function CreateInvoiceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { success, error: showErrorToast } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -69,13 +71,25 @@ function CreateInvoiceContent() {
   useEffect(() => {
     async function loadData() {
       try {
-        const prodRes = await fetch('/api/admin/orders'); // Or products endpoint
-        const prodsRes = await fetch('/api/categories'); // let's fetch active products directly
-        // Fetch products directly from public client or endpoint
-        const resProds = await fetch('/api/admin/profit'); // profit route has product list or we can fetch products
-        // Let's use standard Supabase client directly or create client endpoint
+        // Check if items were passed from order creation
+        const storedItems = localStorage.getItem('invoiceFromOrderItems');
+        if (storedItems) {
+          const orderItems = JSON.parse(storedItems);
+          const importedItems: InvoiceFormItem[] = orderItems.map((i: any) => ({
+            product_id: i.product_id || null,
+            product_name: i.product_name + (i.variant_name ? ` (${i.variant_name})` : ''),
+            product_image: i.product_image || null,
+            quantity: i.quantity,
+            catalog_price: Number(i.unit_price),
+            unit_price: Number(i.unit_price),
+            discount: 0,
+            total: Number(i.line_total),
+          }));
+          setItems(importedItems);
+          localStorage.removeItem('invoiceFromOrderItems');
+        }
       } catch (err) {
-        console.error('Data load error:', err);
+        console.error('Error loading order items:', err);
       }
     }
     loadData();
@@ -349,11 +363,11 @@ function CreateInvoiceContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!customerName.trim()) return alert('Please enter Customer Name');
-    if (!customerPhone.trim()) return alert('Please enter Customer Phone Number');
-    if (!customerAddress.trim()) return alert('Please enter Customer Address');
-    if (!customerCity.trim()) return alert('Please enter Customer City');
-    if (items.length === 0) return alert('Please add at least one product item');
+    if (!customerName.trim()) return showErrorToast('Please enter Customer Name');
+    if (!customerPhone.trim()) return showErrorToast('Please enter Customer Phone Number');
+    if (!customerAddress.trim()) return showErrorToast('Please enter Customer Address');
+    if (!customerCity.trim()) return showErrorToast('Please enter Customer City');
+    if (items.length === 0) return showErrorToast('Please add at least one product item');
 
     setLoading(true);
 
@@ -384,14 +398,14 @@ function CreateInvoiceContent() {
 
       const data = await res.json();
       if (res.ok && data.invoice) {
-        alert(`Invoice ${data.invoice.invoice_number} created successfully!`);
+        success(`Invoice ${data.invoice.invoice_number} created successfully!`);
         router.push(`/admin/invoices/${data.invoice.id}`);
       } else {
-        alert(`Failed to create invoice: ${data.error || 'Unknown error'}`);
+        showErrorToast(`Failed to create invoice: ${data.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Submit invoice error:', err);
-      alert('Network or server error while creating invoice');
+      showErrorToast('Network or server error while creating invoice');
     } finally {
       setLoading(false);
     }

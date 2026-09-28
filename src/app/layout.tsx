@@ -5,8 +5,7 @@ import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import ClientCartOverlays from '@/components/cart/ClientCartOverlays';
-import PwaRegister from '@/components/pwa/PwaRegister';
-import InstallPwaModal from '@/components/pwa/InstallPwaModal';
+import PwaConditionalWrapper from '@/components/pwa/PwaConditionalWrapper';
 
 
 const display = Space_Grotesk({
@@ -29,7 +28,8 @@ export const viewport: Viewport = {
   themeColor: '#00C4CC',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
 };
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sthgadgets.store';
@@ -170,12 +170,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-body bg-base text-silver antialiased" suppressHydrationWarning>
         <ThemeProvider>
-          <PwaRegister />
           <CartProvider>
             <ToastProvider>
               {children}
               <ClientCartOverlays />
-              <InstallPwaModal />
+              <PwaConditionalWrapper />
             </ToastProvider>
           </CartProvider>
         </ThemeProvider>

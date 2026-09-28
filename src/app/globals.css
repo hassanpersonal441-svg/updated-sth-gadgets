@@ -26,7 +26,9 @@ html {
   color-scheme: dark;
   background-color: #080D15;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 body {
@@ -34,7 +36,9 @@ body {
   color: #C9D2DB;
   color-scheme: dark;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 /* Keep mobile fixed actions positioned correctly with side navigation */
@@ -328,6 +332,24 @@ html[data-theme="light"] .dropdown-menu {
   outline-offset: 2px;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0%);
@@ -413,6 +435,24 @@ img {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
+  
+  /* Force proper scaling on mobile */
+  * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Prevent horizontal scroll */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  
+  /* Fix flex containers */
+  .flex, .inline-flex {
+    flex-wrap: wrap !important;
+  }
 }
 
 /* Touch-friendly tap targets */
@@ -436,12 +476,27 @@ img {
   
   /* Prevent horizontal scroll on mobile */
   * {
-    max-width: 100%;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    min-width: 0 !important;
   }
   
   /* Better mobile spacing */
   .gap-responsive {
     gap: 0.5rem;
+  }
+  
+  /* Fix containers on mobile */
+  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
   }
 }
 

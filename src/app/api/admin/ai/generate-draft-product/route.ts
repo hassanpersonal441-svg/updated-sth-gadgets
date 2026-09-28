@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-guard';
 import { GoogleGenAI } from '@google/genai';
+import { createServiceClient } from '@/lib/supabase/server';
+import { slugify } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,9 +44,19 @@ export async function POST(request: NextRequest) {
       process.env.GEMINI_API_KEY_2,
     ].filter(Boolean) as string[];
 
+    // Generate product information using AI
+    let generatedData: GeneratedProductResponse = {
+      title: productName,
+      short_description: '',
+      description: '',
+      key_features: [],
+      specifications: [],
+    };
+    let usedApiKey: string | null = null;
+    
     if (apiKeys.length === 0) {
       // Fallback response if GEMINI_API_KEY is not set
-      const fallback: GeneratedProductResponse = {
+      generatedData = {
         title: productName,
         short_description: `High-quality ${productName} with premium performance, durable build, and official warranty.`,
         description: `Upgrade your tech lifestyle with the all-new ${productName}.\n\n` +
@@ -70,10 +82,8 @@ export async function POST(request: NextRequest) {
           { label: 'Warranty', value: '7 Days Checking Warranty' },
         ],
       };
-      return NextResponse.json({ data: fallback, source: 'fallback' });
-    }
-
-    const systemInstruction = `You are an expert e-commerce catalog specialist for "STH Gadgets" (a top mobile accessories and tech store in Pakistan).
+    } else {
+      const systemInstruction = `You are an expert e-commerce catalog specialist for "STH Gadgets" (a top mobile accessories and tech store in Pakistan).
 When given a gadget or accessory model name (and optional category), generate comprehensive, realistic, and highly engaging product data for an online store.
 Return ONLY valid JSON matching this exact structure:
 {
@@ -106,62 +116,130 @@ Guidelines:
 - Write natural, high-converting English suitable for Pakistani online shoppers.
 - Do NOT output markdown code blocks (no \`\`\`json). Return raw JSON only.`;
 
-    const userPrompt = `Product: ${productName}${categoryName ? ` | Category: ${categoryName}` : ''}`;
+      const userPrompt = `Product: ${productName}${categoryName ? ` | Category: ${categoryName}` : ''}`;
 
-    let lastError: Error | null = null;
-    let generatedSuccessfully = false;
-    let json: any;
+      let lastError: Error | null = null;
+      let generatedSuccessfully = false;
 
-    // Try each API key with fallback
-    for (const apiKey of apiKeys) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        
-        let response;
+      // Try each API key with fallback
+      for (const apiKey of apiKeys) {
         try {
-          response = await ai.models.generateContent({
-            model: 'gemini-3.5-flash',
-            contents: userPrompt,
-            config: {
-              systemInstruction,
-              responseMimeType: 'application/json',
-              temperature: 0.2,
-              maxOutputTokens: 1500,
-            },
-          });
-        } catch {
-          response = await ai.models.generateContent({
-            model: 'gemini-3.5-flash-lite',
-            contents: userPrompt,
-            config: {
-              systemInstruction,
-              responseMimeType: 'application/json',
-              temperature: 0.2,
-              maxOutputTokens: 1500,
-            },
-          });
-        }
+          const ai = new GoogleGenAI({ apiKey });
+          
+          let response;
+          try {
+            response = await ai.models.generateContent({
+              model: 'gemini-3.5-flash',
+              contents: userPrompt,
+              config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                temperature: 0.2,
+                maxOutputTokens: 1500,
+              },
+            });
+          } catch {
+            response = await ai.models.generateContent({
+              model: 'gemini-3.5-flash-lite',
+              contents: userPrompt,
+              config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                temperature: 0.2,
+                maxOutputTokens: 1500,
+              },
+            });
+          }
 
-        const responseText = response.text?.trim() || '{}';
-        json = JSON.parse(responseText);
-        generatedSuccessfully = true;
-        break; // Success - exit the loop
-      } catch (error: any) {
-        lastError = error;
-        console.error(`Failed with API key, trying next...`, error.message);
-        continue; // Try next API key
+          const responseText = response.text?.trim() || '{}';
+          generatedData = JSON.parse(responseText);
+          generatedSuccessfully = true;
+          usedApiKey = apiKey;
+          break; // Success - exit the loop
+        } catch (error: any) {
+          lastError = error;
+          console.error(`Failed with API key, trying next...`, error.message);
+          continue; // Try next API key
+        }
+      }
+
+      if (!generatedSuccessfully) {
+        throw lastError || new Error('All API keys failed');
       }
     }
 
-    if (!generatedSuccessfully) {
-      throw lastError || new Error('All API keys failed');
+    // Create the product as a draft in the database
+    const service = createServiceClient();
+
+    // Get the next sort order
+    const { data: lastProduct } = await service
+      .from('products')
+      .select('sort_order')
+      .order('sort_order', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const nextSortOrder = (Number(lastProduct?.sort_order) || 0) + 1;
+
+    // Generate unique slug
+    const baseSlug = slugify(generatedData.title || productName);
+    let candidateSlug = baseSlug;
+    let counter = 1;
+    while (true) {
+      const { data: existingSlug } = await service
+        .from('products')
+        .select('id')
+        .eq('slug', candidateSlug)
+        .maybeSingle();
+
+      if (!existingSlug) break;
+      counter++;
+      candidateSlug = `${baseSlug}-${counter}`;
     }
 
-    return NextResponse.json({ data: json, source: 'gemini' });
+    // Prepare product data - create as DRAFT (active: false)
+    const productData = {
+      name: generatedData.title || productName,
+      slug: candidateSlug,
+      description: generatedData.description || '',
+      short_description: generatedData.short_description || '',
+      specifications: generatedData.specifications || [],
+      key_features: generatedData.key_features || [],
+      price: 0, // Admin will set this later
+      purchase_price: 0, // Admin will set this later
+      wholesale_price: null,
+      stock_status: 'out_of_stock', // Will be updated when inventory is added
+      featured: false,
+      best_seller: false,
+      new_arrival: true,
+      active: false, // DRAFT status - not visible to public
+      sort_order: nextSortOrder,
+    };
+
+    // Insert the product
+    const { data: product, error } = await service
+      .from('products')
+      .insert(productData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating draft product:', error);
+      return NextResponse.json(
+        { error: error.message || 'Failed to create draft product' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      product,
+      generatedData,
+      source: usedApiKey ? 'gemini' : 'fallback'
+    }, { status: 201 });
+
   } catch (error: any) {
-    console.error('Error generating product with AI:', error);
+    console.error('Error generating and creating draft product:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate product details' },
+      { error: error.message || 'Failed to generate and create draft product' },
       { status: 500 }
     );
   }

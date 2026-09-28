@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import InvoiceView from '@/components/admin/InvoiceView';
+import { useToast } from '@/context/ToastContext';
 import type { Product, Coupon, Invoice, InvoicePaymentMethod, InvoicePaymentStatus, InvoiceStatus } from '@/types/database';
 
 interface InvoiceFormItem {
@@ -24,6 +25,7 @@ export default function EditInvoicePage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { success, error: showErrorToast } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -339,11 +341,11 @@ export default function EditInvoicePage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!customerName.trim()) return alert('Please enter Customer Name');
-    if (!customerPhone.trim()) return alert('Please enter Customer Phone Number');
-    if (!customerAddress.trim()) return alert('Please enter Customer Address');
-    if (!customerCity.trim()) return alert('Please enter Customer City');
-    if (items.length === 0) return alert('Please add at least one product item');
+    if (!customerName.trim()) return showErrorToast('Please enter Customer Name');
+    if (!customerPhone.trim()) return showErrorToast('Please enter Customer Phone Number');
+    if (!customerAddress.trim()) return showErrorToast('Please enter Customer Address');
+    if (!customerCity.trim()) return showErrorToast('Please enter Customer City');
+    if (items.length === 0) return showErrorToast('Please add at least one product item');
 
     setSubmitting(true);
 
@@ -375,14 +377,14 @@ export default function EditInvoicePage({
 
       const data = await res.json();
       if (res.ok && data.invoice) {
-        alert(`Invoice ${data.invoice.invoice_number} updated successfully!`);
+        success(`Invoice ${data.invoice.invoice_number} updated successfully!`);
         router.push(`/admin/invoices/${data.invoice.id}`);
       } else {
-        alert(`Failed to update invoice: ${data.error || 'Unknown error'}`);
+        showErrorToast(`Failed to update invoice: ${data.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Update invoice error:', err);
-      alert('Network or server error while updating invoice');
+      showErrorToast('Network or server error while updating invoice');
     } finally {
       setSubmitting(false);
     }

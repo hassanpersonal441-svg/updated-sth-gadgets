@@ -96,7 +96,7 @@ Rules:
 
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: `Extract specifications from this text:\n\n${rawText.slice(0, 4000)}`,
         config: {
           systemInstruction,

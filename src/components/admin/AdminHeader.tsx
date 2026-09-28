@@ -160,13 +160,13 @@ export default function AdminHeader({
     };
   }, [soundTone]);
 
-  // Realtime subscription + Fast Polling (every 4s)
+  // Realtime subscription + Fast Polling (every 2s for faster detection)
   useEffect(() => {
     const supabase = createClient();
 
     async function checkLatestOrder() {
       try {
-        const res = await fetch('/api/admin/orders?limit=1');
+        const res = await fetch('/api/admin/orders?limit=1&status=pending');
         const data = await res.json();
         if (data.orders && data.orders.length > 0) {
           const newest = data.orders[0];
@@ -177,8 +177,8 @@ export default function AdminHeader({
             handleNewOrderAlert(newest);
           }
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        console.error('Error checking latest order:', error);
       }
     }
 
@@ -198,9 +198,10 @@ export default function AdminHeader({
       )
       .subscribe();
 
+    // Reduced polling interval from 4s to 2s for faster notification
     const interval = setInterval(() => {
       checkLatestOrder();
-    }, 4000);
+    }, 2000);
 
     return () => {
       supabase.removeChannel(channel);

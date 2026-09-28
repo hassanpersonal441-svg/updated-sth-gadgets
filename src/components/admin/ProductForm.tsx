@@ -126,7 +126,7 @@ export default function ProductForm({
   const [bestSeller, setBestSeller] = useState(product?.best_seller || false);
   const [newArrival, setNewArrival] = useState(product?.new_arrival || false);
   const [freeDelivery, setFreeDelivery] = useState(product?.free_delivery || false);
-  const [active, setActive] = useState(product?.active ?? true);
+  const [active, setActive] = useState(product?.active ?? (isEdit ? true : false));
   const [specs, setSpecs] = useState<Specification[]>(
     product?.specifications?.length ? product.specifications : [{ label: '', value: '' }]
   );
@@ -1078,7 +1078,14 @@ export default function ProductForm({
               onChange={(e) => setActive(e.target.checked)}
               className="h-4 w-4 rounded accent-[#00C4CC]"
             />
-            <span>Active & Visible on Storefront</span>
+            <div className="flex flex-col">
+              <span>Active & Visible on Storefront</span>
+              {!isEdit && !active && (
+                <span className="text-[10px] text-amber-400 font-medium">
+                  ⚠️ Unlisted by default - Enable to make visible
+                </span>
+              )}
+            </div>
           </label>
         </div>
       </div>

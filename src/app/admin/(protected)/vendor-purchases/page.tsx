@@ -5,10 +5,12 @@ import Image from 'next/image';
 import type { VendorProfile, VendorPurchase } from '@/types/database';
 import { useToast } from '@/context/ToastContext';
 import { createWhatsAppUrl } from '@/lib/whatsapp';
+import AiProductGenerationModal from '@/components/admin/AiProductGenerationModal';
 
 export default function VendorPurchasesPage() {
   const { success, error: showErrorToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const productNameInputRef = useRef<HTMLInputElement>(null);
 
   const [purchases, setPurchases] = useState<VendorPurchase[]>([]);
   const [profile, setProfile] = useState<VendorProfile>({
@@ -29,7 +31,8 @@ export default function VendorPurchasesPage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<VendorPurchase | null>(null);
   const [whatsAppPurchase, setWhatsAppPurchase] = useState<VendorPurchase | null>(null);
-  const [whatsAppAction, setWhatsAppAction] = useState<'due_date' | 'partial_payment' | 'payment_confirmation'>('due_date');
+  const [whatsAppAction, setWhatsAppAction] = useState<'due_date' | 'partial_payment' | 'payment_confirmation' | 'purchase_order' | 'due_date_reminder'>('due_date');
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   // Form State
   const [formOrderNumber, setFormOrderNumber] = useState('');
@@ -42,8 +45,18 @@ export default function VendorPurchasesPage() {
   const [formAmountPaid, setFormAmountPaid] = useState(0);
   const [formPaymentDueDate, setFormPaymentDueDate] = useState('');
   const [formPurchaseDate, setFormPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formNotes, setFormNotes] = useState('');
+  const [formProductNotes, setFormProductNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiGeneratedInfo, setAiGeneratedInfo] = useState<any>(null);
+
+  // Multiple products support
+  const [purchaseItems, setPurchaseItems] = useState<Array<{
+    product_name: string;
+    quantity: number;
+    wholesale_cost: number;
+    notes?: string;
+  }>>([]);
 
   // Profile Form State
   const [profLogoUrl, setProfLogoUrl] = useState('');
@@ -56,6 +69,8 @@ export default function VendorPurchasesPage() {
   // Suggestions for order numbers & products
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; name: string; wholesale_price?: number }>>([]);
   const [recentOrders, setRecentOrders] = useState<Array<{ id: string; order_number: string }>>([]);
+  const [productSearchResults, setProductSearchResults] = useState<Array<{ id: string; name: string; wholesale_price?: number }>>([]);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
   const suggestionsLoaded = useRef(false);
 
   async function loadData() {
@@ -99,7 +114,8 @@ export default function VendorPurchasesPage() {
     setFormAmountPaid(0);
     setFormPaymentDueDate('');
     setFormPurchaseDate(new Date().toISOString().split('T')[0]);
-    setFormNotes('');
+    setFormProductNotes('');
+    setPurchaseItems([]);
     setEditingPurchase(null);
   }
 
@@ -107,6 +123,48 @@ export default function VendorPurchasesPage() {
     resetForm();
     loadSuggestions();
     setIsCreateOpen(true);
+  }
+
+  function handleAiProductCreated(product: any) {
+    // Set the form product name to the newly created product
+    setFormProductName(product.name);
+    // Reload suggestions to include the new product
+    suggestionsLoaded.current = false;
+    loadSuggestions();
+  }
+
+  async function handleAiGenerateInfo(productName: string) {
+    if (!productName.trim()) return;
+    
+    setIsAiGenerating(true);
+    try {
+      const res = await fetch('/api/admin/ai/generate-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: productName,
+          categoryName: 'Mobile Accessories',
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to generate product info');
+      }
+
+      setAiGeneratedInfo(json.data);
+      
+      // Auto-fill fields with AI data
+      if (json.data.short_description) {
+        setFormProductNotes(json.data.short_description);
+      }
+      
+      success('AI product information generated successfully!');
+    } catch (err: any) {
+      showErrorToast(err.message || 'Failed to generate product info');
+    } finally {
+      setIsAiGenerating(false);
+    }
   }
 
   function openEditModal(p: VendorPurchase) {
@@ -122,7 +180,7 @@ export default function VendorPurchasesPage() {
     setFormAmountPaid(Number(p.amount_paid) || 0);
     setFormPaymentDueDate(p.payment_due_date || '');
     setFormPurchaseDate(p.purchase_date);
-    setFormNotes(p.notes || '');
+    setFormProductNotes(p.notes || '');
     setIsCreateOpen(true);
   }
 
@@ -135,11 +193,121 @@ export default function VendorPurchasesPage() {
     ]);
     if (productsResult.status === 'fulfilled' && productsResult.value.products) {
       setStoreProducts(productsResult.value.products);
+      setProductSearchResults(productsResult.value.products);
     }
     if (ordersResult.status === 'fulfilled' && ordersResult.value.orders) {
       setRecentOrders(ordersResult.value.orders.filter((order: any) => order.order_number));
     }
   }
+
+  function handleProductSearch(value: string) {
+    setFormProductName(value);
+    if (!value.trim()) {
+      setProductSearchResults(storeProducts);
+      setShowProductDropdown(true);
+      return;
+    }
+
+    const searchTerm = value.toLowerCase();
+    const matches = storeProducts.filter((p) =>
+      p.name.toLowerCase().includes(searchTerm)
+    );
+    setProductSearchResults(matches);
+    setShowProductDropdown(true);
+  }
+
+  // Add current product to purchase items list
+  function handleAddProductToPurchase() {
+    if (!formProductName.trim()) {
+      showErrorToast('Please enter a product name');
+      return;
+    }
+
+    const newItem = {
+      product_name: formProductName.trim(),
+      quantity: formQuantity,
+      wholesale_cost: formWholesaleCost,
+      notes: formProductNotes.trim() || undefined,
+    };
+
+    setPurchaseItems((prev) => [...prev, newItem]);
+
+    // Reset product-specific fields for next item
+    setFormProductName('');
+    setFormQuantity(1);
+    setFormWholesaleCost(0);
+    setFormProductNotes('');
+    setShowProductDropdown(false);
+
+    if (productNameInputRef.current) {
+      productNameInputRef.current.value = '';
+    }
+
+    success(`Added "${newItem.product_name}" to purchase list!`);
+
+    // Focus back to product name field for next entry
+    setTimeout(() => {
+      productNameInputRef.current?.focus();
+    }, 100);
+  }
+
+  // Select a product directly from dropdown or quick store item pill
+  function handleSelectProductFromList(name: string, defaultWholesalePrice?: number) {
+    const cost = defaultWholesalePrice && defaultWholesalePrice > 0 
+      ? defaultWholesalePrice 
+      : formWholesaleCost;
+
+    if (editingPurchase) {
+      setFormProductName(name);
+      if (cost > 0) setFormWholesaleCost(cost);
+      setShowProductDropdown(false);
+      return;
+    }
+
+    const newItem = {
+      product_name: name.trim(),
+      quantity: formQuantity > 0 ? formQuantity : 1,
+      wholesale_cost: cost,
+      notes: formProductNotes.trim() || undefined,
+    };
+
+    setPurchaseItems((prev) => [...prev, newItem]);
+
+    // Reset product-specific fields to blank for the next product
+    setFormProductName('');
+    setFormQuantity(1);
+    setFormWholesaleCost(0);
+    setFormProductNotes('');
+    setShowProductDropdown(false);
+
+    if (productNameInputRef.current) {
+      productNameInputRef.current.value = '';
+    }
+
+    success(`Added "${name.trim()}" to purchase list!`);
+
+    setTimeout(() => {
+      productNameInputRef.current?.focus();
+    }, 100);
+  }
+
+  // Update specific item in purchase items list
+  function handleUpdatePurchaseItem(index: number, field: string, value: any) {
+    setPurchaseItems((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  }
+
+  // Remove item from purchase items list
+  function handleRemovePurchaseItem(index: number) {
+    setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
+  }
+
+  // Calculate total cost for all items
+  const currentFormCost = formProductName.trim() ? (formWholesaleCost * formQuantity) : 0;
+  const totalPurchaseCost = purchaseItems.reduce((sum, item) => sum + (item.wholesale_cost * item.quantity), 0) + currentFormCost;
 
   async function handleLogoFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -168,50 +336,104 @@ export default function VendorPurchasesPage() {
 
   async function handleSavePurchase(e: React.FormEvent) {
     e.preventDefault();
-    if (!formProductName.trim()) {
-      showErrorToast('Please enter or select a product name');
-      return;
-    }
 
-    setSubmitting(true);
-    try {
-      const isEdit = !!editingPurchase;
-      const url = isEdit
-        ? `/api/admin/vendor-purchases/${editingPurchase.id}`
-        : '/api/admin/vendor-purchases';
-      const method = isEdit ? 'PATCH' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order_number: formOrderNumber || 'STH-GENERAL',
-          product_name: formProductName,
+    // For new purchases, use the items list
+    // For editing, use the single product form
+    if (!editingPurchase) {
+      // New purchase - check if we have items in the list or if we need to add the current form as an item
+      const itemsToSubmit = [...purchaseItems];
+      if (formProductName.trim()) {
+        itemsToSubmit.push({
+          product_name: formProductName.trim(),
           quantity: formQuantity,
           wholesale_cost: formWholesaleCost,
-          status: formStatus,
-          payment_status: formPaymentStatus,
-          payment_method: formPaymentMethod,
-          amount_paid: formAmountPaid,
-          payment_due_date: formPaymentDueDate || null,
-          purchase_date: formPurchaseDate,
-          notes: formNotes,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Failed to save purchase record');
+          notes: formProductNotes.trim() || undefined,
+        });
       }
 
-      success(isEdit ? 'Purchase record updated!' : 'Vendor purchase record created!');
-      setIsCreateOpen(false);
-      resetForm();
-      loadData();
-    } catch (err: any) {
-      showErrorToast(err.message || 'Error saving purchase record');
-    } finally {
-      setSubmitting(false);
+      if (itemsToSubmit.length === 0) {
+        showErrorToast('Please add at least one product to the purchase');
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        const res = await fetch('/api/admin/vendor-purchases', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order_number: formOrderNumber || 'STH-GENERAL',
+            status: formStatus,
+            payment_status: formPaymentStatus,
+            payment_method: formPaymentMethod,
+            amount_paid: formAmountPaid,
+            payment_due_date: formPaymentDueDate || null,
+            purchase_date: formPurchaseDate,
+            items: itemsToSubmit.map(item => ({
+              product_name: item.product_name,
+              quantity: item.quantity,
+              wholesale_cost: item.wholesale_cost,
+              notes: item.notes,
+            })),
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || 'Failed to save purchase record');
+        }
+
+        const itemCount = itemsToSubmit.length;
+        success(`${itemCount} product${itemCount > 1 ? 's' : ''} added to vendor purchase!`);
+        setIsCreateOpen(false);
+        resetForm();
+        loadData();
+      } catch (err: any) {
+        showErrorToast(err.message || 'Error saving purchase record');
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      // Edit mode - update single record
+      if (!formProductName.trim()) {
+        showErrorToast('Please enter a product name');
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        const res = await fetch(`/api/admin/vendor-purchases/${editingPurchase.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order_number: formOrderNumber || 'STH-GENERAL',
+            product_name: formProductName,
+            quantity: formQuantity,
+            wholesale_cost: formWholesaleCost,
+            status: formStatus,
+            payment_status: formPaymentStatus,
+            payment_method: formPaymentMethod,
+            amount_paid: formAmountPaid,
+            payment_due_date: formPaymentDueDate || null,
+            purchase_date: formPurchaseDate,
+            notes: formProductNotes,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || 'Failed to save purchase record');
+        }
+
+        success('Purchase record updated!');
+        setIsCreateOpen(false);
+        resetForm();
+        loadData();
+      } catch (err: any) {
+        showErrorToast(err.message || 'Error saving purchase record');
+      } finally {
+        setSubmitting(false);
+      }
     }
   }
 
@@ -249,7 +471,7 @@ export default function VendorPurchasesPage() {
 
   function openWhatsApp(purchase: VendorPurchase) {
     setWhatsAppPurchase(purchase);
-    setWhatsAppAction('due_date');
+    setWhatsAppAction('purchase_order');
   }
 
   async function sendWhatsAppMessage() {
@@ -268,6 +490,8 @@ export default function VendorPurchasesPage() {
       due_date: `${greeting}\n\nPayment due date update for vendor purchase ${whatsAppPurchase.purchase_number}.\n\n${record}\nPayment Due Date: ${dueDate}\nPaid Amount: PKR ${paid.toLocaleString('en-PK')}\nRemaining Amount: PKR ${remaining.toLocaleString('en-PK')}\nPayment Status: ${(whatsAppPurchase.payment_status || 'unpaid').toUpperCase()}\nPayment Method: ${whatsAppPurchase.payment_method || 'cash'}\n\nI will pay the remaining amount on the due date. Please confirm.`,
       partial_payment: `${greeting}\n\nThis is a partial payment update for vendor purchase ${whatsAppPurchase.purchase_number}.\n\n${record}\nPaid Amount: PKR ${paid.toLocaleString('en-PK')}\nRemaining Amount: PKR ${remaining.toLocaleString('en-PK')}\nPayment Method: ${whatsAppPurchase.payment_method || 'cash'}\n\nPlease confirm receipt of the partial payment.`,
       payment_confirmation: `${greeting}\n\nPayment confirmation for vendor purchase ${whatsAppPurchase.purchase_number}:\n\n${record}\nPaid Amount: PKR ${paid.toLocaleString('en-PK')}\nPayment Status: ${(whatsAppPurchase.payment_status || 'unpaid').toUpperCase()}\nPayment Method: ${whatsAppPurchase.payment_method || 'cash'}\n\nPlease confirm receipt. Thank you.`,
+      purchase_order: `${greeting}\n\nNew Purchase Order for Voltix Mobile:\n\n${record}\nPurchase Date: ${whatsAppPurchase.purchase_date}\nStatus: ${whatsAppPurchase.status.toUpperCase()}\nExpected Delivery: Please confirm availability and delivery timeline.\n\nPlease process this order and confirm when items will be ready.`,
+      due_date_reminder: `${greeting}\n\nPayment Due Date Reminder for Purchase ${whatsAppPurchase.purchase_number}:\n\n${record}\nPayment Due Date: ${dueDate}\nPaid Amount: PKR ${paid.toLocaleString('en-PK')}\nRemaining Amount: PKR ${remaining.toLocaleString('en-PK')}\nPayment Status: ${(whatsAppPurchase.payment_status || 'unpaid').toUpperCase()}\n\nPlease confirm this due date is acceptable. We will make payment on the specified date.`,
     };
 
     window.open(createWhatsAppUrl(profile.phone, messages[whatsAppAction]), '_blank');
@@ -618,7 +842,7 @@ export default function VendorPurchasesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
           <div className="fixed inset-0" onClick={() => setIsCreateOpen(false)} />
 
-          <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-[22px] border border-orange-400/45 bg-[#0b111b] text-[#C9D2DB] shadow-[0_24px_80px_rgba(0,0,0,0.7),0_0_40px_rgba(251,146,60,0.14)]">
+          <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[22px] border border-orange-400/45 bg-[#0b111b] text-[#C9D2DB] shadow-[0_24px_80px_rgba(0,0,0,0.7),0_0_40px_rgba(251,146,60,0.14)] max-h-[90vh] overflow-y-auto">
             <div className="relative flex items-center justify-between overflow-hidden border-b border-orange-400/20 bg-[radial-gradient(circle_at_0%_0%,rgba(251,146,60,0.24),transparent_38%),linear-gradient(120deg,#25170d,#111827_65%)] px-5 pb-4 pt-5">
               <div className="absolute -right-8 -top-12 h-32 w-32 rounded-full border border-yellow-300/20" />
               <div className="flex items-center gap-3">
@@ -673,36 +897,94 @@ export default function VendorPurchasesPage() {
               </div>
 
               {/* Product Name */}
-              <div>
+              <div className="relative">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
                   Product Name *
                 </label>
                 <input
+                  ref={productNameInputRef}
                   type="text"
                   value={formProductName}
-                  onChange={(e) => setFormProductName(e.target.value)}
-                  placeholder="E.G. P9 Wireless Headphones"
+                  onChange={(e) => handleProductSearch(e.target.value)}
+                  onFocus={() => {
+                    const currentVal = productNameInputRef.current?.value || '';
+                    if (currentVal.trim()) {
+                      const searchTerm = currentVal.toLowerCase();
+                      const matches = storeProducts.filter((p) =>
+                        p.name.toLowerCase().includes(searchTerm)
+                      );
+                      setProductSearchResults(matches);
+                    } else {
+                      setProductSearchResults(storeProducts);
+                    }
+                    setShowProductDropdown(true);
+                  }}
+                  onBlur={() => {
+                    // Delay hiding dropdown to allow click on dropdown items
+                    setTimeout(() => setShowProductDropdown(false), 200);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (showProductDropdown && productSearchResults.length > 0) {
+                        const topMatch = productSearchResults[0];
+                        handleSelectProductFromList(topMatch.name, topMatch.wholesale_price);
+                      } else {
+                        handleAddProductToPurchase();
+                      }
+                    }
+                  }}
+                  placeholder="E.G. P9 Wireless Headphones (Search or Type & Press Enter)"
                   className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3 py-2 text-xs font-semibold text-white focus:border-[#00C4CC] focus:outline-none"
                 />
-                {storeProducts.length > 0 && (
-                  <div className="mt-1 flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
-                    <span className="text-[10px] text-slate-500 shrink-0">Store Items:</span>
-                    {storeProducts.slice(0, 4).map((sp) => (
-                      <button
-                        type="button"
-                        key={sp.id}
-                        onClick={() => {
-                          setFormProductName(sp.name);
-                          if (sp.wholesale_price) setFormWholesaleCost(sp.wholesale_price);
-                        }}
-                        className="text-[10px] font-medium text-[#00C4CC] hover:underline px-1 shrink-0 truncate max-w-[120px]"
-                      >
-                        {sp.name}
-                      </button>
-                    ))}
+                
+                {/* Product Search Dropdown */}
+                {showProductDropdown && (
+                  <div className="absolute z-20 w-full mt-1 rounded-xl border border-slate-700 bg-[#080D15] shadow-2xl max-h-72 overflow-y-auto divide-y divide-slate-800/80">
+                    <div className="px-3 py-1.5 bg-[#0C1420] text-[10px] font-bold text-[#00C4CC] uppercase tracking-wider sticky top-0 border-b border-slate-800 flex justify-between items-center z-10">
+                      <span>Available Products ({productSearchResults.length})</span>
+                      <span className="text-slate-400 font-normal">Click any item to add</span>
+                    </div>
+                    {productSearchResults.length > 0 ? (
+                      productSearchResults.map((sp) => (
+                        <button
+                          type="button"
+                          key={sp.id}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevents onBlur from closing before click
+                            handleSelectProductFromList(sp.name, sp.wholesale_price);
+                          }}
+                          className="w-full text-left px-3 py-2.5 text-xs text-white hover:bg-slate-800/80 transition flex items-center justify-between group"
+                        >
+                          <div>
+                            <div className="font-semibold text-white group-hover:text-[#00C4CC] transition">{sp.name}</div>
+                            {sp.wholesale_price ? (
+                              <div className="text-[10px] text-slate-400">Wholesale: PKR {sp.wholesale_price.toLocaleString()}</div>
+                            ) : null}
+                          </div>
+                          <span className="text-[10px] font-bold text-[#00C4CC] bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-2 py-0.5 rounded-lg group-hover:bg-[#00C4CC] group-hover:text-black transition shrink-0 ml-2">
+                            + Add Item
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-3 text-center">
+                        <div className="text-xs text-slate-400 mb-2">Product not found in database</div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAiModalOpen(true);
+                            setShowProductDropdown(false);
+                          }}
+                          className="w-full rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 px-3 py-2 text-xs font-bold text-[#00C4CC] hover:bg-[#00C4CC]/20 transition flex items-center justify-center gap-2"
+                        >
+                          <span>✨</span>
+                          <span>Generate New Product with AI</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                )}              </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {/* Quantity */}
@@ -715,6 +997,12 @@ export default function VendorPurchasesPage() {
                     min={1}
                     value={formQuantity}
                     onChange={(e) => setFormQuantity(Number(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddProductToPurchase();
+                      }
+                    }}
                     className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3 py-2 text-xs font-mono font-bold text-white focus:border-[#00C4CC] focus:outline-none"
                   />
                 </div>
@@ -791,6 +1079,12 @@ export default function VendorPurchasesPage() {
                     min={0}
                     value={formWholesaleCost}
                     onChange={(e) => setFormWholesaleCost(Number(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddProductToPurchase();
+                      }
+                    }}
                     className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3 py-2 text-xs font-mono font-bold text-[#00C4CC] focus:border-[#00C4CC] focus:outline-none"
                   />
                 </div>
@@ -809,26 +1103,123 @@ export default function VendorPurchasesPage() {
                 </div>
               </div>
 
+              {/* Product Notes */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Product Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={formProductNotes}
+                  onChange={(e) => setFormProductNotes(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAddProductToPurchase();
+                    }
+                  }}
+                  placeholder="E.G. Black color model, deliver before 5 PM (Press Enter to add to list)"
+                  className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3 py-2 text-xs text-white focus:border-[#00C4CC] focus:outline-none"
+                />
+              </div>
+
+              {/* Multiple Products Section */}
+              {purchaseItems.length > 0 && (
+                <div className="rounded-xl border border-[#00C4CC]/30 bg-[#00C4CC]/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-xs font-bold uppercase tracking-wider text-[#00C4CC] flex items-center gap-2">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-[#00C4CC]/10 text-[10px]">📦</span>
+                      Products in This Purchase ({purchaseItems.length})
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-[#00C4CC]">
+                      Total: PKR {purchaseItems.reduce((sum, item) => sum + (item.wholesale_cost * item.quantity), 0).toLocaleString('en-PK')}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                    {purchaseItems.map((item, index) => (
+                      <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-slate-700 bg-[#080D15] p-3 gap-3">
+                        <div className="flex-1 min-w-0">
+                          <input
+                            type="text"
+                            value={item.product_name}
+                            onChange={(e) => handleUpdatePurchaseItem(index, 'product_name', e.target.value)}
+                            className="font-semibold text-white text-xs bg-transparent border-b border-slate-800 hover:border-slate-600 focus:border-[#00C4CC] focus:outline-none w-full py-0.5"
+                            placeholder="Product Name"
+                          />
+                          {item.notes && (
+                            <div className="text-[10px] text-slate-400 truncate mt-1">📝 {item.notes}</div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                          {/* Quantity Controls */}
+                          <div className="flex items-center border border-slate-700 rounded-lg overflow-hidden bg-[#0C1420]">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePurchaseItem(index, 'quantity', Math.max(1, item.quantity - 1))}
+                              className="px-2 py-1 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min={1}
+                              value={item.quantity}
+                              onChange={(e) => handleUpdatePurchaseItem(index, 'quantity', Math.max(1, Number(e.target.value) || 1))}
+                              className="w-10 text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePurchaseItem(index, 'quantity', item.quantity + 1)}
+                              className="px-2 py-1 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {/* Wholesale Price Input */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-500 font-mono">PKR</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={item.wholesale_cost}
+                              onChange={(e) => handleUpdatePurchaseItem(index, 'wholesale_cost', Math.max(0, Number(e.target.value) || 0))}
+                              className="w-20 rounded-lg border border-slate-700 bg-[#0C1420] px-2 py-1 text-xs font-mono font-bold text-[#00C4CC] focus:border-[#00C4CC] focus:outline-none"
+                              placeholder="Price"
+                            />
+                          </div>
+
+                          {/* Line Total */}
+                          <div className="text-right min-w-[75px]">
+                            <div className="text-xs font-mono font-bold text-white">
+                              PKR {(item.wholesale_cost * item.quantity).toLocaleString('en-PK')}
+                            </div>
+                          </div>
+
+                          {/* Remove button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePurchaseItem(index)}
+                            className="rounded-lg border border-rose-900/60 bg-rose-950/20 p-1.5 text-xs font-semibold text-rose-400 hover:border-rose-600 hover:bg-rose-900/40 transition"
+                            title="Remove item"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Total Calculation Display */}
               <div className="flex items-center justify-between rounded-xl border border-orange-400/35 bg-[linear-gradient(100deg,rgba(251,146,60,0.14),rgba(253,224,71,0.07))] p-3 text-xs font-bold text-orange-300">
                 <span>Total Voltix Purchase Cost:</span>
                 <span className="font-mono text-sm font-black text-white">
-                  PKR {(formQuantity * formWholesaleCost).toLocaleString('en-PK')}
+                  PKR {totalPurchaseCost.toLocaleString('en-PK')}
                 </span>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
-                  Notes / Supplier Specs (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                  placeholder="E.G. Black color model, deliver before 5 PM"
-                  className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3 py-2 text-xs text-white focus:border-[#00C4CC] focus:outline-none"
-                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
@@ -856,7 +1247,7 @@ export default function VendorPurchasesPage() {
       {whatsAppPurchase && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#02050a]/85 p-4 backdrop-blur-lg animate-fadeIn">
           <div className="fixed inset-0" onClick={() => setWhatsAppPurchase(null)} />
-          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-[22px] border border-[#00AEEF]/45 bg-[#07101B] text-[#C9D2DB] shadow-[0_0_0_1px_rgba(0,174,239,0.08),0_24px_80px_rgba(0,0,0,0.7),0_0_42px_rgba(0,174,239,0.16)]">
+          <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-[22px] border border-[#00AEEF]/45 bg-[#07101B] text-[#C9D2DB] shadow-[0_0_0_1px_rgba(0,174,239,0.08),0_24px_80px_rgba(0,0,0,0.7),0_0_42px_rgba(0,174,239,0.16)] max-h-[90vh] overflow-y-auto">
             <div className="relative border-b border-[#1a4057] bg-[radial-gradient(circle_at_18%_0%,rgba(0,174,239,0.24),transparent_42%),linear-gradient(135deg,#0b2234,#07101b_70%)] px-5 pb-5 pt-5">
               <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full border border-[#00AEEF]/20" />
               <div className="relative flex items-start justify-between">
@@ -866,10 +1257,10 @@ export default function VendorPurchasesPage() {
                   </div>
                   <div>
                     <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#36C5FF]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#25D366] shadow-[0_0_8px_#25D366]" /> WhatsApp dispatch
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#25D366] shadow-[0_0_8px_#25D366]" /> WhatsApp communication
                     </span>
-                    <h2 className="mt-1 font-display text-lg font-black tracking-wide text-white">Vendor message</h2>
-                    <p className="mt-0.5 text-[11px] text-[#8fb6c9]">Voltix Mobile · choose a template</p>
+                    <h2 className="mt-1 font-display text-lg font-black tracking-wide text-white">Vendor Message</h2>
+                    <p className="mt-0.5 text-[11px] text-[#8fb6c9]">Voltix Mobile · Select message type</p>
                   </div>
                 </div>
                 <button onClick={() => setWhatsAppPurchase(null)} className="rounded-xl border border-white/10 bg-black/15 p-2 text-slate-400 transition hover:border-[#36C5FF]/50 hover:text-white" title="Close">
@@ -887,10 +1278,12 @@ export default function VendorPurchasesPage() {
 
             <div className="space-y-2.5 p-5">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">Select purpose</span>
-                <span className="text-[10px] text-slate-500">Message preview ready</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">Select Message Type</span>
+                <span className="text-[10px] text-slate-500">Message ready to send</span>
               </div>
               {([
+                ['purchase_order', 'Purchase Order', 'Send new purchase order to vendor with delivery timeline.', '📦'],
+                ['due_date_reminder', 'Due Date Reminder', 'Remind vendor about payment due date and confirm.', '📅'],
                 ['due_date', 'Payment Due Date', 'Tell the vendor when the remaining amount will be paid.', '📅'],
                 ['partial_payment', 'Partial Payment', 'Send paid and remaining balance details.', '💳'],
                 ['payment_confirmation', 'Payment Confirmation', 'Confirm the current payment record.', '✓'],
@@ -1064,6 +1457,14 @@ export default function VendorPurchasesPage() {
           </div>
         </div>
       )}
+
+      {/* AI Product Generation Modal */}
+      <AiProductGenerationModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        productName={formProductName}
+        onProductCreated={handleAiProductCreated}
+      />
     </div>
   );
 }

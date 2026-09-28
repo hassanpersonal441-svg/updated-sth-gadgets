@@ -405,7 +405,7 @@ export async function POST(req: NextRequest) {
 
     /* ── 5. Gemini API Call ─────────────────────────────────────── */
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
         const ai = new GoogleGenAI({ apiKey });

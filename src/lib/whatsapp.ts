@@ -222,7 +222,21 @@ export interface WhatsAppNotificationResult {
 }
 
 export async function triggerAdminNewOrderNotification(order: any): Promise<WhatsAppNotificationResult> {
-  return { success: true, message: 'Admin notification triggered' };
+  try {
+    // For now, this function relies on the Make.com webhook system
+    // The actual WhatsApp notification is sent via Make.com webhook
+    // This function is called to update the database flag and log the notification
+    
+    console.log('Admin notification triggered for order:', order.id);
+    
+    // In production, this would call Make.com webhook to send WhatsApp message
+    // For now, we just log it and let the AdminHeader component handle the UI notification
+    
+    return { success: true, message: 'Admin notification triggered' };
+  } catch (error: any) {
+    console.error('Error triggering admin notification:', error);
+    return { success: false, message: 'Failed to trigger notification', error: error.message };
+  }
 }
 
 export async function triggerCustomerApprovalNotification(order: any): Promise<WhatsAppNotificationResult> {
