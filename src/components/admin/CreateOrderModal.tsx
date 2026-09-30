@@ -9,8 +9,10 @@ import { formatPrice } from '@/lib/utils';
 interface OrderItem {
   product_id: string | null;
   product_name: string;
+  product_image: string | null;
   quantity: number;
-  unit_price: number;
+  unit_price: number;      // actual sale price (may differ from website price)
+  purchase_price: number;  // wholesale / actual cost paid
   line_total: number;
 }
 
@@ -36,6 +38,8 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
   const [settings, setSettings] = useState<Settings | null>(null);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [itemQuantity, setItemQuantity] = useState(1);
+  const [customSalePrice, setCustomSalePrice] = useState<number | ''>('');
+  const [customPurchaseCost, setCustomPurchaseCost] = useState<number | ''>('');
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -139,6 +143,8 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     setItems([]);
     setSelectedProduct('');
     setItemQuantity(1);
+    setCustomSalePrice('');
+    setCustomPurchaseCost('');
     setProductSearchQuery('');
     setShowProductDropdown(false);
     setDeliveryCharges(0);
@@ -162,17 +168,36 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     const product = products.find((p) => p.id === selectedProduct);
     if (!product) return;
 
+    // Use custom sale price if provided, otherwise fall back to website price
+    const salePrice = typeof customSalePrice === 'number' && customSalePrice > 0
+      ? customSalePrice
+      : product.price;
+
+    // Use custom purchase/wholesale cost if provided
+    const purchaseCost = typeof customPurchaseCost === 'number' && customPurchaseCost > 0
+      ? customPurchaseCost
+      : ((product as any).wholesale_price || (product as any).purchase_price || 0);
+
+    // Get product image
+    const productImage = (product as any).product_images?.find((i: any) => i.is_primary)?.image_url
+      || (product as any).product_images?.[0]?.image_url
+      || null;
+
     const newItem: OrderItem = {
       product_id: product.id,
       product_name: product.name,
+      product_image: productImage,
       quantity: itemQuantity,
-      unit_price: product.price,
-      line_total: product.price * itemQuantity,
+      unit_price: salePrice,
+      purchase_price: purchaseCost,
+      line_total: salePrice * itemQuantity,
     };
 
     setItems([...items, newItem]);
     setSelectedProduct('');
     setItemQuantity(1);
+    setCustomSalePrice('');
+    setCustomPurchaseCost('');
     setProductSearchQuery('');
     setShowProductDropdown(false);
   }
@@ -188,6 +213,11 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     const product = products.find((p) => p.id === productId);
     if (product) {
       setProductSearchQuery(product.name);
+      // Auto-fill website price as default sale price
+      setCustomSalePrice(product.price);
+      // Auto-fill wholesale_price or purchase_price as default cost
+      const cost = (product as any).wholesale_price || (product as any).purchase_price || 0;
+      setCustomPurchaseCost(cost > 0 ? cost : '');
     }
     setShowProductDropdown(false);
     setIsInputFocused(false);
@@ -609,6 +639,46 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                       />
                     </div>
 
+                    {/* ── Custom Price Override ── */}
+                    <div className="grid grid-cols-2 gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">
+                          Sale Price (PKR) <span className="text-slate-500 normal-case font-normal">actual jo denge</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={customSalePrice}
+                          onChange={(e) => setCustomSalePrice(e.target.value === '' ? '' : Number(e.target.value))}
+                          min={0}
+                          placeholder="e.g. 1200"
+                          className="w-full rounded-xl border border-amber-500/40 bg-[#080D15] px-3 py-2 text-xs font-mono font-bold text-amber-200 placeholder:text-slate-600 focus:border-amber-400 focus:outline-none transition"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-rose-300 mb-1">
+                          Purchase Cost (PKR) <span className="text-slate-500 normal-case font-normal">wholesale</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={customPurchaseCost}
+                          onChange={(e) => setCustomPurchaseCost(e.target.value === '' ? '' : Number(e.target.value))}
+                          min={0}
+                          placeholder="e.g. 650"
+                          className="w-full rounded-xl border border-rose-500/40 bg-[#080D15] px-3 py-2 text-xs font-mono font-bold text-rose-200 placeholder:text-slate-600 focus:border-rose-400 focus:outline-none transition"
+                        />
+                      </div>
+                      {/* Profit preview for this item */}
+                      {typeof customSalePrice === 'number' && customSalePrice > 0 && typeof customPurchaseCost === 'number' && customPurchaseCost > 0 && (
+                        <div className="col-span-2 flex items-center justify-between text-[10px] font-bold pt-1">
+                          <span className="text-slate-400">Item Profit Preview:</span>
+                          <span className={customSalePrice - customPurchaseCost >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>
+                            PKR {((customSalePrice - customPurchaseCost) * itemQuantity).toLocaleString('en-PK')}
+                            {' '}({itemQuantity > 1 ? `${itemQuantity}×` : ''}{customSalePrice - customPurchaseCost >= 0 ? '+' : ''}{(customSalePrice - customPurchaseCost).toLocaleString('en-PK')} each)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleAddItem}
@@ -633,6 +703,15 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                               Qty: {item.quantity} × {formatPrice(item.unit_price, settings)} ={' '}
                               <span className="text-white font-semibold">{formatPrice(item.line_total, settings)}</span>
                             </p>
+                            {item.purchase_price > 0 && (
+                              <p className="text-[10px]">
+                                <span className="text-rose-400/80">Cost: PKR {item.purchase_price.toLocaleString('en-PK')}</span>
+                                <span className="mx-1 text-slate-600">|</span>
+                                <span className={item.unit_price - item.purchase_price >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                  Profit: PKR {((item.unit_price - item.purchase_price) * item.quantity).toLocaleString('en-PK')}
+                                </span>
+                              </p>
+                            )}
                           </div>
                           <button
                             type="button"

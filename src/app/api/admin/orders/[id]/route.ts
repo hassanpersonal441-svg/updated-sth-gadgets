@@ -46,6 +46,30 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
+    // Enrich order items with products and product_images
+    if (order.order_items && order.order_items.length > 0) {
+      const productIds = order.order_items
+        .filter((it: any) => it.product_id && (!it.product || !it.product.product_images))
+        .map((it: any) => it.product_id);
+
+      if (productIds.length > 0) {
+        const { data: prods } = await service
+          .from('products')
+          .select('id, name, price, product_images(*)')
+          .in('id', productIds);
+
+        if (prods && prods.length > 0) {
+          const map = new Map<string, any>();
+          prods.forEach((p: any) => map.set(p.id, p));
+          order.order_items.forEach((it: any) => {
+            if (it.product_id && map.has(it.product_id)) {
+              it.product = map.get(it.product_id);
+            }
+          });
+        }
+      }
+    }
+
     return NextResponse.json({ success: true, order });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error fetching order' }, { status: 500 });
@@ -63,6 +87,8 @@ const updateOrderSchema = z.object({
   coupon_discount: z.number().min(0).optional(),
   bundle_discount: z.number().min(0).optional(),
   delivery_charges: z.number().min(0).optional(),
+  actual_courier_cost: z.number().min(0).optional(),
+  delivery_paid_by: z.enum(['customer', 'store', 'partial']).optional(),
   total_amount: z.number().min(0).optional(),
 });
 
@@ -120,6 +146,8 @@ export async function PATCH(
     if (parsed.data.coupon_discount !== undefined) updateData.coupon_discount = parsed.data.coupon_discount;
     if (parsed.data.bundle_discount !== undefined) updateData.bundle_discount = parsed.data.bundle_discount;
     if (parsed.data.delivery_charges !== undefined) updateData.delivery_charges = parsed.data.delivery_charges;
+    if (parsed.data.actual_courier_cost !== undefined) updateData.actual_courier_cost = parsed.data.actual_courier_cost;
+    if (parsed.data.delivery_paid_by !== undefined) updateData.delivery_paid_by = parsed.data.delivery_paid_by;
     if (parsed.data.total_amount !== undefined) updateData.total_amount = parsed.data.total_amount;
 
     // Handle order_number update / reassignment
@@ -183,15 +211,22 @@ export async function DELETE(
 
     const service = createServiceClient();
 
-    // Verify order exists
+    // Verify order exists and check status
     const { data: order, error: fetchErr } = await service
       .from('orders')
-      .select('id, order_number')
+      .select('id, order_number, status')
       .eq('id', orderId)
       .maybeSingle();
 
     if (fetchErr || !order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    if (order.status === 'delivered') {
+      return NextResponse.json(
+        { error: 'Cannot delete order: Once an order is delivered and received by the customer, it cannot be deleted from the portal.' },
+        { status: 400 }
+      );
     }
 
     // Delete related items first

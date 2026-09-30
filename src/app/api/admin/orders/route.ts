@@ -72,6 +72,38 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Enrich order items with products and product_images if missing (due to absence of FK in PostgREST cache)
+    if (orders && orders.length > 0) {
+      const allProductIds = new Set<string>();
+      orders.forEach((o: any) => {
+        (o.order_items || []).forEach((item: any) => {
+          if (item.product_id && (!item.product || !item.product.product_images)) {
+            allProductIds.add(item.product_id);
+          }
+        });
+      });
+
+      if (allProductIds.size > 0) {
+        const { data: productsData } = await service
+          .from('products')
+          .select('id, name, price, product_images(*)')
+          .in('id', Array.from(allProductIds));
+
+        if (productsData && productsData.length > 0) {
+          const productMap = new Map<string, any>();
+          productsData.forEach((p: any) => productMap.set(p.id, p));
+
+          orders.forEach((o: any) => {
+            (o.order_items || []).forEach((item: any) => {
+              if (item.product_id && productMap.has(item.product_id)) {
+                item.product = productMap.get(item.product_id);
+              }
+            });
+          });
+        }
+      }
+    }
+
     return NextResponse.json({ 
       orders: orders || [], 
       pagination: {
@@ -104,6 +136,8 @@ export async function POST(request: Request) {
       city,
       address,
       delivery_charges = 0,
+      actual_courier_cost,
+      delivery_paid_by = 'customer',
       payment_method = 'Cash on Delivery',
       payment_status = 'unpaid',
       amount_paid = 0,
@@ -126,8 +160,28 @@ export async function POST(request: Request) {
     const subtotal = order_items.reduce((sum: number, item: any) => sum + item.line_total, 0);
     const total_amount = subtotal + (delivery_charges || 0);
 
-    // Generate order number
-    const order_number = `STH-${Date.now().toString().slice(-8)}`;
+    // Generate sequential order number (STH-001, STH-002, ...)
+    const { data: existingOrders } = await service
+      .from('orders')
+      .select('order_number')
+      .not('order_number', 'is', null);
+
+    let nextNumber = 1;
+    if (existingOrders && existingOrders.length > 0) {
+      const numbers = existingOrders
+        .map((o) => {
+          const m = (o.order_number || '').match(/^STH-(\d+)$/i);
+          return m ? parseInt(m[1], 10) : 0;
+        })
+        .filter((n) => n > 0);
+
+      const usedSet = new Set(numbers);
+      while (usedSet.has(nextNumber)) {
+        nextNumber++;
+      }
+    }
+
+    const order_number = `STH-${String(nextNumber).padStart(3, '0')}`;
 
     // Create order
     const { data: order, error: orderError } = await service
@@ -138,6 +192,8 @@ export async function POST(request: Request) {
         city,
         address,
         delivery_charges,
+        actual_courier_cost: actual_courier_cost !== undefined ? actual_courier_cost : delivery_charges,
+        delivery_paid_by,
         payment_method,
         payment_status,
         amount_paid,
@@ -164,6 +220,7 @@ export async function POST(request: Request) {
       product_name: item.product_name,
       quantity: item.quantity,
       unit_price: item.unit_price,
+      purchase_price: item.purchase_price || 0,
       line_total: item.line_total,
     }));
 

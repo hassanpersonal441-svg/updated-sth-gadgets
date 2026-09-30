@@ -40,45 +40,44 @@ export async function POST(
       );
     }
 
-    if (order.order_number) {
-      return NextResponse.json(
-        { error: `Order already has an official number: ${order.order_number}` },
-        { status: 400 }
-      );
-    }
-
     const body = await request.json().catch(() => ({}));
     const adminNotes = body.admin_notes || null;
     const customCouponDiscount = typeof body.coupon_discount === 'number' ? body.coupon_discount : undefined;
     const customBundleDiscount = typeof body.bundle_discount === 'number' ? body.bundle_discount : undefined;
     const customDeliveryCharges = typeof body.delivery_charges === 'number' ? body.delivery_charges : undefined;
+    const customActualCourierCost = typeof body.actual_courier_cost === 'number' ? body.actual_courier_cost : undefined;
+    const customDeliveryPaidBy = body.delivery_paid_by;
     const customTotalAmount = typeof body.total_amount === 'number' ? body.total_amount : undefined;
 
     let approvedOrder: any = null;
 
-    // Determine lowest available unused sequence number starting from 1 (STH-001 format)
-    const { data: existingApproved } = await service
-      .from('orders')
-      .select('order_number')
-      .not('order_number', 'is', null)
-      .order('created_at', { ascending: false });
+    // Use existing order_number if already assigned, otherwise generate a new one
+    let formattedOrderNumber = order.order_number;
+    if (!formattedOrderNumber) {
+      // Determine lowest available unused sequence number starting from 1 (STH-001 format)
+      const { data: existingApproved } = await service
+        .from('orders')
+        .select('order_number')
+        .not('order_number', 'is', null)
+        .order('created_at', { ascending: false });
 
-    let nextNumber = 1;
-    if (existingApproved && existingApproved.length > 0) {
-      const numbers = existingApproved
-        .map((o) => {
-          const m = (o.order_number || '').match(/^STH-(\d+)$/i);
-          return m ? parseInt(m[1], 10) : 0;
-        })
-        .filter((n) => n > 0);
+      let nextNumber = 1;
+      if (existingApproved && existingApproved.length > 0) {
+        const numbers = existingApproved
+          .map((o) => {
+            const m = (o.order_number || '').match(/^STH-(\d+)$/i);
+            return m ? parseInt(m[1], 10) : 0;
+          })
+          .filter((n) => n > 0);
 
-      const usedSet = new Set(numbers);
-      while (usedSet.has(nextNumber)) {
-        nextNumber++;
+        const usedSet = new Set(numbers);
+        while (usedSet.has(nextNumber)) {
+          nextNumber++;
+        }
       }
-    }
 
-    const formattedOrderNumber = `STH-${String(nextNumber).padStart(3, '0')}`;
+      formattedOrderNumber = `STH-${String(nextNumber).padStart(3, '0')}`;
+    }
 
     // Prepare update payload with optional custom rate/discount adjustments
     const orderUpdatePayload: Record<string, any> = {
@@ -93,6 +92,8 @@ export async function POST(
     if (customCouponDiscount !== undefined) orderUpdatePayload.coupon_discount = customCouponDiscount;
     if (customBundleDiscount !== undefined) orderUpdatePayload.bundle_discount = customBundleDiscount;
     if (customDeliveryCharges !== undefined) orderUpdatePayload.delivery_charges = customDeliveryCharges;
+    if (customActualCourierCost !== undefined) orderUpdatePayload.actual_courier_cost = customActualCourierCost;
+    if (customDeliveryPaidBy !== undefined) orderUpdatePayload.delivery_paid_by = customDeliveryPaidBy;
     if (customTotalAmount !== undefined) {
       orderUpdatePayload.total_amount = customTotalAmount;
     } else if (customCouponDiscount !== undefined || customBundleDiscount !== undefined || customDeliveryCharges !== undefined) {

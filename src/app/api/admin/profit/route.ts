@@ -13,7 +13,7 @@ export async function GET() {
 
     const service = createServiceClient();
 
-    // 1. Fetch all approved/completed orders with items (includes all order sources: web, whatsapp, random)
+    // 1. Fetch all approved/completed customer orders with their items
     const { data: orders, error: ordersErr } = await service
       .from('orders')
       .select('id, order_number, status, total_amount, subtotal, delivery_charges, actual_courier_cost, delivery_paid_by, coupon_discount, bundle_discount, created_at, approved_at, order_source, order_items(*)')
@@ -24,7 +24,7 @@ export async function GET() {
       return NextResponse.json({ error: ordersErr.message }, { status: 500 });
     }
 
-    // 2. Fetch all products with categories
+    // 2. Fetch all products with categories (for wholesale & catalog pricing)
     const { data: products, error: prodsErr } = await service
       .from('products')
       .select('id, name, sku, price, purchase_price, wholesale_price, category_id, stock_status, active, category:categories(*)')
@@ -40,24 +40,6 @@ export async function GET() {
       .select('id, name, slug')
       .order('name', { ascending: true });
 
-    // 4. Fetch all vendor purchases — used as the source of truth for actual purchase costs
-    //    (particularly for unlisted / order-specific products)
-    const { data: vendorPurchasesRaw } = await service
-      .from('vendor_purchases')
-      .select('id, order_number, product_name, quantity, wholesale_cost, status, purchase_date, created_at');
-
-    const vendorPurchases: any[] = vendorPurchasesRaw || [];
-
-    // Build a lookup: order_number → list of vendor purchases for that order
-    // Normalise order numbers to UPPERCASE so STH-0001 == sth-0001
-    const vendorByOrder = new Map<string, any[]>();
-    vendorPurchases.forEach((vp) => {
-      const key = (vp.order_number || '').trim().toUpperCase();
-      if (!key) return;
-      if (!vendorByOrder.has(key)) vendorByOrder.set(key, []);
-      vendorByOrder.get(key)!.push(vp);
-    });
-
     const productMap = new Map<string, any>();
     (products || []).forEach((p) => productMap.set(p.id, p));
 
@@ -71,7 +53,7 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     let totalRevenue = 0;
-    let totalCost = 0;
+    let totalSoldProductCost = 0;
     let totalCustomerDeliveryFees = 0;
     let totalActualCourierCost = 0;
     let totalStoreDeliveryExpense = 0;
@@ -79,18 +61,13 @@ export async function GET() {
     let weekProfit = 0;
     let monthProfit = 0;
 
-    // Revenue and profit by order source
+    // Revenue and cost by order source
     let webRevenue = 0;
     let webCost = 0;
     let whatsappRevenue = 0;
     let whatsappCost = 0;
     let randomRevenue = 0;
     let randomCost = 0;
-
-    // Track how much vendor-purchase cost has already been absorbed per order
-    // Key: "orderId::productName_normalised" — used to deduplicate
-    // We'll track which vendor_purchase IDs have been consumed
-    const consumedVendorPurchaseIds = new Set<string>();
 
     // Per-product sales tracking (listed catalog products)
     const productStats = new Map<string, {
@@ -109,7 +86,7 @@ export async function GET() {
 
     // Initialize productStats with all listed products
     (products || []).forEach((p) => {
-      const pCost = Number(p.purchase_price) || 0;
+      const pCost = Number(p.wholesale_price) || Number(p.purchase_price) || 0;
       const pPrice = Number(p.price) || 0;
       const catalogProfit = pPrice - pCost;
       const catalogMargin = pPrice > 0 ? Math.round((catalogProfit / pPrice) * 10000) / 100 : 0;
@@ -128,22 +105,6 @@ export async function GET() {
         margin: catalogMargin,
       });
     });
-
-    // Per-unlisted-product sales tracking (vendor-purchased items not in catalog)
-    //   Key: normalised product_name
-    const unlistedProductStats = new Map<string, {
-      id: string; // synthetic id
-      name: string;
-      sku: string;
-      categoryName: string;
-      sellingPrice: number;
-      purchasePrice: number;
-      unitsSold: number;
-      revenue: number;
-      cost: number;
-      profit: number;
-      margin: number;
-    }>();
 
     // Category sales tracking
     const categoryStats = new Map<string, {
@@ -169,62 +130,55 @@ export async function GET() {
     });
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP A: Process each order and its order items
+    // Process each approved customer order
     // ─────────────────────────────────────────────────────────────────────────
     (orders || []).forEach((order: any) => {
       const orderDate = new Date(order.approved_at || order.created_at);
-      const orderKey = (order.order_number || '').trim().toUpperCase();
-
-      // Gather vendor purchases linked to this order (by order_number)
-      const linkedVendorPurchases: any[] = orderKey ? (vendorByOrder.get(orderKey) || []) : [];
 
       let orderCost = 0;
+
+      // ── Determine actual product revenue for this order ──
+      const rawItemsSubtotal = (order.order_items || []).reduce((sum: number, it: any) => {
+        const q = it.quantity || 1;
+        return sum + (Number(it.line_total) || (Number(it.unit_price) * q));
+      }, 0);
+
+      const customerFee = Number(order.delivery_charges) || 0;
+      const orderTotal = Number(order.total_amount) || 0;
+      const discount = (Number(order.coupon_discount) || 0) + (Number(order.bundle_discount) || 0);
+
       let orderRevenue = 0;
+      if (orderTotal > 0) {
+        orderRevenue = Math.max(0, orderTotal - customerFee);
+      } else if (rawItemsSubtotal > 0) {
+        orderRevenue = Math.max(0, rawItemsSubtotal - discount);
+      }
+
+      // Ratio to scale individual item revenues so product/category reports match the actual discounted sale price
+      const revenueScaleRatio = rawItemsSubtotal > 0 ? (orderRevenue / rawItemsSubtotal) : 1;
 
       (order.order_items || []).forEach((item: any) => {
         const prod = productMap.get(item.product_id);
         const qty = item.quantity || 1;
-        const lineRevenue = Number(item.line_total) || (Number(item.unit_price) * qty);
+        const rawLine = Number(item.line_total) || (Number(item.unit_price) * qty);
+        const lineRevenue = rawLine * revenueScaleRatio;
 
-        // ── COST DETERMINATION (Priority Order, no double-counting) ──────────
-        // Priority 1: matching vendor_purchase record for this order (actual vendor bill paid)
-        // Priority 2: item.purchase_price recorded at time of sale
-        // Priority 3: product catalog purchase_price
-        // Priority 4: 0 (unknown — flagged as missing, never invented)
-
+        // ── Product Wholesale Cost ──
+        // Priority 1: Purchase/wholesale cost saved on order item
+        // Priority 2: Product wholesale_price or purchase_price from catalog
         let unitCost = 0;
-        let costSource: 'order_item' | 'vendor_purchase' | 'catalog' | 'missing' = 'missing';
-
-        const itemProductName = (item.product_name || prod?.name || '').toLowerCase().trim();
-        const matchIdx = linkedVendorPurchases.findIndex((vp) => {
-          if (consumedVendorPurchaseIds.has(vp.id)) return false;
-          const vpName = (vp.product_name || '').toLowerCase().trim();
-          return vpName === itemProductName || vpName.includes(itemProductName) || itemProductName.includes(vpName);
-        });
-
-        if (matchIdx !== -1) {
-          // Priority 1: Real vendor purchase for this order
-          const vp = linkedVendorPurchases[matchIdx];
-          consumedVendorPurchaseIds.add(vp.id);
-          unitCost = Number(vp.wholesale_cost) || 0;
-          costSource = 'vendor_purchase';
-        } else if (Number(item.purchase_price) > 0) {
-          // Priority 2: Cost recorded on order item at checkout
+        if (Number(item.purchase_price) > 0) {
           unitCost = Number(item.purchase_price);
-          costSource = 'order_item';
+        } else if (Number(prod?.wholesale_price) > 0) {
+          unitCost = Number(prod.wholesale_price);
         } else if (Number(prod?.purchase_price) > 0) {
-          // Priority 3: Catalog fallback
           unitCost = Number(prod.purchase_price);
-          costSource = 'catalog';
         }
-        // else costSource remains 'missing', unitCost = 0
 
         const lineCost = unitCost * qty;
-
         orderCost += lineCost;
-        orderRevenue += lineRevenue;
 
-        // Product stats aggregation (listed catalog products)
+        // Product stats aggregation
         if (item.product_id && productStats.has(item.product_id)) {
           const ps = productStats.get(item.product_id)!;
           ps.unitsSold += qty;
@@ -232,7 +186,6 @@ export async function GET() {
           ps.cost += lineCost;
           ps.profit += (lineRevenue - lineCost);
           ps.margin = ps.revenue > 0 ? Math.round((ps.profit / ps.revenue) * 10000) / 100 : ps.margin;
-          // Update purchasePrice to reflect the actual cost used (most recent wins)
           if (unitCost > 0) ps.purchasePrice = unitCost;
         }
 
@@ -248,51 +201,7 @@ export async function GET() {
         }
       });
 
-      // ── STEP A2: Unlisted vendor purchases linked to this order ──────────
-      // Any vendor purchase record for this order that was NOT consumed by an
-      // order_item match above should still count as a cost (unlisted products).
-      linkedVendorPurchases.forEach((vp) => {
-        if (consumedVendorPurchaseIds.has(vp.id)) return; // already counted
-
-        const vpQty = Number(vp.quantity) || 1;
-        const vpUnitCost = Number(vp.wholesale_cost) || 0;
-        const vpTotalCost = vpUnitCost * vpQty;
-
-        // We have no revenue line for unlisted products in order_items
-        // (the sale revenue is captured in the order total but may not be itemised separately).
-        // Add the cost only; revenue is already included in the order subtotal via order_items.
-        // If a revenue line was NOT in order_items (genuinely unlisted with no order_item row),
-        // we still count the cost so profit is not overstated.
-        orderCost += vpTotalCost;
-        consumedVendorPurchaseIds.add(vp.id);
-
-        // Track in unlistedProductStats
-        const nameKey = (vp.product_name || 'Unknown Product').toLowerCase().trim();
-        if (!unlistedProductStats.has(nameKey)) {
-          unlistedProductStats.set(nameKey, {
-            id: `unlisted::${nameKey}`,
-            name: vp.product_name || 'Unknown Product',
-            sku: 'UNLISTED',
-            categoryName: 'Unlisted / Order-Specific',
-            sellingPrice: 0,
-            purchasePrice: vpUnitCost,
-            unitsSold: vpQty,
-            revenue: 0,
-            cost: vpTotalCost,
-            profit: -vpTotalCost,
-            margin: 0,
-          });
-        } else {
-          const up = unlistedProductStats.get(nameKey)!;
-          up.unitsSold += vpQty;
-          up.cost += vpTotalCost;
-          up.profit -= vpTotalCost;
-          up.purchasePrice = vpUnitCost; // last seen unit cost
-        }
-      });
-
       // ── Delivery Accounting per Order ──
-      const customerFee = Number(order.delivery_charges) || 0;
       const courierCost = (order.actual_courier_cost !== undefined && order.actual_courier_cost !== null)
         ? Number(order.actual_courier_cost)
         : customerFee;
@@ -304,7 +213,7 @@ export async function GET() {
 
       const orderProfit = orderRevenue - orderCost - storeExpense;
       totalRevenue += orderRevenue;
-      totalCost += orderCost;
+      totalSoldProductCost += orderCost;
 
       // Track by order source
       const source = order.order_source || 'web';
@@ -330,74 +239,29 @@ export async function GET() {
       }
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP B: All remaining vendor purchases (general / historical / stock purchases)
-    //   These are real vendor purchases (from Voltix Mobile) that are not yet
-    //   consumed by a specific customer order. They represent actual product costs
-    //   spent by STH Gadgets and must be included in Total Product Cost.
-    // ─────────────────────────────────────────────────────────────────────────
-    vendorPurchases.forEach((vp) => {
-      if (consumedVendorPurchaseIds.has(vp.id)) return;
-      consumedVendorPurchaseIds.add(vp.id);
-
-      const vpQty = Number(vp.quantity) || 1;
-      const vpUnitCost = Number(vp.wholesale_cost) || 0;
-      const vpTotalCost = vpUnitCost * vpQty;
-
-      totalCost += vpTotalCost;
-
-      const nameKey = (vp.product_name || 'Vendor Purchase').toLowerCase().trim();
-      if (!unlistedProductStats.has(nameKey)) {
-        unlistedProductStats.set(nameKey, {
-          id: `unlisted::${vp.id}`,
-          name: vp.product_name || 'Vendor Purchase',
-          sku: vp.order_number || 'VENDOR',
-          categoryName: 'Vendor Purchases (Voltix)',
-          sellingPrice: 0,
-          purchasePrice: vpUnitCost,
-          unitsSold: vpQty,
-          revenue: 0,
-          cost: vpTotalCost,
-          profit: -vpTotalCost,
-          margin: 0,
-        });
-      } else {
-        const up = unlistedProductStats.get(nameKey)!;
-        up.unitsSold += vpQty;
-        up.cost += vpTotalCost;
-        up.profit -= vpTotalCost;
-        up.purchasePrice = vpUnitCost;
-      }
-    });
-
-    const grossProfit = totalRevenue - totalCost;
+    const grossProfit = totalRevenue - totalSoldProductCost;
     const netProfit = grossProfit - totalStoreDeliveryExpense;
     const averageMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 10000) / 100 : 0;
 
-    // Calculate profit by source
+    // Profit by source
     const webProfit = webRevenue - webCost;
     const whatsappProfit = whatsappRevenue - whatsappCost;
     const randomProfit = randomRevenue - randomCost;
 
     const productList = Array.from(productStats.values());
-    const unlistedList = Array.from(unlistedProductStats.values());
-
-    // Merge listed + unlisted for full product table
-    const allProductsForTable = [...productList, ...unlistedList];
-
     const categoryList = Array.from(categoryStats.values()).filter((c) => c.productsSold > 0 || c.revenue > 0);
 
-    // Best profit product (by total profit sold, fallback to catalog profit)
-    const bestProfitProduct = [...allProductsForTable].sort((a, b) => b.profit - a.profit || (b.sellingPrice - b.purchasePrice) - (a.sellingPrice - a.purchasePrice))[0] || null;
+    // Best profit product
+    const bestProfitProduct = [...productList].sort((a, b) => b.profit - a.profit || (b.sellingPrice - b.purchasePrice) - (a.sellingPrice - a.purchasePrice))[0] || null;
 
-    // Lowest margin product (only listed ones with a selling price)
+    // Lowest margin product
     const lowestMarginProduct = [...productList].filter((p) => p.sellingPrice > 0).sort((a, b) => a.margin - b.margin)[0] || null;
 
     return NextResponse.json({
       success: true,
       summary: {
         totalRevenue: Math.round(totalRevenue * 100) / 100,
-        totalProductCost: Math.round(totalCost * 100) / 100,
+        totalProductCost: Math.round(totalSoldProductCost * 100) / 100,
         grossProfit: Math.round(grossProfit * 100) / 100,
         netProfit: Math.round(netProfit * 100) / 100,
         averageProfitMargin: averageMargin,
@@ -418,9 +282,6 @@ export async function GET() {
           sellingPrice: lowestMarginProduct.sellingPrice,
           purchasePrice: lowestMarginProduct.purchasePrice,
         } : null,
-        // Metadata flags for admin awareness
-        unlistedProductCount: unlistedList.length,
-        unlistedProductCost: Math.round(unlistedList.reduce((s, u) => s + u.cost, 0) * 100) / 100,
         // Profit by order source
         webProfit: Math.round(webProfit * 100) / 100,
         webRevenue: Math.round(webRevenue * 100) / 100,
@@ -430,7 +291,7 @@ export async function GET() {
         randomRevenue: Math.round(randomRevenue * 100) / 100,
       },
       products: productList,
-      unlistedProducts: unlistedList,
+      unlistedProducts: [],
       categories: categoryList,
     });
   } catch (err: any) {

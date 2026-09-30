@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import type { Order } from '@/types/database';
+import type { Order, OrderStatus } from '@/types/database';
 import OrderActionModal from '@/components/admin/OrderActionModal';
 import CreateOrderModal from '@/components/admin/CreateOrderModal';
 import { useToast } from '@/context/ToastContext';
@@ -21,6 +21,112 @@ const TABS = [
   { id: 'delivered', label: 'Delivered' },
   { id: 'cancelled', label: 'Cancelled / Rejected' },
 ];
+
+// Helper to extract image from order item
+function getOrderItemImage(item: any): string | null {
+  if (item.product_image && typeof item.product_image === 'string') return item.product_image;
+  if (item.product?.image_url && typeof item.product.image_url === 'string') return item.product.image_url;
+  if (Array.isArray(item.product?.product_images) && item.product.product_images.length > 0) {
+    const primary = item.product.product_images.find((pi: any) => pi?.is_primary);
+    return primary?.image_url || item.product.product_images[0]?.image_url || null;
+  }
+  return null;
+}
+
+// Helper to render consistent, clean status badges
+function renderStatusBadge(status: OrderStatus | string) {
+  switch (status) {
+    case 'delivered':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          DELIVERED
+        </span>
+      );
+    case 'shipped':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-sky-500/10 text-sky-400 border border-sky-500/30 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+          SHIPPED
+        </span>
+      );
+    case 'processing':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+          PROCESSING
+        </span>
+      );
+    case 'approved':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-teal-500/10 text-teal-400 border border-teal-500/30 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+          APPROVED
+        </span>
+      );
+    case 'pending_payment':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-purple-500/10 text-purple-400 border border-purple-500/30 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+          PAYMENT PENDING
+        </span>
+      );
+    case 'pending':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          PENDING
+        </span>
+      );
+    case 'cancelled':
+    case 'rejected':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+          CANCELLED
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-slate-500/10 text-slate-300 border border-slate-700 shadow-sm">
+          {status}
+        </span>
+      );
+  }
+}
+
+// Helper to render source badges
+function renderSourceBadge(source: string | null | undefined) {
+  if (source === 'whatsapp') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm">
+        <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24">
+          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.299.144.347.491 1.2.534 1.288.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564c.173.086.289.13.332.202.043.072.043.419-.101.824z"/>
+        </svg>
+        <span>WhatsApp</span>
+      </span>
+    );
+  }
+  if (source === 'web') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/30 shadow-sm">
+        <svg className="w-3 h-3 fill-none stroke-current shrink-0" viewBox="0 0 24 24" strokeWidth={2}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+        </svg>
+        <span>Website</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400/90 border border-amber-500/30 shadow-sm">
+      <svg className="w-3 h-3 fill-none stroke-current shrink-0" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+      <span>Direct</span>
+    </span>
+  );
+}
 
 // In-memory cache for instant module opening without blocking loading spinner
 let cachedOrders: Order[] | null = null;
@@ -70,6 +176,11 @@ export default function AdminOrdersPage() {
   // Direct delete action from row/card
   async function confirmDirectDelete() {
     if (!orderToDelete) return;
+    if (orderToDelete.status === 'delivered') {
+      showErrorToast('Delivered orders cannot be deleted');
+      setOrderToDelete(null);
+      return;
+    }
     setDeletingDirect(true);
 
     try {
@@ -140,22 +251,28 @@ export default function AdminOrdersPage() {
 
   async function handleCreateInvoice(order: Order, e?: React.MouseEvent) {
     if (e) e.stopPropagation();
-    
-    // Build URL with order details pre-filled
-    const params = new URLSearchParams();
-    params.append('customer_name', order.customer_name);
-    params.append('customer_phone', order.phone);
-    params.append('customer_address', order.address);
-    params.append('customer_city', order.city);
-    params.append('delivery', order.delivery_charges.toString());
-    
-    // Store order items in localStorage for invoice creation
-    if (order.order_items && order.order_items.length > 0) {
-      localStorage.setItem('invoiceFromOrderItems', JSON.stringify(order.order_items));
+    setActionLoadingId(`invoice-${order.id}`);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/invoice`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.invoiceUrl) {
+        window.open(data.invoiceUrl, '_blank');
+        admin(
+          data.isExisting
+            ? `Invoice ${data.invoice_number} opened in new tab.`
+            : `Invoice ${data.invoice_number} generated successfully!`,
+          'Invoice Ready'
+        );
+      } else {
+        window.open(`/invoice/${order.order_number || order.id}`, '_blank');
+      }
+    } catch {
+      window.open(`/invoice/${order.order_number || order.id}`, '_blank');
+    } finally {
+      setActionLoadingId(null);
     }
-    
-    // Redirect to invoice creation page with pre-filled data
-    window.location.href = `/admin/invoices/new?${params.toString()}`;
   }
 
   // Filter orders by tab and search
@@ -221,10 +338,10 @@ export default function AdminOrdersPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-5">
         <div>
           <h1 className="font-display text-2xl font-black text-silver-bright sm:text-3xl">
-            Orders & Invoices Management
+            Orders Management
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-silver-dim">
-            Review incoming orders, generate invoices, track payments, print & download digital invoices.
+            Review incoming orders, process shipments, generate invoices, and manage customer orders.
           </p>
         </div>
 
@@ -236,13 +353,6 @@ export default function AdminOrdersPage() {
             <span>➕</span>
             <span>Create Order</span>
           </button>
-          <Link
-            href="/admin/invoices/new"
-            className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-[#0C1420] hover:border-[#00C4CC] hover:text-[#00C4CC] text-silver-bright px-3.5 py-2 text-xs font-black transition shadow-sm"
-          >
-            <span>📄</span>
-            <span>Create Invoice</span>
-          </Link>
           <button
             onClick={() => fetchOrders(true)}
             disabled={loading}
@@ -252,22 +362,6 @@ export default function AdminOrdersPage() {
             <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
-      </div>
-
-      {/* Module Switcher Bar */}
-      <div className="flex flex-wrap items-center gap-2 bg-[#0C1420] p-1.5 rounded-2xl border border-slate-800">
-        <Link
-          href="/admin/orders"
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-[#00C4CC] text-black shadow-sm"
-        >
-          📦 Orders List
-        </Link>
-        <Link
-          href="/admin/invoices"
-          className="px-4 py-2 rounded-xl text-xs font-bold text-silver-dim hover:text-white hover:bg-slate-800 transition"
-        >
-          📄 Invoices List & Dashboard
-        </Link>
       </div>
 
       {/* Metrics Row */}
@@ -418,35 +512,11 @@ export default function AdminOrdersPage() {
                         </h4>
                         <span className="text-xs text-silver-dim">{order.phone} • {order.city}</span>
                         <div className="mt-1">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                              order.order_source === 'web'
-                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                                : order.order_source === 'whatsapp'
-                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                            }`}
-                          >
-                            {order.order_source === 'web' ? '🌐' : order.order_source === 'whatsapp' ? '📱' : '🎲'} {order.order_source}
-                          </span>
+                          {renderSourceBadge(order.order_source)}
                         </div>
                       </div>
 
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                          order.status === 'approved'
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                            : order.status === 'pending'
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                            : order.status === 'pending_payment'
-                            ? 'bg-violet-500/15 text-violet-400 border border-violet-500/30'
-                            : order.status === 'shipped' || order.status === 'processing'
-                            ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                        }`}
-                      >
-                        {order.status === 'pending_payment' ? 'Payment Pending' : order.status}
-                      </span>
+                      {renderStatusBadge(order.status)}
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-silver-dim pt-1 border-t border-slate-800/60">
@@ -473,11 +543,12 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
+                        disabled={actionLoadingId === `invoice-${order.id}`}
                         onClick={(e) => handleCreateInvoice(order, e)}
-                        className="rounded-xl border border-[#00C4CC] bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-3 py-2 text-xs font-semibold text-[#00C4CC] transition"
-                        title="Create Invoice from this Order"
+                        className="rounded-xl border border-[#00C4CC] bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-3 py-2 text-xs font-semibold text-[#00C4CC] transition disabled:opacity-50"
+                        title="Create/View Official Invoice"
                       >
-                        📄
+                        {actionLoadingId === `invoice-${order.id}` ? '...' : '📄'}
                       </button>
 
                       <button
@@ -488,14 +559,16 @@ export default function AdminOrdersPage() {
                         Manage
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setOrderToDelete(order)}
-                        className="rounded-xl border border-rose-900/80 bg-rose-950/30 hover:bg-rose-900/50 px-3 py-2 text-xs font-semibold text-rose-300 transition"
-                        title="Delete order"
-                      >
-                        🗑️
-                      </button>
+                      {order.status !== 'delivered' && (
+                        <button
+                          type="button"
+                          onClick={() => setOrderToDelete(order)}
+                          className="rounded-xl border border-rose-900/80 bg-rose-950/30 hover:bg-rose-900/50 px-3 py-2 text-xs font-semibold text-rose-300 transition"
+                          title="Delete order"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -503,77 +576,140 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Desktop Table View (>= md screens) */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-800/80 bg-[#09111E] shadow-2xl">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 bg-[#080D15] text-[11px] font-bold uppercase tracking-wider text-silver-dim">
+                <thead className="border-b border-slate-800 bg-[#070D18] text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   <tr>
-                    <th className="px-4 py-3">Official Order #</th>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">City</th>
-                    <th className="px-4 py-3">Source</th>
-                    <th className="px-4 py-3">Items</th>
-                    <th className="px-4 py-3">Total Amount</th>
-                    <th className="px-4 py-3">Order Date & Time</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                    <th className="px-4 py-3.5">Order #</th>
+                    <th className="px-4 py-3.5">Customer</th>
+                    <th className="px-4 py-3.5">City</th>
+                    <th className="px-4 py-3.5">Source</th>
+                    <th className="px-4 py-3.5">Items</th>
+                    <th className="px-4 py-3.5">Total Amount</th>
+                    <th className="px-4 py-3.5">Date & Time</th>
+                    <th className="px-4 py-3.5">Status</th>
+                    <th className="px-4 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-800/50">
                   {filteredOrders.map((order) => {
-                    const itemsCount = (order.order_items || []).reduce((sum, i) => sum + i.quantity, 0);
+                    const itemsCount = (order.order_items || []).reduce((sum, i) => sum + (i.quantity || 1), 0);
+                    const firstItem = order.order_items?.[0];
+                    const itemImg = firstItem ? getOrderItemImage(firstItem) : null;
 
                     return (
                       <tr
                         key={order.id}
-                        className="hover:bg-[#00C4CC]/5 transition cursor-pointer"
+                        className="hover:bg-[#0E1A2C] transition-colors cursor-pointer group"
                         onClick={() => setSelectedOrder(order)}
                       >
                         {/* Order Number */}
-                        <td className="px-4 py-3.5 font-mono">
+                        <td className="px-4 py-3.5 font-mono whitespace-nowrap">
                           {order.order_number ? (
-                            <span className="font-bold text-[#00C4CC]">{order.order_number}</span>
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-[#00C4CC]/10 px-2.5 py-1 text-xs font-bold text-[#00C4CC] border border-[#00C4CC]/25 group-hover:border-[#00C4CC]/50 transition-colors shadow-sm">
+                              {order.order_number}
+                            </span>
                           ) : (
-                            <span className="text-amber-400/80 italic">Pending</span>
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-400 border border-amber-500/25">
+                              Pending
+                            </span>
                           )}
                         </td>
 
                         {/* Customer */}
                         <td className="px-4 py-3.5">
-                          <div className="font-semibold text-silver-bright">{order.customer_name}</div>
-                          <div className="text-[11px] text-silver-dim">{order.phone}</div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00C4CC]/20 to-blue-600/20 border border-[#00C4CC]/30 flex items-center justify-center text-[#00C4CC] font-bold text-xs shrink-0 shadow-sm">
+                              {order.customer_name
+                                ? order.customer_name
+                                    .split(' ')
+                                    .filter(Boolean)
+                                    .map((n) => n[0])
+                                    .slice(0, 2)
+                                    .join('')
+                                    .toUpperCase()
+                                : '?'}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-white text-xs group-hover:text-[#00C4CC] transition-colors truncate">
+                                {order.customer_name}
+                              </div>
+                              <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
+                                <span>{order.phone}</span>
+                              </div>
+                            </div>
+                          </div>
                         </td>
 
                         {/* City */}
-                        <td className="px-4 py-3.5 text-silver-bright">{order.city}</td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 font-medium text-slate-200">
+                            <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="capitalize">{order.city || 'N/A'}</span>
+                          </div>
+                        </td>
 
                         {/* Source */}
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                              order.order_source === 'web'
-                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                                : order.order_source === 'whatsapp'
-                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                            }`}
-                          >
-                            {order.order_source === 'web' ? '🌐' : order.order_source === 'whatsapp' ? '📱' : '🎲'} {order.order_source}
-                          </span>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          {renderSourceBadge(order.order_source)}
                         </td>
 
                         {/* Items */}
-                        <td className="px-4 py-3.5 text-silver-dim">
-                          <div className="font-medium text-silver-bright">{itemsCount} item{itemsCount > 1 ? 's' : ''}</div>
-                          {order.order_items && order.order_items.length > 0 && (
-                            <div className="text-[11px] text-slate-400 truncate max-w-[180px]">
-                              {order.order_items.map((it) => `${it.product_name}${it.variant_name ? ` (${it.variant_name})` : ''}`).join(', ')}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            {itemImg ? (
+                              <img
+                                src={itemImg}
+                                alt={firstItem?.product_name || 'Product'}
+                                className="w-8 h-8 rounded-lg object-cover border border-slate-700/80 bg-[#06101D] shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg border border-slate-800 bg-slate-900/60 flex items-center justify-center text-xs shrink-0 text-slate-400">
+                                📦
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-semibold text-white text-xs flex items-center gap-1.5">
+                                <span>{itemsCount} {itemsCount === 1 ? 'item' : 'items'}</span>
+                              </div>
+                              {order.order_items && order.order_items.length > 0 && (
+                                <div
+                                  className="text-[11px] text-slate-400 truncate max-w-[190px]"
+                                  title={order.order_items.map((it) => it.product_name).join(', ')}
+                                >
+                                  {order.order_items[0].product_name}
+                                  {order.order_items.length > 1 && (
+                                    <span className="text-[#00C4CC] font-semibold ml-1">
+                                      +{order.order_items.length - 1} more
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </td>
 
                         {/* Total */}
-                        <td className="px-4 py-3.5 font-bold font-mono text-silver-bright" suppressHydrationWarning>
-                          PKR {formatNumber(order.total_amount)}
+                        <td className="px-4 py-3.5 whitespace-nowrap" suppressHydrationWarning>
+                          <div className="font-mono font-bold text-white text-xs sm:text-sm">
+                            PKR {formatNumber(order.total_amount)}
+                          </div>
+                          <div className="text-[10px] mt-0.5 font-medium">
+                            {order.payment_status === 'paid' ? (
+                              <span className="text-emerald-400 flex items-center gap-1">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                Paid ({order.payment_method || 'Online'})
+                              </span>
+                            ) : (
+                              <span className="text-amber-400/90 flex items-center gap-1">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                COD (Unpaid)
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Date & Time */}
@@ -583,7 +719,7 @@ export default function AdminOrdersPage() {
                             return (
                               <div>
                                 <div className="font-semibold text-silver-bright">{dt.date}</div>
-                                <div className="text-[11px] font-mono text-[#00C4CC] flex items-center gap-1">
+                                <div className="text-[11px] font-mono text-[#00C4CC] flex items-center gap-1 mt-0.5">
                                   <span>🕒</span>
                                   <span>{dt.time}</span>
                                 </div>
@@ -594,80 +730,82 @@ export default function AdminOrdersPage() {
 
                         {/* Status */}
                         <td className="px-4 py-3.5 whitespace-nowrap">
-                          <span
-                            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                              order.status === 'approved'
-                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                : order.status === 'pending'
-                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                                : order.status === 'pending_payment'
-                                ? 'bg-violet-500/15 text-violet-400 border border-violet-500/30'
-                                : order.status === 'shipped' || order.status === 'processing'
-                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                            }`}
-                          >
-                            {order.status === 'pending_payment' ? 'Payment Pending' : order.status}
-                          </span>
+                          {renderStatusBadge(order.status)}
                         </td>
 
                         {/* Actions (Approve / Reject / Manage / Delete) */}
                         <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                             {(order.status === 'pending' || order.status === 'pending_payment') && (
                               <>
                                 <button
                                   type="button"
                                   disabled={actionLoadingId === order.id}
                                   onClick={(e) => handleDirectApprove(order, e)}
-                                  className="rounded-lg bg-[#25D366] hover:bg-[#20BD5A] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition disabled:opacity-50"
+                                  className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm transition disabled:opacity-50 flex items-center gap-1"
                                   title="Approve Order & Assign STH #"
                                 >
-                                  {actionLoadingId === order.id ? '...' : '✓ APPROVE'}
+                                  {actionLoadingId === order.id ? (
+                                    '...'
+                                  ) : (
+                                    <>
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      <span>Approve</span>
+                                    </>
+                                  )}
                                 </button>
                                 <button
                                   type="button"
                                   disabled={actionLoadingId === order.id}
                                   onClick={(e) => handleDirectReject(order, e)}
-                                  className="rounded-lg border border-rose-800 bg-rose-950/40 hover:bg-rose-900/60 px-2 py-1 text-[11px] font-semibold text-rose-300 transition disabled:opacity-50"
+                                  className="rounded-lg border border-rose-800 bg-rose-950/40 hover:bg-rose-900/60 px-2 py-1.5 text-[11px] font-semibold text-rose-300 transition disabled:opacity-50"
                                   title="Reject Order"
                                 >
-                                  REJECT
+                                  Reject
                                 </button>
                               </>
                             )}
 
                             <button
                               type="button"
+                              disabled={actionLoadingId === `invoice-${order.id}`}
                               onClick={(e) => handleCreateInvoice(order, e)}
-                              className="rounded-lg border border-[#00C4CC] bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-2 py-1 text-[11px] font-semibold text-[#00C4CC] transition"
-                              title="Create Invoice from this Order"
+                              className="rounded-lg border border-[#00C4CC]/40 bg-[#00C4CC]/10 hover:bg-[#00C4CC] hover:text-black px-2.5 py-1.5 text-[11px] font-semibold text-[#00C4CC] transition disabled:opacity-50 flex items-center gap-1 shadow-sm"
+                              title="Create / View Official Invoice"
                             >
-                              📄 Invoice
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <span>Invoice</span>
                             </button>
 
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedOrder(order);
-                              }}
-                              className="rounded-lg border border-slate-700 bg-[#080D15] px-2.5 py-1 text-xs font-semibold text-silver-bright hover:border-[#00C4CC] hover:text-[#00C4CC] transition"
+                              onClick={() => setSelectedOrder(order)}
+                              className="rounded-lg border border-slate-700 bg-[#0E1726] hover:bg-[#142238] hover:border-[#00C4CC]/60 px-3 py-1.5 text-xs font-semibold text-silver-bright hover:text-[#00C4CC] transition flex items-center gap-1 shadow-sm"
                             >
-                              Manage
+                              <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              <span>Manage</span>
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOrderToDelete(order);
-                              }}
-                              className="rounded-lg border border-rose-900/60 bg-rose-950/20 px-2 py-1 text-xs font-semibold text-rose-400 hover:border-rose-600 hover:bg-rose-900/40 hover:text-rose-300 transition"
-                              title="Delete this order"
-                            >
-                              🗑️
-                            </button>
+                            {order.status !== 'delivered' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOrderToDelete(order);
+                                }}
+                                className="rounded-lg border border-rose-900/60 bg-rose-950/20 px-2 py-1.5 text-xs font-semibold text-rose-400 hover:border-rose-600 hover:bg-rose-900/40 hover:text-rose-300 transition"
+                                title="Delete this order"
+                              >
+                                🗑️
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

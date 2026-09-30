@@ -198,6 +198,7 @@ export default function InvoiceView({
           ref={printRef}
           id="invoice-printable-content"
           className="p-8 sm:p-12 bg-white text-slate-900 text-sm leading-relaxed print:bg-white print:text-slate-900"
+          style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
         >
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b-2 border-slate-900 pb-8 print:border-slate-900">
@@ -255,36 +256,36 @@ export default function InvoiceView({
           </div>
 
           {/* Customer & Payment Info Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-8 py-4 bg-slate-100 rounded-xl p-6 border border-slate-300 print:bg-slate-100 print:border-slate-300">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-8 py-4 bg-slate-100 rounded-xl p-6 border border-slate-300 print:bg-slate-100 print:border-slate-300" style={{ backgroundColor: '#f1f5f9', color: '#0f172a' }}>
             <div>
-              <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-2 print:text-slate-700">
+              <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-2 print:text-slate-700" style={{ color: '#1e293b' }}>
                 Billed To (Customer)
               </h3>
-              <p className="font-bold text-slate-900 text-base print:text-slate-900">{invoice.customer_name}</p>
-              <p className="text-xs text-slate-800 print:text-slate-800">{invoice.customer_address}, {invoice.customer_city}</p>
-              <p className="text-xs text-slate-800 mt-1 print:text-slate-800">📞 {invoice.customer_phone}</p>
+              <p className="font-bold text-slate-900 text-base print:text-slate-900" style={{ color: '#0f172a' }}>{invoice.customer_name}</p>
+              <p className="text-xs text-slate-800 print:text-slate-800" style={{ color: '#334155' }}>{invoice.customer_address}, {invoice.customer_city}</p>
+              <p className="text-xs text-slate-800 mt-1 print:text-slate-800" style={{ color: '#334155' }}>📞 {invoice.customer_phone}</p>
               {invoice.customer_whatsapp && (
-                <p className="text-xs text-slate-800 print:text-slate-800">💬 {invoice.customer_whatsapp}</p>
+                <p className="text-xs text-slate-800 print:text-slate-800" style={{ color: '#334155' }}>💬 {invoice.customer_whatsapp}</p>
               )}
               {invoice.customer_email && (
-                <p className="text-xs text-slate-800 print:text-slate-800">✉️ {invoice.customer_email}</p>
+                <p className="text-xs text-slate-800 print:text-slate-800" style={{ color: '#334155' }}>✉️ {invoice.customer_email}</p>
               )}
             </div>
 
             <div className="sm:text-right">
-              <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-2 print:text-slate-700">
+              <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-2 print:text-slate-700" style={{ color: '#1e293b' }}>
                 Payment Details
               </h3>
-              <p className="text-xs text-slate-900 print:text-slate-900">
+              <p className="text-xs text-slate-900 print:text-slate-900" style={{ color: '#0f172a' }}>
                 <span className="font-semibold">Method:</span> {invoice.payment_method}
               </p>
-              <p className="text-xs text-slate-900 print:text-slate-900">
+              <p className="text-xs text-slate-900 print:text-slate-900" style={{ color: '#0f172a' }}>
                 <span className="font-semibold">Status:</span> {invoice.payment_status}
               </p>
-              <p className="text-xs text-slate-900 print:text-slate-900">
+              <p className="text-xs text-slate-900 print:text-slate-900" style={{ color: '#0f172a' }}>
                 <span className="font-semibold">Amount Paid:</span> {currencySymbol} {invoice.amount_paid.toLocaleString()}
               </p>
-              <p className="text-xs font-bold text-slate-900 mt-1 print:text-slate-900">
+              <p className="text-xs font-bold text-slate-900 mt-1 print:text-slate-900" style={{ color: '#0f172a' }}>
                 <span>Balance Remaining:</span> {currencySymbol} {invoice.remaining_amount.toLocaleString()}
               </p>
             </div>
@@ -303,11 +304,11 @@ export default function InvoiceView({
                   <th className="py-3 px-4 text-right">Line Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-300 text-xs print:divide-y print:divide-slate-200">
+              <tbody className="divide-y divide-slate-300 text-xs print:divide-y print:divide-slate-200" style={{ color: '#0f172a' }}>
                 {invoice.invoice_items && invoice.invoice_items.length > 0 ? (
                   invoice.invoice_items.map((item, idx) => (
                     <tr key={item.id || idx} className="hover:bg-slate-200 print:hover:bg-transparent">
-                      <td className="py-3.5 px-4 font-mono font-medium text-slate-700 print:text-slate-500">{idx + 1}</td>
+                      <td className="py-3.5 px-4 font-mono font-medium text-slate-700 print:text-slate-500" style={{ color: '#475569' }}>{idx + 1}</td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           {item.product_image && (
@@ -317,31 +318,31 @@ export default function InvoiceView({
                               className="h-9 w-9 object-cover rounded border border-slate-400 print:border-slate-200 shrink-0"
                             />
                           )}
-                          <span className="font-bold text-slate-900 print:text-slate-900">{item.product_name}</span>
+                          <span className="font-bold text-slate-900 print:text-slate-900" style={{ color: '#0f172a' }}>{item.product_name}</span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-900 print:text-slate-800">{item.quantity}</td>
-                      <td className="py-3.5 px-4 text-right font-mono text-slate-900 print:text-slate-800">{currencySymbol} {item.unit_price.toLocaleString()}</td>
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-900 print:text-slate-800" style={{ color: '#0f172a' }}>{item.quantity}</td>
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-900 print:text-slate-800" style={{ color: '#0f172a' }}>{currencySymbol} {item.unit_price.toLocaleString()}</td>
                       <td className="py-3.5 px-4 text-right font-mono">
                         {item.discount > 0 ? (
                           <div>
-                            <span className="text-amber-700 font-semibold print:text-amber-600">-{currencySymbol} {item.discount.toLocaleString()}</span>
-                            <span className="block text-[10px] font-bold text-amber-800 bg-amber-200 border border-amber-300 rounded px-1 mt-0.5 whitespace-nowrap print:bg-amber-100 print:border-amber-200">
+                            <span className="text-amber-700 font-semibold print:text-amber-600" style={{ color: '#b45309' }}>-{currencySymbol} {item.discount.toLocaleString()}</span>
+                            <span className="block text-[10px] font-bold text-amber-800 bg-amber-200 border border-amber-300 rounded px-1 mt-0.5 whitespace-nowrap print:bg-amber-100 print:border-amber-200" style={{ color: '#92400e', backgroundColor: '#fef3c7' }}>
                               🏷️ Courtesy Rate
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-500 print:text-slate-400">—</span>
+                          <span className="text-slate-500 print:text-slate-400" style={{ color: '#64748b' }}>—</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 print:text-slate-900">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 print:text-slate-900" style={{ color: '#0f172a' }}>
                         {currencySymbol} {item.total.toLocaleString()}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate-500 print:text-slate-400">
+                    <td colSpan={6} className="py-6 text-center text-slate-500 print:text-slate-400" style={{ color: '#64748b' }}>
                       No items listed in this invoice.
                     </td>
                   </tr>
@@ -396,7 +397,7 @@ export default function InvoiceView({
               <div className="flex justify-between py-1 border-b border-slate-300 print:border-slate-200">
                 <span className="text-slate-700 print:text-slate-600">Delivery Charges:</span>
                 <span className="font-mono font-semibold text-slate-900 print:text-slate-900">
-                  {invoice.delivery_charges > 0 ? `${currencySymbol} {invoice.delivery_charges.toLocaleString()}` : 'FREE'}
+                  {invoice.delivery_charges > 0 ? `${currencySymbol} ${invoice.delivery_charges.toLocaleString()}` : 'FREE'}
                 </span>
               </div>
 
@@ -412,8 +413,44 @@ export default function InvoiceView({
 
               <div className="flex justify-between py-1 font-bold text-slate-900 print:text-slate-900">
                 <span>Remaining Balance:</span>
-                <span className="font-mono text-rose-700 print:text-rose-600">{currencySymbol} {invoice.remaining_amount.toLocaleString()}</span>
+                <span className="font-mono font-rose-700 print:text-rose-600">{currencySymbol} {invoice.remaining_amount.toLocaleString()}</span>
               </div>
+
+              {/* Profit Calculation - Only for Admin View (Hidden in Print) */}
+              {(() => {
+                const totalItemCost = (invoice.invoice_items || []).reduce((sum, i) => {
+                  return sum + ((Number((i as any).purchase_price) || 0) * (i.quantity || 1));
+                }, 0);
+                const netProductRevenue = Math.max(0, invoice.subtotal - invoice.item_discount - invoice.coupon_discount);
+                const orderProfit = netProductRevenue - totalItemCost;
+                const orderMargin = netProductRevenue > 0 ? Math.round((orderProfit / netProductRevenue) * 10000) / 100 : 0;
+                const isLoss = orderProfit < 0;
+
+                return (
+                  <div className="mt-4 pt-3 border-t border-slate-300 print:hidden">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-lg bg-slate-100 p-2 border border-slate-300">
+                        <span className="text-[10px] text-slate-600 block">Product Cost</span>
+                        <span className="font-mono font-bold text-amber-700 text-[11px]">
+                          {currencySymbol} {totalItemCost.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className={`rounded-lg p-2 border ${isLoss ? 'bg-rose-100 border-rose-300' : 'bg-emerald-100 border-emerald-300'}`}>
+                        <span className="text-[10px] text-slate-600 block">Net Profit</span>
+                        <span className={`font-mono font-bold text-[11px] ${isLoss ? 'text-rose-700' : 'text-emerald-700'}`}>
+                          {orderProfit >= 0 ? '+' : ''}{currencySymbol} {orderProfit.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className={`rounded-lg p-2 border col-span-2 ${isLoss ? 'bg-rose-100 border-rose-300' : 'bg-emerald-100 border-emerald-300'}`}>
+                        <span className="text-[10px] text-slate-600 block">Profit Margin</span>
+                        <span className={`font-mono font-bold text-[11px] ${isLoss ? 'text-rose-700' : 'text-emerald-700'}`}>
+                          {orderMargin}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

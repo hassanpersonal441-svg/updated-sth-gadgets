@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import type { Order } from '@/types/database';
 import { useToast } from '@/context/ToastContext';
 import { formatOrderDateTime } from '@/lib/utils';
 import { createWhatsAppUrl } from '@/lib/whatsapp';
 import { renderWhatsAppTemplate } from '@/lib/whatsapp-templates';
+import ShippingSlipModal from '@/components/admin/ShippingSlipModal';
 
 interface OrderActionModalProps {
   order: Order | null;
@@ -46,10 +48,16 @@ export default function OrderActionModal({
   const [vipDiscountPercent, setVipDiscountPercent] = useState<string>('0');
   const [vipDeliveryCharges, setVipDeliveryCharges] = useState(Number(order?.delivery_charges) || 0);
   const [editTotalAmount, setEditTotalAmount] = useState(order?.total_amount ? String(order.total_amount) : '0');
+  const [editDeliveryCharges, setEditDeliveryCharges] = useState<number | string>(Number(order?.delivery_charges) || 0);
+  const [editActualCourierCost, setEditActualCourierCost] = useState<number | string>(Number(order?.actual_courier_cost ?? order?.delivery_charges) || 0);
+  const [editDeliveryPaidBy, setEditDeliveryPaidBy] = useState<'customer' | 'store' | 'partial'>(order?.delivery_paid_by || 'customer');
 
   // Delete State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Shipping Slip State
+  const [showShippingSlip, setShowShippingSlip] = useState(false);
 
   useEffect(() => {
     if (order) {
@@ -68,6 +76,9 @@ export default function OrderActionModal({
       );
       setVipDeliveryCharges(Number(order.delivery_charges) || 0);
       setEditTotalAmount(String(order.total_amount || 0));
+      setEditDeliveryCharges(Number(order.delivery_charges) || 0);
+      setEditActualCourierCost(Number(order.actual_courier_cost ?? order.delivery_charges) || 0);
+      setEditDeliveryPaidBy(order.delivery_paid_by || 'customer');
       setIsEditing(false);
       setShowDeleteConfirm(false);
       setErrorMsg('');
@@ -90,10 +101,16 @@ export default function OrderActionModal({
 
   if (!order) return null;
 
-  const orderSubtotal = Number(order.subtotal) || 0;
+  const itemsSum = (order.order_items || []).reduce((sum, item) => {
+    const q = item.quantity || 1;
+    return sum + (Number(item.line_total) || (Number(item.unit_price) * q));
+  }, 0);
+  const orderSubtotal = Number(order.subtotal) > 0 ? Number(order.subtotal) : itemsSum;
   const currentDiscount = Number(vipDiscountAmount) || 0;
   const currentDelivery = Number(vipDeliveryCharges) || 0;
-  const liveTotalAmount = Math.max(0, orderSubtotal - currentDiscount + currentDelivery);
+  const liveTotalAmount = Number(order.total_amount) > 0 && currentDiscount === 0 && currentDelivery === (Number(order.delivery_charges) || 0)
+    ? Number(order.total_amount)
+    : Math.max(0, orderSubtotal - currentDiscount + currentDelivery);
   const isCustomPriceApplied = currentDiscount !== initialBaseDiscount || currentDelivery !== (Number(order.delivery_charges) || 0);
 
   function applyPresetPercent(pct: number) {
@@ -312,6 +329,8 @@ export default function OrderActionModal({
     setErrorMsg('');
 
     const parsedTotal = Math.max(0, parseFloat(editTotalAmount) || orderTotalAmount);
+    const parsedDelivery = Math.max(0, parseFloat(String(editDeliveryCharges)) || 0);
+    const parsedCourier = Math.max(0, parseFloat(String(editActualCourierCost)) || 0);
     try {
       const res = await fetch(`/api/admin/orders/${order.id}`, {
         method: 'PATCH',
@@ -325,7 +344,9 @@ export default function OrderActionModal({
           admin_notes: notes,
           coupon_discount: currentDiscount,
           bundle_discount: 0,
-          delivery_charges: currentDelivery,
+          delivery_charges: parsedDelivery,
+          actual_courier_cost: parsedCourier,
+          delivery_paid_by: editDeliveryPaidBy,
           total_amount: parsedTotal,
         }),
       });
@@ -349,6 +370,10 @@ export default function OrderActionModal({
 
   async function handleDelete() {
     if (!order) return;
+    if (order.status === 'delivered') {
+      showErrorToast('Cannot delete delivered orders');
+      return;
+    }
     setDeleting(true);
     setErrorMsg('');
 
@@ -377,8 +402,10 @@ export default function OrderActionModal({
     }
   }
 
-  const isPending = order.status === 'pending' || order.status === 'pending_payment';
+  const isPending = order.status === 'pending';
+  const isPendingPayment = order.status === 'pending_payment';
   const isApprovedOrActive = order.status !== 'pending' && order.status !== 'pending_payment' && order.status !== 'cancelled' && order.status !== 'rejected';
+  const isOnlinePayment = order.payment_method && order.payment_method !== 'Cash on Delivery';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-fadeIn">
@@ -535,7 +562,7 @@ export default function OrderActionModal({
 
                   <div>
                     <label className="block text-[11px] font-semibold text-silver-dim mb-1">
-                      Total Order Amount (PKR) (Adjust Price Directly)
+                      Total Order Amount (PKR) <span className="text-emerald-400 font-bold">(Sale Price Billed to Customer)</span>
                     </label>
                     <input
                       type="number"
@@ -546,7 +573,97 @@ export default function OrderActionModal({
                       className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-3 py-1.5 text-xs font-mono font-bold text-emerald-400 focus:border-[#00C4CC] focus:outline-none"
                     />
                   </div>
+
+                  {/* ── Delivery & Courier Accounting Fields ── */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                      Delivery Paid By
+                    </label>
+                    <select
+                      value={editDeliveryPaidBy}
+                      onChange={(e) => {
+                        const val = e.target.value as 'customer' | 'store' | 'partial';
+                        setEditDeliveryPaidBy(val);
+                        if (val === 'customer') {
+                          setEditDeliveryCharges(200);
+                          setEditActualCourierCost(200);
+                        } else if (val === 'store') {
+                          setEditDeliveryCharges(0);
+                          setEditActualCourierCost(430);
+                        } else if (val === 'partial') {
+                          setEditDeliveryCharges(200);
+                          setEditActualCourierCost(430);
+                        }
+                      }}
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-3 py-1.5 text-xs text-white focus:border-[#00C4CC] focus:outline-none"
+                    >
+                      <option value="customer">👤 Customer Pays Delivery</option>
+                      <option value="store">🏬 Store Pays Delivery (Free Shipping)</option>
+                      <option value="partial">🤝 Subsidized / Partial (Customer pays part, Store pays rest)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                      Customer Delivery Fee (PKR)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editDeliveryCharges}
+                      onChange={(e) => setEditDeliveryCharges(e.target.value)}
+                      placeholder="0"
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-3 py-1.5 text-xs font-mono text-white focus:border-[#00C4CC] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-amber-300 mb-1">
+                      Actual Courier Cost Paid (PKR)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editActualCourierCost}
+                      onChange={(e) => setEditActualCourierCost(e.target.value)}
+                      placeholder="430"
+                      className="w-full rounded-lg border border-amber-500/40 bg-[#0C1420] px-3 py-1.5 text-xs font-mono font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
                 </div>
+
+                {/* ── Real-Time Net Profit Preview ── */}
+                {(() => {
+                  const currentTotal = Math.max(0, parseFloat(String(editTotalAmount)) || 0);
+                  const currentCustDelivery = Math.max(0, parseFloat(String(editDeliveryCharges)) || 0);
+                  const currentCourierCost = Math.max(0, parseFloat(String(editActualCourierCost)) || 0);
+                  const currentProductRevenue = Math.max(0, currentTotal - currentCustDelivery);
+                  const currentStoreExpense = Math.max(0, currentCourierCost - currentCustDelivery);
+                  const totalItemCost = (order.order_items || []).reduce((sum, it) => {
+                    const q = it.quantity || 1;
+                    const cost = Number(it.purchase_price) || Number((it.product as any)?.wholesale_price) || Number((it.product as any)?.purchase_price) || 0;
+                    return sum + cost * q;
+                  }, 0);
+                  const currentProfit = currentProductRevenue - totalItemCost - currentStoreExpense;
+
+                  return (
+                    <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="text-cyan-300 flex items-center gap-1.5">
+                          <span>💰</span> Order Net Profit Calculation:
+                        </span>
+                        <span className={`font-mono text-sm font-black ${currentProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {currentProfit >= 0 ? '+' : ''}PKR {currentProfit.toLocaleString('en-PK')}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-silver-dim flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
+                        <span>Sale Revenue: <strong className="text-white font-mono">PKR {currentProductRevenue.toLocaleString('en-PK')}</strong></span>
+                        <span>Product Cost: <strong className="text-amber-300 font-mono">PKR {totalItemCost.toLocaleString('en-PK')}</strong></span>
+                        <span>Store Courier Expense: <strong className="text-orange-300 font-mono">PKR {currentStoreExpense.toLocaleString('en-PK')}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <label className="block text-[11px] font-semibold text-silver-dim mb-1">
@@ -637,8 +754,9 @@ export default function OrderActionModal({
               ))}
             </div>
 
-            {false && (<>
-            {/* VIP & Acquaintance Custom Rate Adjustment Panel */}
+            {isPending && (
+              <>
+              {/* VIP & Acquaintance Custom Rate Adjustment Panel */}
             <div className="rounded-xl border border-cyan-500/40 bg-[#06101D] p-3.5 sm:p-4 space-y-3.5 mt-3 shadow-md">
               <div className="flex items-center justify-between border-b border-cyan-500/20 pb-2.5">
                 <div className="flex items-center gap-2">
@@ -778,8 +896,7 @@ export default function OrderActionModal({
                 </div>
               </div>
             </div>
-
-            </>)}
+              </>)}
 
             {/* Financial Breakdown (Live Recalculation) */}
             <div className="border-t border-slate-800 pt-3 space-y-1.5 text-xs">
@@ -815,24 +932,42 @@ export default function OrderActionModal({
               </div>
               {(() => {
                 const totalItemCost = (order.order_items || []).reduce((sum, i) => {
-                  return sum + ((Number(i.purchase_price) || 0) * (i.quantity || 1));
+                  const q = i.quantity || 1;
+                  const cost = Number(i.purchase_price) || Number((i.product as any)?.wholesale_price) || Number((i.product as any)?.purchase_price) || 0;
+                  return sum + (cost * q);
                 }, 0);
-                const netProductRevenue = Math.max(0, orderSubtotal - currentDiscount);
-                const orderProfit = netProductRevenue - totalItemCost;
+
+                const orderTotal = Number(order.total_amount) || 0;
+                let netProductRevenue = 0;
+                if (orderTotal > currentDelivery) {
+                  netProductRevenue = orderTotal - currentDelivery;
+                } else if (orderSubtotal > 0) {
+                  netProductRevenue = Math.max(0, orderSubtotal - currentDiscount);
+                } else {
+                  netProductRevenue = itemsSum;
+                }
+
+                const customerDeliveryFee = Number(order.delivery_charges) || 0;
+                const courierCost = (order.actual_courier_cost !== undefined && order.actual_courier_cost !== null)
+                  ? Number(order.actual_courier_cost)
+                  : customerDeliveryFee;
+                const storeDeliveryExpense = Math.max(0, courierCost - customerDeliveryFee);
+
+                const orderProfit = netProductRevenue - totalItemCost - storeDeliveryExpense;
                 const orderMargin = netProductRevenue > 0 ? Math.round((orderProfit / netProductRevenue) * 10000) / 100 : 0;
                 const isLoss = orderProfit < 0;
 
                 return (
                   <div className="grid grid-cols-3 gap-2 text-xs pt-1">
                     <div className="rounded-lg bg-[#080D15] p-2">
-                      <span className="text-[10px] text-silver-dim block">Product Cost</span>
+                      <span className="text-[10px] text-silver-dim block">Wholesale Cost</span>
                       <span className="font-mono font-bold text-amber-300 text-[11px] sm:text-xs">
                         PKR {totalItemCost.toLocaleString('en-PK')}
                       </span>
                     </div>
 
                     <div className={`rounded-lg p-2 ${isLoss ? 'bg-rose-500/10' : 'bg-emerald-500/10'}`}>
-                      <span className="text-[10px] text-silver-dim block">Net Profit</span>
+                      <span className="text-[10px] text-silver-dim block">Total Profit</span>
                       <span className={`font-mono font-bold text-[11px] sm:text-xs ${isLoss ? 'text-rose-400' : 'text-emerald-400'}`}>
                         {orderProfit >= 0 ? '+' : ''}PKR {orderProfit.toLocaleString('en-PK')}
                       </span>
@@ -868,7 +1003,7 @@ export default function OrderActionModal({
         {/* Modal Actions Footer */}
         <div className="mt-6 border-t border-slate-800 pt-4 space-y-3">
           {/* Prominent Inline Delete Confirmation Box (Right where user is looking) */}
-          {showDeleteConfirm && (
+          {showDeleteConfirm && order.status !== 'delivered' && (
             <div className="rounded-xl border border-rose-500/60 bg-rose-950/60 p-4 space-y-3 animate-slideUp">
               <div className="flex items-center gap-2 font-display text-sm font-bold text-rose-200">
                 <span className="text-lg">⚠️</span>
@@ -917,17 +1052,8 @@ export default function OrderActionModal({
                 {order.status === 'pending_payment' ? 'Payment Pending' : order.status}
               </span>
 
-              <a
-                href={`/admin/invoices/new?customer_name=${encodeURIComponent(order.customer_name)}&customer_phone=${encodeURIComponent(order.phone)}&customer_city=${encodeURIComponent(order.city)}&customer_address=${encodeURIComponent(order.address)}&delivery=${order.delivery_charges}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-xl border border-[#00C4CC]/40 bg-[#00C4CC]/10 px-3 py-1 text-xs font-bold text-[#00C4CC] hover:bg-[#00C4CC]/20 transition"
-              >
-                📄 Generate Invoice
-              </a>
-
               {/* Direct Delete Toggle Button */}
-              {!showDeleteConfirm && (
+              {!showDeleteConfirm && order.status !== 'delivered' && (
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
@@ -942,15 +1068,57 @@ export default function OrderActionModal({
             <div className="flex flex-wrap items-center gap-2">
               {isPending && (
                 <>
+                  {!isOnlinePayment && (
+                    <button
+                      type="button"
+                      onClick={handleApprove}
+                      disabled={loading}
+                      className="rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-4 py-2 font-display text-xs font-bold text-white shadow-[0_0_15px_rgba(37,211,102,0.3)] transition hover:scale-[1.02] disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      <span>✓</span>
+                      <span>{loading ? 'Approving...' : `APPROVE ORDER (PKR ${liveTotalAmount.toLocaleString('en-PK')})`}</span>
+                    </button>
+                  )}
+
+                  {isOnlinePayment && (
+                    <Link
+                      href="/admin/payments"
+                      className="rounded-xl border border-violet-500/50 bg-violet-500/10 hover:bg-violet-500/20 px-3.5 py-2 text-xs font-bold text-violet-400 transition inline-flex items-center gap-1.5"
+                    >
+                      <span>💳</span>
+                      <span>Verify Payment</span>
+                    </Link>
+                  )}
+
                   <button
                     type="button"
-                    onClick={handleApprove}
+                    onClick={handleReject}
                     disabled={loading}
-                    className="rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-4 py-2 font-display text-xs font-bold text-white shadow-[0_0_15px_rgba(37,211,102,0.3)] transition hover:scale-[1.02] disabled:opacity-50 flex items-center gap-1.5"
+                    className="rounded-xl border border-rose-800/80 bg-rose-950/30 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-900/50 transition disabled:opacity-50"
                   >
-                    <span>✓</span>
-                    <span>{loading ? 'Approving...' : `APPROVE ORDER (PKR ${liveTotalAmount.toLocaleString('en-PK')})`}</span>
+                    {loading ? 'Rejecting...' : 'REJECT'}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus('cancelled')}
+                    disabled={loading}
+                    className="rounded-xl border border-slate-800 px-3 py-2 text-xs font-semibold text-silver-dim hover:text-white transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+
+              {isPendingPayment && (
+                <>
+                  <Link
+                    href="/admin/payments"
+                    className="rounded-xl border border-violet-500/50 bg-violet-500/10 hover:bg-violet-500/20 px-3.5 py-2 text-xs font-bold text-violet-400 transition inline-flex items-center gap-1.5"
+                  >
+                    <span>💳</span>
+                    <span>Verify Payment</span>
+                  </Link>
 
                   <button
                     type="button"
@@ -984,55 +1152,91 @@ export default function OrderActionModal({
                       {loading ? 'Saving...' : `💾 Save Custom Total (PKR ${liveTotalAmount.toLocaleString('en-PK')})`}
                     </button>
                   )}
-                  <a
-                    href={`/invoice/${order.order_number || order.id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-3.5 py-2 text-xs font-bold text-[#00C4CC] transition inline-flex items-center gap-1.5"
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`/api/admin/orders/${order.id}/invoice`, { method: 'POST' });
+                        const data = await res.json();
+                        if (data.invoiceUrl) {
+                          window.open(data.invoiceUrl, '_blank');
+                        } else {
+                          window.open(`/invoice/${order.order_number || order.id}`, '_blank');
+                        }
+                      } catch {
+                        window.open(`/invoice/${order.order_number || order.id}`, '_blank');
+                      }
+                    }}
+                    className="rounded-xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 px-3 py-1.5 text-xs font-bold text-[#00C4CC] transition inline-flex items-center gap-1.5"
+                    title="View & Print Official Invoice"
                   >
                     <span>📄</span>
-                    <span>View Official Invoice</span>
-                  </a>
+                    <span>Official Invoice</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowShippingSlip(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-sky-700/60 bg-sky-950/40 hover:bg-sky-900/50 px-3 py-1.5 text-xs font-bold text-sky-300 transition"
+                    title="Print Courier Shipping Slip"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 6 2 18 2 18 9" />
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                      <rect x="6" y="14" width="12" height="8" />
+                    </svg>
+                    <span>Print Slip</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setShowCustomerWhatsApp(true)}
                     disabled={!order.phone}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-[#25D366]/50 bg-[#25D366]/10 px-3.5 py-2 text-xs font-bold text-[#25D366] transition hover:bg-[#25D366]/20 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[#25D366]/50 bg-[#25D366]/10 px-3 py-1.5 text-xs font-bold text-[#25D366] transition hover:bg-[#25D366]/20 disabled:opacity-50"
                   >
                     <span>💬</span>
-                    <span>Customer WhatsApp</span>
+                    <span>WhatsApp</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateStatus('processing')}
-                    disabled={loading}
-                    className="rounded-xl border border-blue-800/80 bg-blue-950/30 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-900/50 transition"
-                  >
-                    Processing
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateStatus('shipped')}
-                    disabled={loading}
-                    className="rounded-xl border border-indigo-800/80 bg-indigo-950/30 px-3 py-2 text-xs font-semibold text-indigo-300 hover:bg-indigo-900/50 transition"
-                  >
-                    Shipped
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateStatus('delivered')}
-                    disabled={loading}
-                    className="rounded-xl border border-emerald-800/80 bg-emerald-950/30 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/50 transition"
-                  >
-                    Delivered
-                  </button>
+
+                  {order.status !== 'processing' && order.status !== 'shipped' && order.status !== 'delivered' && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus('processing')}
+                      disabled={loading}
+                      className="rounded-xl border border-blue-800/80 bg-blue-950/30 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:bg-blue-900/50 transition"
+                    >
+                      Processing
+                    </button>
+                  )}
+
+                  {order.status !== 'shipped' && order.status !== 'delivered' && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus('shipped')}
+                      disabled={loading}
+                      className="rounded-xl border border-indigo-800/80 bg-indigo-950/30 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-900/50 transition"
+                    >
+                      Shipped
+                    </button>
+                  )}
+
+                  {order.status !== 'delivered' && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus('delivered')}
+                      disabled={loading}
+                      className="rounded-xl border border-emerald-800/80 bg-emerald-950/30 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/50 transition"
+                    >
+                      Delivered
+                    </button>
+                  )}
                 </>
               )}
 
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-slate-800 px-3.5 py-2 text-xs font-semibold text-silver-dim hover:text-white transition"
+                className="rounded-xl border border-slate-700 bg-[#080D15] hover:border-slate-600 px-3.5 py-1.5 text-xs font-semibold text-silver-bright hover:text-white transition"
               >
                 Close
               </button>
@@ -1040,6 +1244,10 @@ export default function OrderActionModal({
           </div>
         </div>
       </div>
+
+      {showShippingSlip && (
+        <ShippingSlipModal order={order} onClose={() => setShowShippingSlip(false)} />
+      )}
 
       {showCustomerWhatsApp && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">

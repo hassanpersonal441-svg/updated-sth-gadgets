@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createServiceClient } from '@/lib/supabase/server';
+import DashboardMetricsGrid from '@/components/admin/DashboardMetricsGrid';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60; // Revalidate every 60 seconds for better performance
@@ -41,11 +42,11 @@ async function getStats() {
     // Recent orders for dashboard
     supabase.from('orders').select('id, order_number, customer_name, total_amount, status, created_at').order('created_at', { ascending: false }).limit(5),
     // Fetch all approved/counted orders
-    supabase.from('orders').select('id, order_number, subtotal, delivery_charges, actual_courier_cost, delivery_paid_by, order_items(product_id, product_name, unit_price, purchase_price, quantity, line_total)').in('status', ['approved', 'pending_payment', 'processing', 'shipped', 'delivered']),
+    supabase.from('orders').select('id, order_number, total_amount, subtotal, delivery_charges, actual_courier_cost, delivery_paid_by, coupon_discount, bundle_discount, order_items(product_id, product_name, unit_price, purchase_price, quantity, line_total)').in('status', ['approved', 'pending_payment', 'processing', 'shipped', 'delivered']),
     // All vendor purchases
     supabase.from('vendor_purchases').select('id, order_number, product_name, quantity, wholesale_cost, status'),
     // Products catalog for fallback purchase price
-    supabase.from('products').select('id, name, purchase_price'),
+    supabase.from('products').select('id, name, purchase_price, wholesale_price'),
     // Pending invoices
     supabase.from('invoices').select('id, invoice_number, customer_name, total_amount, status, due_date').in('status', ['pending', 'overdue']).order('created_at', { ascending: false }).limit(5),
     // Low stock products list
@@ -55,72 +56,48 @@ async function getStats() {
   const productMap = new Map<string, any>();
   (products || []).forEach((p: any) => productMap.set(p.id, p));
 
-  // Build vendor purchase lookup by order_number
-  const vendorByOrder = new Map<string, any[]>();
-  (vendorPurchases || []).forEach((vp: any) => {
-    const key = (vp.order_number || '').trim().toUpperCase();
-    if (!key) return;
-    if (!vendorByOrder.has(key)) vendorByOrder.set(key, []);
-    vendorByOrder.get(key)!.push(vp);
-  });
-
-  const consumedVpIds = new Set<string>();
-
   let totalRevenue = 0;
   let totalCost = 0;
   let totalCustomerDeliveryFees = 0;
   let totalActualCourierCost = 0;
   let totalStoreDeliveryExpense = 0;
 
-  // 1. Process counted orders with priority hierarchy
+  // Process approved/counted customer orders
   (approvedOrders || []).forEach((o: any) => {
-    const orderKey = (o.order_number || '').trim().toUpperCase();
-    const linkedVp: any[] = orderKey ? (vendorByOrder.get(orderKey) || []) : [];
+    // 1. Calculate actual product revenue received from customer
+    const itemsRawTotal = (o.order_items || []).reduce((sum: number, it: any) => {
+      const q = it.quantity || 1;
+      return sum + (Number(it.line_total) || (Number(it.unit_price) * q));
+    }, 0);
+
+    const customerFee = Number(o.delivery_charges) || 0;
+    const orderTotal = Number(o.total_amount) || 0;
+    const discount = (Number(o.coupon_discount) || 0) + (Number(o.bundle_discount) || 0);
 
     let orderRevenue = 0;
+    if (orderTotal > 0) {
+      orderRevenue = Math.max(0, orderTotal - customerFee);
+    } else if (itemsRawTotal > 0) {
+      orderRevenue = Math.max(0, itemsRawTotal - discount);
+    }
+
+    // 2. Calculate wholesale product cost (pure order item cost, no vendor bills mixing)
     let orderCost = 0;
-
     (o.order_items || []).forEach((item: any) => {
-      const qty = item.quantity || 1;
-      const lineRevenue = Number(item.line_total) || (Number(item.unit_price) * qty);
-      orderRevenue += lineRevenue;
-
-      const itemName = (item.product_name || '').toLowerCase().trim();
       const prod = productMap.get(item.product_id);
-
       let unitCost = 0;
-
-      // Priority 1: Actual recorded vendor purchase for this order
-      const vpIdx = linkedVp.findIndex((vp) => {
-        if (consumedVpIds.has(vp.id)) return false;
-        const vpName = (vp.product_name || '').toLowerCase().trim();
-        return vpName === itemName || vpName.includes(itemName) || itemName.includes(vpName);
-      });
-
-      if (vpIdx !== -1) {
-        consumedVpIds.add(linkedVp[vpIdx].id);
-        unitCost = Number(linkedVp[vpIdx].wholesale_cost) || 0;
-      } else if (Number(item.purchase_price) > 0) {
-        // Priority 2: Snapshot recorded at checkout / order time
+      if (Number(item.purchase_price) > 0) {
         unitCost = Number(item.purchase_price);
+      } else if (Number(prod?.wholesale_price) > 0) {
+        unitCost = Number(prod.wholesale_price);
       } else if (Number(prod?.purchase_price) > 0) {
-        // Priority 3: Product catalog fallback
         unitCost = Number(prod.purchase_price);
       }
-      // Priority 4: 0 (missing cost; never invented)
 
-      orderCost += unitCost * qty;
+      orderCost += unitCost * (item.quantity || 1);
     });
 
-    // Unlisted vendor purchases for this specific order
-    linkedVp.forEach((vp: any) => {
-      if (consumedVpIds.has(vp.id)) return;
-      consumedVpIds.add(vp.id);
-      orderCost += (Number(vp.wholesale_cost) || 0) * (Number(vp.quantity) || 1);
-    });
-
-    // Delivery Accounting per order
-    const customerFee = Number(o.delivery_charges) || 0;
+    // 3. Delivery Accounting per order
     const courierCost = (o.actual_courier_cost !== undefined && o.actual_courier_cost !== null)
       ? Number(o.actual_courier_cost)
       : customerFee;
@@ -132,13 +109,6 @@ async function getStats() {
 
     totalRevenue += orderRevenue;
     totalCost += orderCost;
-  });
-
-  // 2. All remaining vendor purchases (general / historical / inventory purchases)
-  (vendorPurchases || []).forEach((vp: any) => {
-    if (consumedVpIds.has(vp.id)) return;
-    consumedVpIds.add(vp.id);
-    totalCost += (Number(vp.wholesale_cost) || 0) * (Number(vp.quantity) || 1);
   });
 
   const grossProfit = totalRevenue - totalCost;
@@ -186,6 +156,42 @@ export default async function AdminDashboardPage() {
 
   const cards = [
     {
+      label: 'Total Revenue',
+      value: `PKR ${stats.totalRevenue.toLocaleString('en-PK')}`,
+      icon: '💰',
+      color: 'from-cyan-500/20 to-transparent',
+      borderColor: 'border-cyan-500/30',
+      textColor: 'text-[#00C4CC]',
+      href: '/admin/orders',
+    },
+    {
+      label: 'Gross Profit',
+      value: `PKR ${stats.grossProfit.toLocaleString('en-PK')}`,
+      icon: '📈',
+      color: 'from-amber-500/20 to-transparent',
+      borderColor: 'border-amber-500/30',
+      textColor: 'text-amber-400',
+      href: '/admin/profit',
+    },
+    {
+      label: 'Total Profit',
+      value: `PKR ${stats.netProfit.toLocaleString('en-PK')}`,
+      icon: '💎',
+      color: 'from-emerald-500/20 to-transparent',
+      borderColor: 'border-emerald-500/30',
+      textColor: 'text-emerald-400',
+      href: '/admin/profit',
+    },
+    {
+      label: 'Profit Margin',
+      value: `${stats.avgMargin}%`,
+      icon: '📊',
+      color: 'from-blue-500/20 to-transparent',
+      borderColor: 'border-blue-500/30',
+      textColor: 'text-blue-400',
+      href: '/admin/profit',
+    },
+    {
       label: 'Total Orders',
       value: stats.totalOrders,
       icon: '📋',
@@ -195,21 +201,12 @@ export default async function AdminDashboardPage() {
       href: '/admin/orders',
     },
     {
-      label: 'Pending Orders',
-      value: stats.pendingOrders,
-      icon: '⏳',
-      color: 'from-amber-500/20 to-transparent',
-      borderColor: 'border-amber-500/30',
-      textColor: 'text-amber-300',
-      href: '/admin/orders',
-    },
-    {
       label: "Today's Revenue",
       value: `PKR ${stats.todayRevenue.toLocaleString('en-PK')}`,
       icon: '💵',
-      color: 'from-cyan-500/20 to-transparent',
-      borderColor: 'border-cyan-500/30',
-      textColor: 'text-[#00C4CC]',
+      color: 'from-teal-500/20 to-transparent',
+      borderColor: 'border-teal-500/30',
+      textColor: 'text-teal-400',
       href: '/admin/orders',
     },
     {
@@ -220,33 +217,6 @@ export default async function AdminDashboardPage() {
       borderColor: 'border-emerald-500/30',
       textColor: 'text-emerald-400',
       href: '/admin/products',
-    },
-    {
-      label: 'Out of Stock',
-      value: stats.outOfStock,
-      icon: '🚫',
-      color: 'from-rose-500/20 to-transparent',
-      borderColor: 'border-rose-500/30',
-      textColor: 'text-rose-400',
-      href: '/admin/products',
-    },
-    {
-      label: 'Pending Invoices',
-      value: stats.pendingInvoicesCount,
-      icon: '�',
-      color: 'from-yellow-500/20 to-transparent',
-      borderColor: 'border-yellow-500/30',
-      textColor: 'text-yellow-400',
-      href: '/admin/invoices',
-    },
-    {
-      label: 'Pending Vendor Purchases',
-      value: `${stats.pendingVendorCount} Pending`,
-      icon: '🏪',
-      color: 'from-indigo-500/20 to-transparent',
-      borderColor: 'border-indigo-500/30',
-      textColor: 'text-indigo-400',
-      href: '/admin/vendor-purchases',
     },
     {
       label: 'Store Delivery Expense',
@@ -299,30 +269,8 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
-        {cards.map((c) => (
-          <Link
-            key={c.label}
-            href={c.href}
-            className={`group relative overflow-hidden rounded-xl border ${c.borderColor} bg-[#0C1420] px-4 py-3 shadow-sm transition hover:border-[#00C4CC]/60 hover:shadow-[0_0_15px_rgba(0,196,204,0.1)]`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${c.color} opacity-30 transition group-hover:opacity-60`}></div>
-            <div className="relative flex items-center justify-between">
-              <span className="text-lg">{c.icon}</span>
-              <span className="text-[10px] text-silver-dim group-hover:text-silver-bright transition">↗</span>
-            </div>
-            <div className="relative mt-2">
-              <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-silver-dim truncate">
-                {c.label}
-              </p>
-              <p className={`mt-0.5 font-display text-lg sm:text-xl font-black ${c.textColor} truncate`}>
-                {typeof c.value === 'string' ? c.value : c.value.toLocaleString()}
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Metrics Grid (3x3 Layout with Eye Reveal/Hide) */}
+      <DashboardMetricsGrid cards={cards} />
 
       {/* Dashboard Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const productIds = items.map((i) => i.product_id);
     const { data: dbProducts, error: prodErr } = await supabase
       .from('products')
-      .select('id, name, price, purchase_price, stock_status, active, bundle_offers, free_delivery')
+      .select('id, name, price, purchase_price, stock_status, active, bundle_offers, free_delivery, product_images(image_url, is_primary)')
       .in('id', productIds);
 
     if (prodErr || !dbProducts || dbProducts.length === 0) {
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
     const verifiedItems: {
       product_id: string;
       product_name: string;
+      product_image: string | null;
       variant_name?: string | null;
       unit_price: number;
       purchase_price: number;
@@ -91,9 +92,14 @@ export async function POST(request: Request) {
       subtotal += line_total;
       totalQuantity += item.quantity;
 
+      const productImage = (prod as any).product_images?.find((i: any) => i.is_primary)?.image_url
+        || (prod as any).product_images?.[0]?.image_url
+        || null;
+
       verifiedItems.push({
         product_id: prod.id,
         product_name: selectedBundle ? `${prod.name} (${selectedBundle.title})` : prod.name,
+        product_image: productImage,
         variant_name: item.variant_name,
         unit_price,
         purchase_price,
