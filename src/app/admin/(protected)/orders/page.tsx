@@ -7,6 +7,7 @@ import Link from 'next/link';
 import type { Order, OrderStatus } from '@/types/database';
 import OrderActionModal from '@/components/admin/OrderActionModal';
 import CreateOrderModal from '@/components/admin/CreateOrderModal';
+import ShippingSlipModal from '@/components/admin/ShippingSlipModal';
 import { useToast } from '@/context/ToastContext';
 import { formatInvoiceDate, formatOrderDateTime, formatNumber } from '@/lib/utils';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -140,6 +141,11 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderSourceFilter, setOrderSourceFilter] = useState<'all' | 'web' | 'whatsapp' | 'random'>('all');
 
+  // Multi-Selection State for Bulk Actions & 2-per-page A4 Slips
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [slipOrdersToPrint, setSlipOrdersToPrint] = useState<Order[] | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   // Direct table delete confirmation state
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deletingDirect, setDeletingDirect] = useState(false);
@@ -149,21 +155,36 @@ export default function AdminOrdersPage() {
   const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
 
   async function fetchOrders(showToast = false) {
-    if (!cachedOrders) {
+    if (!cachedOrders || cachedOrders.length === 0) {
       setLoading(true);
     }
+    setFetchError(null);
     try {
-      const res = await fetch('/api/admin/orders');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch('/api/admin/orders', {
+        signal: controller.signal,
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      clearTimeout(timeoutId);
+
       const data = await res.json();
-      if (data.orders) {
+      if (res.ok && data.orders) {
         cachedOrders = data.orders;
         setOrders(data.orders);
         if (showToast) {
           admin('Orders list refreshed!', 'Orders Updated');
         }
+      } else {
+        throw new Error(data.error || 'Failed to load orders');
       }
-    } catch {
-      showErrorToast('Failed to refresh orders.');
+    } catch (err: any) {
+      const errorMsg = err.name === 'AbortError' ? 'Orders load timed out' : (err.message || 'Failed to refresh orders');
+      setFetchError(errorMsg);
+      if (showToast) {
+        showErrorToast(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -198,6 +219,7 @@ export default function AdminOrdersPage() {
         cachedOrders = next;
         return next;
       });
+      setSelectedOrderIds((prev) => prev.filter((id) => id !== orderToDelete.id));
       admin(`Order ${orderToDelete.order_number || orderToDelete.id} deleted successfully!`, 'Order Deleted');
       setOrderToDelete(null);
     } catch (err: any) {
@@ -332,8 +354,61 @@ export default function AdminOrdersPage() {
     setSelectedOrder(updated);
   }
 
+  // Multi-Selection Logic
+  const allFilteredSelected = filteredOrders.length > 0 && filteredOrders.every((o) => selectedOrderIds.includes(o.id));
+  const someFilteredSelected = filteredOrders.some((o) => selectedOrderIds.includes(o.id)) && !allFilteredSelected;
+
+  function toggleSelectOrder(orderId: string, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]
+    );
+  }
+
+  function handleSelectAllFiltered() {
+    if (allFilteredSelected) {
+      const filteredIdSet = new Set(filteredOrders.map((o) => o.id));
+      setSelectedOrderIds((prev) => prev.filter((id) => !filteredIdSet.has(id)));
+    } else {
+      const combined = Array.from(new Set([...selectedOrderIds, ...filteredOrders.map((o) => o.id)]));
+      setSelectedOrderIds(combined);
+    }
+  }
+
+  function handleClearSelection() {
+    setSelectedOrderIds([]);
+  }
+
+  function handleOpenBulkSlips() {
+    const selectedOrdersList = orders.filter((o) => selectedOrderIds.includes(o.id));
+    if (selectedOrdersList.length === 0) {
+      showErrorToast('Please select at least 1 order to print slips.');
+      return;
+    }
+    const printableOrders = selectedOrdersList.filter(
+      (o) => o.status !== 'shipped' && o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'rejected'
+    );
+    if (printableOrders.length === 0) {
+      showErrorToast('All selected orders are already shipped/delivered or cancelled. Slip printing is disabled.');
+      return;
+    }
+    if (printableOrders.length < selectedOrdersList.length) {
+      success(`Selected ${printableOrders.length} active order(s). Already shipped orders were excluded.`);
+    }
+    setSlipOrdersToPrint(printableOrders);
+  }
+
+  function handleOpenSingleSlip(order: Order, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    if (order.status === 'shipped' || order.status === 'delivered' || order.status === 'cancelled' || order.status === 'rejected') {
+      showErrorToast(`Shipping slip is disabled for ${order.status} orders.`);
+      return;
+    }
+    setSlipOrdersToPrint([order]);
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-5">
         <div>
@@ -341,11 +416,22 @@ export default function AdminOrdersPage() {
             Orders Management
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-silver-dim">
-            Review incoming orders, process shipments, generate invoices, and manage customer orders.
+            Review incoming orders, process shipments, print 2-per-page A4 slips, and manage customer orders.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Bulk Print Button if orders are selected */}
+          {selectedOrderIds.length > 0 && (
+            <button
+              onClick={handleOpenBulkSlips}
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 hover:from-sky-400 hover:to-cyan-300 text-black px-4 py-2 text-xs font-black transition shadow-[0_0_20px_rgba(14,165,233,0.35)] hover:scale-105"
+            >
+              <span>🖨️</span>
+              <span>Print Slips ({selectedOrderIds.length} Selected · 2 Per Page)</span>
+            </button>
+          )}
+
           <button
             onClick={() => setShowCreateOrderModal(true)}
             className="flex items-center gap-1.5 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-3.5 py-2 text-xs font-black transition shadow-sm hover:scale-105"
@@ -469,7 +555,8 @@ export default function AdminOrdersPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by customer, phone, STH #..."
             className="w-full sm:w-72 rounded-xl border border-slate-800 bg-[#080D15] px-3.5 py-2 text-xs text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none"
-          />
+          >
+          </input>
         </div>
       </div>
 
@@ -477,8 +564,22 @@ export default function AdminOrdersPage() {
       <div className="rounded-2xl border border-slate-800 bg-[#0C1420] overflow-hidden">
         {loading ? (
           <div className="py-20 text-center text-xs text-silver-dim flex flex-col items-center justify-center gap-2">
-            <span className="h-5 w-5 rounded-full border-2 border-[#00C4CC] border-t-transparent animate-spin"></span>
-            <span>Loading orders...</span>
+            <span className="h-6 w-6 rounded-full border-2 border-[#00C4CC] border-t-transparent animate-spin"></span>
+            <span className="font-semibold text-slate-300">Loading orders...</span>
+          </div>
+        ) : fetchError ? (
+          <div className="py-16 text-center text-xs text-silver-dim flex flex-col items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
+              ⚠️
+            </div>
+            <div className="text-slate-300 font-semibold">{fetchError}</div>
+            <button
+              type="button"
+              onClick={() => fetchOrders(true)}
+              className="rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-4 py-2 font-bold transition shadow-sm"
+            >
+              ↻ Try Again
+            </button>
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="py-20 text-center text-xs text-silver-dim">
@@ -489,30 +590,47 @@ export default function AdminOrdersPage() {
             {/* Mobile Cards View (< md screens) */}
             <div className="divide-y divide-slate-800/80 md:hidden">
               {filteredOrders.map((order) => {
-                const itemsCount = (order.order_items || []).reduce((sum, i) => sum + i.quantity, 0);
+                const itemsCount = (order.order_items || []).reduce((sum, i) => sum + (i.quantity || 1), 0);
+                const isSelected = selectedOrderIds.includes(order.id);
 
                 return (
                   <div
                     key={order.id}
-                    className="p-4 space-y-3 hover:bg-[#00C4CC]/5 transition"
+                    className={`p-4 space-y-3 transition ${isSelected ? 'bg-sky-950/20 border-l-4 border-l-sky-400' : 'hover:bg-[#00C4CC]/5'}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        {order.order_number ? (
-                          <span className="font-mono font-bold text-xs text-[#00C4CC] bg-[#00C4CC]/10 border border-[#00C4CC]/30 rounded-md px-2 py-0.5">
-                            {order.order_number}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-0.5 font-bold">
-                            Pending Official #
-                          </span>
-                        )}
-                        <h4 className="mt-1 font-semibold text-silver-bright text-sm">
-                          {order.customer_name}
-                        </h4>
-                        <span className="text-xs text-silver-dim">{order.phone} • {order.city}</span>
-                        <div className="mt-1">
-                          {renderSourceBadge(order.order_source)}
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="pt-0.5 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelectOrder(order.id);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            readOnly
+                            className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-0 cursor-pointer pointer-events-none"
+                          />
+                        </div>
+                        <div>
+                          {order.order_number ? (
+                            <span className="font-mono font-bold text-xs text-[#00C4CC] bg-[#00C4CC]/10 border border-[#00C4CC]/30 rounded-md px-2 py-0.5">
+                              {order.order_number}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-0.5 font-bold">
+                              Pending Official #
+                            </span>
+                          )}
+                          <h4 className="mt-1 font-semibold text-silver-bright text-sm">
+                            {order.customer_name}
+                          </h4>
+                          <span className="text-xs text-silver-dim">{order.phone} • {order.city}</span>
+                          <div className="mt-1">
+                            {renderSourceBadge(order.order_source)}
+                          </div>
                         </div>
                       </div>
 
@@ -541,6 +659,28 @@ export default function AdminOrdersPage() {
 
                     {/* Mobile Card Action Buttons */}
                     <div className="flex items-center gap-2 pt-1">
+                      {(() => {
+                        const isSlipDisabled = order.status === 'shipped' || order.status === 'delivered' || order.status === 'cancelled' || order.status === 'rejected';
+                        return (
+                          <button
+                            type="button"
+                            disabled={isSlipDisabled}
+                            onClick={(e) => {
+                              if (isSlipDisabled) return;
+                              handleOpenSingleSlip(order, e);
+                            }}
+                            className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                              isSlipDisabled
+                                ? 'border-slate-800 bg-slate-900/40 text-slate-600 opacity-40 cursor-not-allowed'
+                                : 'border-sky-600/60 bg-sky-950/40 hover:bg-sky-900/60 text-sky-300'
+                            }`}
+                            title={isSlipDisabled ? `Shipping slip disabled (Order is ${order.status})` : 'Print Courier Shipping Slip'}
+                          >
+                            🖨️ Slip
+                          </button>
+                        );
+                      })()}
+
                       <button
                         type="button"
                         disabled={actionLoadingId === `invoice-${order.id}`}
@@ -580,6 +720,18 @@ export default function AdminOrdersPage() {
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-slate-800 bg-[#070D18] text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   <tr>
+                    <th className="w-10 px-3 py-3.5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={allFilteredSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someFilteredSelected;
+                        }}
+                        onChange={handleSelectAllFiltered}
+                        className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-0 cursor-pointer"
+                        title="Select All"
+                      />
+                    </th>
                     <th className="px-4 py-3.5">Order #</th>
                     <th className="px-4 py-3.5">Customer</th>
                     <th className="px-4 py-3.5">City</th>
@@ -596,13 +748,32 @@ export default function AdminOrdersPage() {
                     const itemsCount = (order.order_items || []).reduce((sum, i) => sum + (i.quantity || 1), 0);
                     const firstItem = order.order_items?.[0];
                     const itemImg = firstItem ? getOrderItemImage(firstItem) : null;
+                    const isSelected = selectedOrderIds.includes(order.id);
 
                     return (
                       <tr
                         key={order.id}
-                        className="hover:bg-[#0E1A2C] transition-colors cursor-pointer group"
+                        className={`transition-colors cursor-pointer group ${
+                          isSelected ? 'bg-sky-950/30 hover:bg-sky-950/40' : 'hover:bg-[#0E1A2C]'
+                        }`}
                         onClick={() => setSelectedOrder(order)}
                       >
+                        {/* Checkbox */}
+                        <td
+                          className="w-10 px-3 py-3.5 text-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelectOrder(order.id);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            readOnly
+                            className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-0 cursor-pointer pointer-events-none"
+                          />
+                        </td>
+
                         {/* Order Number */}
                         <td className="px-4 py-3.5 font-mono whitespace-nowrap">
                           {order.order_number ? (
@@ -733,9 +904,37 @@ export default function AdminOrdersPage() {
                           {renderStatusBadge(order.status)}
                         </td>
 
-                        {/* Actions (Approve / Reject / Manage / Delete) */}
+                        {/* Actions (Print Slip / Approve / Reject / Manage / Delete) */}
                         <td className="px-4 py-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            {/* Direct Shipping Slip Print Button */}
+                            {(() => {
+                              const isSlipDisabled = order.status === 'shipped' || order.status === 'delivered' || order.status === 'cancelled' || order.status === 'rejected';
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={isSlipDisabled}
+                                  onClick={(e) => {
+                                    if (isSlipDisabled) return;
+                                    handleOpenSingleSlip(order, e);
+                                  }}
+                                  className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition flex items-center gap-1 shadow-sm ${
+                                    isSlipDisabled
+                                      ? 'border-slate-800 bg-slate-900/40 text-slate-600 opacity-40 cursor-not-allowed'
+                                      : 'border-sky-600/40 bg-sky-950/40 hover:bg-sky-500 hover:text-white text-sky-300'
+                                  }`}
+                                  title={isSlipDisabled ? `Shipping slip disabled (Order is ${order.status})` : 'Print Shipping Slip (Upper/Lower or 6x4)'}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 6 2 18 2 18 9" />
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                    <rect x="6" y="14" width="12" height="8" />
+                                  </svg>
+                                  <span>Slip</span>
+                                </button>
+                              );
+                            })()}
+
                             {(order.status === 'pending' || order.status === 'pending_payment') && (
                               <>
                                 <button
@@ -818,6 +1017,39 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
+      {/* Floating Sticky Bulk Selection Bar */}
+      {selectedOrderIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-sky-500/40 bg-[#081322]/95 backdrop-blur-xl px-5 py-3 shadow-[0_10px_35px_rgba(0,0,0,0.6)] text-white animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-xs font-black text-black">
+              {selectedOrderIds.length}
+            </span>
+            <span className="text-xs font-bold text-slate-200">
+              Orders Selected
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-700 mx-1" />
+
+          <button
+            type="button"
+            onClick={handleOpenBulkSlips}
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 hover:from-sky-400 hover:to-cyan-300 text-black px-4 py-2 text-xs font-black transition shadow-[0_0_15px_rgba(14,165,233,0.4)] hover:scale-105"
+          >
+            <span>🖨️</span>
+            <span>Print Joint Slips (2 Per A4 Page)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClearSelection}
+            className="rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
+          >
+            Clear Selection
+          </button>
+        </div>
+      )}
+
       {/* Direct Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={!!orderToDelete}
@@ -835,6 +1067,15 @@ export default function AdminOrdersPage() {
         onClose={() => setShowCreateOrderModal(false)}
         onOrderCreated={() => fetchOrders(true)}
       />
+
+      {/* Shipping Slips Modal (Single or Multi / 2 per page A4) */}
+      {slipOrdersToPrint && (
+        <ShippingSlipModal
+          orders={slipOrdersToPrint}
+          allOrders={orders}
+          onClose={() => setSlipOrdersToPrint(null)}
+        />
+      )}
 
       {/* Action / Detail Modal */}
       {selectedOrder && (

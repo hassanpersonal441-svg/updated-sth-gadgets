@@ -1174,19 +1174,32 @@ export default function OrderActionModal({
                     <span>Official Invoice</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowShippingSlip(true)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-sky-700/60 bg-sky-950/40 hover:bg-sky-900/50 px-3 py-1.5 text-xs font-bold text-sky-300 transition"
-                    title="Print Courier Shipping Slip"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 6 2 18 2 18 9" />
-                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                      <rect x="6" y="14" width="12" height="8" />
-                    </svg>
-                    <span>Print Slip</span>
-                  </button>
+                  {(() => {
+                    const isSlipDisabled = order.status === 'shipped' || order.status === 'delivered' || order.status === 'cancelled' || order.status === 'rejected';
+                    return (
+                      <button
+                        type="button"
+                        disabled={isSlipDisabled}
+                        onClick={() => {
+                          if (isSlipDisabled) return;
+                          setShowShippingSlip(true);
+                        }}
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition ${
+                          isSlipDisabled
+                            ? 'border-slate-800 bg-slate-900/40 text-slate-600 opacity-40 cursor-not-allowed'
+                            : 'border-sky-700/60 bg-sky-950/40 hover:bg-sky-900/50 text-sky-300'
+                        }`}
+                        title={isSlipDisabled ? `Shipping slip disabled (Order is ${order.status})` : 'Print Courier Shipping Slip'}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="6 9 6 2 18 2 18 9" />
+                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                          <rect x="6" y="14" width="12" height="8" />
+                        </svg>
+                        <span>Print Slip</span>
+                      </button>
+                    );
+                  })()}
 
                   <button
                     type="button"
