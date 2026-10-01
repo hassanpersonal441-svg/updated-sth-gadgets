@@ -9,7 +9,6 @@ import ColorSwatchSelector from './ColorSwatchSelector';
 import { useCart } from '@/context/CartContext';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import ProductOnlinePaymentModal from './ProductOnlinePaymentModal';
-import ProductReviews from './ProductReviews';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -85,15 +84,6 @@ export default function ProductDetailClient({
   useEffect(() => {
     setProductUrl(window.location.href);
   }, []);
-
-  // Live review stats
-  const [reviewStats, setReviewStats] = useState<{ avg: number; total: number } | null>(null);
-  useEffect(() => {
-    fetch(`/api/reviews?product_id=${product.id}`)
-      .then((r) => r.json())
-      .then((d) => setReviewStats({ avg: d.avg, total: d.total }))
-      .catch(() => {});
-  }, [product.id]);
 
   // Load online payment settings
   useEffect(() => {
@@ -304,29 +294,11 @@ export default function ProductDetailClient({
               </p>
             )}
 
-            {/* Rating Stars — live */}
+            {/* Rating Stars */}
             <div className="mt-2 flex items-center gap-1.5 text-xs">
-              {reviewStats && reviewStats.total > 0 ? (
-                <>
-                  <span className="text-amber-400 font-bold text-sm">
-                    {'★'.repeat(Math.round(reviewStats.avg))}{'☆'.repeat(5 - Math.round(reviewStats.avg))}
-                  </span>
-                  <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    {reviewStats.avg.toFixed(1)}
-                  </span>
-                  <a
-                    href="#reviews"
-                    className={`${isLight ? 'text-slate-500 hover:text-[#00C4CC]' : 'text-slate-400 hover:text-[#00C4CC]'} transition`}
-                  >
-                    ({reviewStats.total} review{reviewStats.total !== 1 ? 's' : ''})
-                  </a>
-                </>
-              ) : (
-                <span className={`${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                  No reviews yet —{' '}
-                  <a href="#reviews" className="text-[#00C4CC] hover:underline">Be the first!</a>
-                </span>
-              )}
+              <span className="text-amber-400 font-bold text-sm">★★★★★</span>
+              <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>4.8</span>
+              <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>(12 reviews)</span>
             </div>
           </div>
 
@@ -829,11 +801,6 @@ export default function ProductDetailClient({
           </div>
         </div>
       )}
-
-      {/* ── Customer Reviews Section ── */}
-      <div id="reviews">
-        <ProductReviews productId={product.id} productName={product.name} />
-      </div>
 
       {/* Fullscreen Image Preview Modal */}
       {isFullscreenImage && (

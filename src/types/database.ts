@@ -454,22 +454,3 @@ export interface VendorPurchase {
   updated_at?: string;
 }
 
-
-
-export type ReviewStatus = 'pending' | 'approved' | 'rejected';
-
-export interface ProductReview {
-  id: string;
-  product_id: string;
-  customer_name: string;
-  phone: string | null;
-  rating: number;
-  title: string | null;
-  body: string;
-  status: ReviewStatus;
-  admin_reply: string | null;
-  helpful_count: number;
-  created_at: string;
-  updated_at: string;
-  product?: Product | null;
-}

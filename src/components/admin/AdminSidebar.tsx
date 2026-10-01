@@ -90,12 +90,6 @@ const links = [
     icon: <span className="text-base leading-none">💬</span>,
   },
   {
-    href: '/admin/reviews',
-    label: 'Customer Reviews',
-    tourId: 'admin-reviews',
-    icon: <span className="text-base leading-none">⭐</span>,
-  },
-  {
     href: '/admin/products',
     label: 'Products',
     tourId: 'admin-products',
