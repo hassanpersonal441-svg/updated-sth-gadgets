@@ -42,25 +42,31 @@ export default function CartDrawer() {
   React.useEffect(() => {
     if (isCartOpen) {
       const scrollY = window.scrollY;
+      document.documentElement.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
+      document.body.style.overscrollBehavior = 'none';
     } else {
       const scrollY = document.body.style.top;
+      document.documentElement.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.overflow = '';
+      document.body.style.overscrollBehavior = '';
       if (scrollY) {
         window.scrollTo(0, parseInt(scrollY || '0') * -1);
       }
     }
     return () => {
+      document.documentElement.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.overflow = '';
+      document.body.style.overscrollBehavior = '';
     };
   }, [isCartOpen]);
 
@@ -97,7 +103,7 @@ export default function CartDrawer() {
 
       <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-md transition-opacity animate-fade-in">
         {/* Backdrop click to close */}
-        <div className="fixed inset-0" onClick={closeCart} />
+        <div className="fixed inset-0 touch-none overscroll-none" onClick={closeCart} />
 
         {/* Slide-over Drawer Container */}
         <div

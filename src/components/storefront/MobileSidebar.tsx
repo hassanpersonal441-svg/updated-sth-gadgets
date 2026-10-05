@@ -28,25 +28,31 @@ export default function MobileSidebar({ isOpen, onClose, categories, settings }:
   useEffect(() => {
     if (isOpen) {
       const scrollY = window.scrollY;
+      document.documentElement.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
+      document.body.style.overscrollBehavior = 'none';
     } else {
       const scrollY = document.body.style.top;
+      document.documentElement.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.overflow = '';
+      document.body.style.overscrollBehavior = '';
       if (scrollY) {
         window.scrollTo(0, parseInt(scrollY || '0') * -1);
       }
     }
     return () => {
+      document.documentElement.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.overflow = '';
+      document.body.style.overscrollBehavior = '';
     };
   }, [isOpen]);
 
@@ -57,7 +63,7 @@ export default function MobileSidebar({ isOpen, onClose, categories, settings }:
       {/* Backdrop */}
       {isOpen && (
         <div
-          className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity md:hidden ${
+          className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity md:hidden touch-none overscroll-none ${
             isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
           onClick={onClose}
