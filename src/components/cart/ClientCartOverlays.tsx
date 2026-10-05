@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import CartDrawer from './CartDrawer';
 import CheckoutModal from './CheckoutModal';
-import MobileSideNav from '../storefront/MobileSideNav';
+
 import CustomerTour from '../tour/CustomerTour';
 import ChatbotWidget from '../chat/ChatbotWidget';
 import FloatingCartButton from './FloatingCartButton';
@@ -29,7 +29,6 @@ export default function ClientCartOverlays() {
       <CheckoutModal />
       <FloatingExclusiveOfferButton />
       <FloatingCartButton />
-      <MobileSideNav />
       <CustomerTour />
       <ChatbotWidget />
     </>
