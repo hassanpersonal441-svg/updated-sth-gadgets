@@ -14,11 +14,11 @@ export default function FloatingCartButton() {
   }
 
   return (
-    <div className="mobile-cart-summary fixed right-4 bottom-20 sm:bottom-6 z-40 animate-slide-up">
+    <div className="mobile-cart-summary fixed left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-6 bottom-20 sm:bottom-6 z-40 animate-slide-up w-[90%] sm:w-auto flex justify-center">
       <button
         type="button"
         onClick={openCart}
-        className="group relative overflow-hidden flex items-center gap-2.5 sm:gap-3 rounded-full bg-[#081220]/95 hover:bg-[#0B1A2E] text-white border border-[#00C4CC]/50 px-4 sm:px-5 py-2.5 sm:py-3 shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_25px_rgba(0,196,204,0.3)] backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer ring-1 ring-[#00C4CC]/30"
+        className="w-full sm:w-auto group relative overflow-hidden flex justify-center items-center gap-2.5 sm:gap-3 rounded-full bg-[#081220]/95 hover:bg-[#0B1A2E] text-white border border-[#00C4CC]/50 px-4 sm:px-5 py-2.5 sm:py-3 shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_25px_rgba(0,196,204,0.3)] backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer ring-1 ring-[#00C4CC]/30"
         aria-label="View shopping cart"
       >
         {/* Cart Icon & Items Count */}

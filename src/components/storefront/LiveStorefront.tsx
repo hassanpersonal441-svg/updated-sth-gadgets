@@ -632,7 +632,7 @@ export default function LiveStorefront({
                 <button
                   type="button"
                   onClick={() => setOffersOnly((prev) => !prev)}
-                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition duration-200 cursor-pointer ${
+                  className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition duration-200 cursor-pointer ${
                     offersOnly
                       ? 'border-rose-500 bg-rose-500/20 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)] ring-1 ring-rose-500'
                       : isLight

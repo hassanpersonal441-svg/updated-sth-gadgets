@@ -2,10 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import ExclusiveBundleModal from './ExclusiveBundleModal';
+import { useCart } from '@/context/CartContext';
 
 export default function FloatingExclusiveOfferButton() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hasDeals, setHasDeals] = useState(false);
+  const { totalItems } = useCart();
 
   useEffect(() => {
     // Check if store has active deals or bundle offers
@@ -39,7 +41,9 @@ export default function FloatingExclusiveOfferButton() {
       <button
         type="button"
         onClick={handleClick}
-        className="mobile-exclusive-offer fixed left-4 bottom-20 sm:bottom-6 z-40 flex items-center gap-2 rounded-full border border-amber-400/50 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 px-4 py-2.5 font-display text-xs font-black text-white shadow-[0_8px_25px_rgba(245,158,11,0.4)] transition hover:scale-105 active:scale-95 cursor-pointer ring-1 ring-amber-400/30"
+        className={`mobile-exclusive-offer fixed left-4 z-40 flex items-center gap-2 rounded-full border border-amber-400/50 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 px-4 py-2.5 font-display text-xs font-black text-white shadow-[0_8px_25px_rgba(245,158,11,0.4)] transition hover:scale-105 active:scale-95 cursor-pointer ring-1 ring-amber-400/30 ${
+          totalItems > 0 ? 'bottom-36 sm:bottom-6' : 'bottom-20 sm:bottom-6'
+        }`}
         title="View Official Hot Deals & Combo Offers"
       >
         <span className="text-sm">🔥</span>
