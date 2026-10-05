@@ -105,7 +105,7 @@ export default function Navbar({ categories, settings }: NavbarProps) {
             : 'border-slate-800/80 bg-[#060A11]/90 text-[#CBD5E1] shadow-[0_4px_25px_rgba(0,0,0,0.5)]'
         }`}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 sm:gap-6 px-3 sm:px-6 py-2.5 sm:py-3.5">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-1.5 sm:gap-6 px-1.5 sm:px-6 py-2.5 sm:py-3.5">
           {/* Brand Section Left */}
           <Link href="/" className="group flex shrink-0 items-center gap-2.5 sm:gap-3.5">
             <div className="relative h-10 w-10 sm:h-12 sm:w-12 overflow-hidden rounded-full border-2 border-[#00C4CC] shadow-[0_0_15px_rgba(0,196,204,0.4)] transition duration-300 group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(0,196,204,0.6)]">
@@ -284,7 +284,7 @@ export default function Navbar({ categories, settings }: NavbarProps) {
           </div>
 
           {/* Right Actions Cluster */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             {/* Hot Deals Navigation Button */}
             <button
               type="button"
@@ -315,7 +315,7 @@ export default function Navbar({ categories, settings }: NavbarProps) {
             <button
               type="button"
               onClick={openCart}
-              className={`relative flex items-center gap-1.5 rounded-full border px-3 sm:px-3.5 py-1.5 sm:py-2 transition duration-200 hover:scale-105 active:scale-95 shadow-sm ${
+              className={`relative flex items-center gap-1.5 rounded-full border px-2 sm:px-3.5 py-1.5 sm:py-2 transition duration-200 hover:scale-105 active:scale-95 shadow-sm ${
                 isLight
                   ? 'border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 hover:border-slate-400'
                   : 'border-[#00C4CC]/50 bg-[#0B121E] text-[#00C4CC] hover:bg-[#00C4CC]/10'
