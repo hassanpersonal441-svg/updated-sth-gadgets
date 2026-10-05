@@ -175,7 +175,9 @@ export default function ChatbotWidget() {
       {/* ========================================================================= */}
       {!isOpen && (
         <div
-          className="mobile-chat-launcher fixed right-3 sm:right-6 z-40 flex items-center gap-3 transition-all duration-300"
+          className={`mobile-chat-launcher fixed right-3 sm:right-6 z-40 flex items-center gap-3 transition-all duration-300 ${
+            totalItems > 0 ? 'bottom-36 sm:bottom-24' : 'bottom-20 sm:bottom-6'
+          }`}
         >
           {/* Subtle invitation pill on desktop screens (hidden when cart items exist to prevent clash) */}
           {!hasInteracted && totalItems === 0 && (
@@ -369,7 +371,7 @@ export default function ChatbotWidget() {
                             className={`rounded-2xl rounded-tl-none p-3 sm:p-3.5 shadow-md leading-relaxed ${
                               isLight
                                 ? 'bg-white border border-slate-200 text-slate-800'
-                                : 'bg-[#162235] border border-slate-700/60 text-slate-100'
+                                : 'bg-[#162235] border border-slate-700/60 text-silver-bright'
                             }`}
                           >
                             <ChatMessageContent content={msg.content} isLight={isLight} />

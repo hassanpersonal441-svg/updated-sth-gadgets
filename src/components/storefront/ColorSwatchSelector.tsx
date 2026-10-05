@@ -94,7 +94,7 @@ export default function ColorSwatchSelector({
                 className={`pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-bold shadow-md transition-opacity duration-150 opacity-0 group-hover:opacity-100 z-20 ${
                   isLight
                     ? 'bg-slate-900 text-white'
-                    : 'bg-slate-800 text-slate-100 border border-slate-700'
+                    : 'bg-slate-800 text-silver-bright border border-slate-700'
                 }`}
               >
                 {v.variant_name}

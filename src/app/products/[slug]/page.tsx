@@ -8,8 +8,8 @@ import RelatedProducts from '@/components/storefront/RelatedProducts';
 import { getProductBySlug, getSettings, getActiveCategories, getAllActiveProducts } from '@/lib/data';
 import type { Metadata } from 'next';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Incremental Static Regeneration (ISR): Cache statically & revalidate in background every 60s
+export const revalidate = 60;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sthgadgets.store';
 
@@ -20,29 +20,38 @@ export async function generateMetadata({ params }: { params: any }): Promise<Met
   if (!product) return {};
 
   const productUrl = `${siteUrl}/products/${product.slug}`;
-  const images = product.product_images?.map((i) => i.image_url) || ['/images/logo.png'];
-  const desc = product.short_description || product.description?.slice(0, 160) || `Buy ${product.name} at official rates on STH Gadgets Pakistan.`;
+  const images = (product.product_images && product.product_images.length > 0
+    ? product.product_images.map((i) => i.image_url)
+    : ['/images/logo.png']
+  ).map((img) => (img.startsWith('http') ? img : `${siteUrl}${img.startsWith('/') ? '' : '/'}${img}`));
+
+  const pageTitle = product.seo_title || `${product.name} | STH Gadgets`;
+  const desc = product.meta_description || product.seo_description || product.short_description || product.description?.slice(0, 160) || `Buy ${product.name} at official rates on STH Gadgets Pakistan.`;
+  const altText = product.image_alt_text || product.name;
 
   return {
-    title: `${product.name} | STH Gadgets`,
+    title: pageTitle,
     description: desc,
+    keywords: product.seo_keywords
+      ? (Array.isArray(product.seo_keywords) ? product.seo_keywords : product.seo_keywords.split(',').map((k: string) => k.trim()))
+      : undefined,
     alternates: {
       canonical: productUrl,
     },
     openGraph: {
-      title: `${product.name} | STH Gadgets`,
+      title: pageTitle,
       description: desc,
       url: productUrl,
       siteName: 'STH Gadgets',
       type: 'article',
       images: images.map((img) => ({
         url: img,
-        alt: product.name,
+        alt: altText,
       })),
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${product.name} | STH Gadgets`,
+      title: pageTitle,
       description: desc,
       images: [images[0] || '/images/logo.png'],
     },
@@ -67,15 +76,27 @@ export default async function ProductDetailPage({ params }: { params: any }) {
   );
   const relatedList = categoryProducts.length >= 2 ? categoryProducts : allProducts;
 
-  const productImages = product.product_images?.map((i) => i.image_url) || ['/images/logo.png'];
+  const productImages = (
+    product.product_images && product.product_images.length > 0
+      ? product.product_images.map((i) => i.image_url)
+      : ['/images/logo.png']
+  ).map((img) => (img.startsWith('http') ? img : `${siteUrl}${img.startsWith('/') ? '' : '/'}${img}`));
+
+  const freeThreshold = settings?.free_shipping_threshold ?? 5000;
+  const isFreeShipping = freeThreshold > 0 && product.price >= freeThreshold;
+  const deliveryCharge = isFreeShipping ? 0 : (settings?.delivery_charges ?? 200);
+
+  const validFromDate = product.created_at
+    ? new Date(product.created_at).toISOString().split('T')[0]
+    : '2024-01-01';
 
   // Schema.org Product JSON-LD Structured Data
   const productSchema = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
-    name: product.name,
+    name: product.seo_title || product.name,
     image: productImages,
-    description: product.short_description || product.description || product.name,
+    description: product.seo_description || product.meta_description || product.short_description || product.description || product.name,
     sku: product.sku || product.id,
     mpn: product.id,
     brand: {
@@ -88,6 +109,7 @@ export default async function ProductDetailPage({ params }: { params: any }) {
       priceCurrency: 'PKR',
       price: product.price,
       priceValidUntil: '2027-12-31',
+      validFrom: validFromDate,
       itemCondition: 'https://schema.org/NewCondition',
       availability:
         product.stock_status === 'out_of_stock'
@@ -96,6 +118,47 @@ export default async function ProductDetailPage({ params }: { params: any }) {
       seller: {
         '@type': 'Organization',
         name: 'STH Gadgets',
+      },
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: {
+          '@type': 'MonetaryAmount',
+          value: deliveryCharge,
+          currency: 'PKR',
+        },
+        shippingDestination: {
+          '@type': 'DefinedRegion',
+          addressCountry: 'PK',
+        },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 0,
+            maxValue: 1,
+            unitCode: 'DAY',
+          },
+          transitTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 2,
+            maxValue: 4,
+            unitCode: 'DAY',
+          },
+        },
+      },
+      hasMerchantReturnPolicy: {
+        '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'PK',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnPeriod',
+        merchantReturnDays: 7,
+        returnMethod: 'https://schema.org/ReturnByMail',
+        returnFees: 'https://schema.org/FreeReturn',
+        returnShippingFeesAmount: {
+          '@type': 'MonetaryAmount',
+          value: 0,
+          currency: 'PKR',
+        },
+        url: `${siteUrl}/return-policy`,
       },
     },
   };

@@ -10,6 +10,7 @@ export const revalidate = 0;
 const settingsSchema = z.object({
   business_name: z.string().min(1).optional(),
   logo_url: z.string().nullable().optional().or(z.literal('')),
+  hero_image_url: z.string().nullable().optional().or(z.literal('')),
   whatsapp_number: z.string().min(5).optional(),
   email: z.string().nullable().optional().or(z.literal('')),
   address: z.string().nullable().optional().or(z.literal('')),
@@ -62,8 +63,8 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   
   let mergedData = data ? { ...data } : null;
-  // If auto_rotate columns do not exist in the database table yet, load from storage backup
-  if (mergedData && (mergedData.auto_rotate_products === undefined || mergedData.auto_rotate_products === null)) {
+  // If auto_rotate columns or hero_image_url do not exist in the database table yet, load from storage backup
+  if (mergedData && (mergedData.auto_rotate_products === undefined || mergedData.auto_rotate_products === null || !mergedData.hero_image_url)) {
     try {
       const { data: fileData } = await service.storage.from('site-assets').download('system_config.json');
       if (fileData) {
@@ -96,13 +97,28 @@ export async function PATCH(request: Request) {
 
   const service = createServiceClient();
 
-  // Persist rotation config to storage backup so it immediately survives even without SQL migration
-  if (parsed.data.auto_rotate_products !== undefined || parsed.data.auto_rotate_interval_minutes !== undefined) {
+  // Persist rotation & hero config to storage backup so it immediately survives even without SQL migration
+  if (
+    parsed.data.auto_rotate_products !== undefined ||
+    parsed.data.auto_rotate_interval_minutes !== undefined ||
+    parsed.data.hero_image_url !== undefined
+  ) {
     try {
+      let existingConfig: any = {};
+      try {
+        const { data: currentFile } = await service.storage.from('site-assets').download('system_config.json');
+        if (currentFile) {
+          existingConfig = JSON.parse(await currentFile.text());
+        }
+      } catch {}
+
       const storagePayload = JSON.stringify({
-        auto_rotate_products: parsed.data.auto_rotate_products ?? false,
-        auto_rotate_interval_minutes: parsed.data.auto_rotate_interval_minutes ?? 60,
+        ...existingConfig,
+        ...(parsed.data.auto_rotate_products !== undefined ? { auto_rotate_products: parsed.data.auto_rotate_products } : {}),
+        ...(parsed.data.auto_rotate_interval_minutes !== undefined ? { auto_rotate_interval_minutes: parsed.data.auto_rotate_interval_minutes } : {}),
+        ...(parsed.data.hero_image_url !== undefined ? { hero_image_url: parsed.data.hero_image_url } : {}),
       });
+
       await service.storage.from('site-assets').upload('system_config.json', storagePayload, {
         contentType: 'application/json',
         upsert: true,
@@ -148,6 +164,7 @@ export async function PATCH(request: Request) {
     delete fallbackPayload.payment_verification_required;
     delete fallbackPayload.auto_rotate_products;
     delete fallbackPayload.auto_rotate_interval_minutes;
+    delete fallbackPayload.hero_image_url;
 
     const retry = await service
       .from('settings')
@@ -164,12 +181,15 @@ export async function PATCH(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Ensure response includes auto-rotate values
+  // Ensure response includes auto-rotate and hero values
   if (data && parsed.data.auto_rotate_products !== undefined) {
     data.auto_rotate_products = parsed.data.auto_rotate_products;
   }
   if (data && parsed.data.auto_rotate_interval_minutes !== undefined) {
     data.auto_rotate_interval_minutes = parsed.data.auto_rotate_interval_minutes;
+  }
+  if (data && parsed.data.hero_image_url !== undefined) {
+    data.hero_image_url = parsed.data.hero_image_url;
   }
 
   (revalidateTag as any)('settings');

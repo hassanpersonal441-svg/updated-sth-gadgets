@@ -81,7 +81,11 @@ export const getSettings = unstable_cache(
       const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
       if (!data) return null;
       let finalData = { ...(data as Record<string, any>) };
-      if (finalData.auto_rotate_products === undefined || finalData.auto_rotate_products === null) {
+      if (
+        finalData.auto_rotate_products === undefined ||
+        finalData.auto_rotate_products === null ||
+        !finalData.hero_image_url
+      ) {
         try {
           const { data: fileData } = await supabase.storage.from('site-assets').download('system_config.json');
           if (fileData) {

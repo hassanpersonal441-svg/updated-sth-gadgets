@@ -33,6 +33,9 @@ export const viewport: Viewport = {
 };
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sthgadgets.store';
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ttktpavtgfrndvvrlwoa.supabase.co')
+  .replace(/\/rest\/v1\/?$/, '')
+  .replace(/\/$/, '');
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -152,8 +155,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
-        {/* DNS Prefetch for performance */}
-        <link rel="dns-prefetch" href="https://*.supabase.co" />
+        {/* Preconnect & DNS Prefetch to Supabase for instant image & API responses */}
+        <link rel="preconnect" href={supabaseUrl} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={supabaseUrl} />
         
         {/* Google Search Favicon & Browser Icons */}
         <link rel="icon" href="/favicon.ico" sizes="48x48" />

@@ -193,9 +193,9 @@ export default async function FinanceDashboardPage() {
                     <tr key={b.id} className="hover:bg-slate-800/40">
                       <td className="py-3 px-3 font-bold text-[#00C4CC]">{b.borrowing_number}</td>
                       <td className="py-3 px-3 font-sans font-medium text-white">{b.lender_name}</td>
-                      <td className="py-3 px-3 text-right">IDR {Number(b.borrowed_amount).toLocaleString()}</td>
+                      <td className="py-3 px-3 text-right">PKR {Number(b.borrowed_amount).toLocaleString()}</td>
                       <td className="py-3 px-3 text-right text-rose-400 font-bold">
-                        IDR {Number(b.remaining_amount).toLocaleString()}
+                        PKR {Number(b.remaining_amount).toLocaleString()}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span
@@ -255,7 +255,7 @@ export default async function FinanceDashboardPage() {
                     </div>
                   </div>
                   <span className="font-bold text-emerald-400 text-sm">
-                    +IDR {Number(r.amount).toLocaleString()}
+                    +PKR {Number(r.amount).toLocaleString()}
                   </span>
                 </div>
               ))

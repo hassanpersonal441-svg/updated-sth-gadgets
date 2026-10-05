@@ -9,6 +9,7 @@ import type { Product } from '@/types/database';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/admin/ConfirmModal';
+import ProductExcelImportModal from '@/components/admin/ProductExcelImportModal';
 
 // In-memory cache for instant module opening without blocking loading spinner
 let cachedProducts: Product[] | null = null;
@@ -20,6 +21,7 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'out_of_stock' | 'low_stock'>('all');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'unlisted'>('all');
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
@@ -193,6 +195,15 @@ export default function AdminProductsPage() {
               <span>Draft: {products.filter(p => !p.active).length}</span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setIsExcelModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 sm:px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-emerald-400 transition shadow-sm hover:scale-[1.01] cursor-pointer"
+            title="Bulk import products from Excel or CSV spreadsheet"
+          >
+            <span>📊</span>
+            <span>Import Excel</span>
+          </button>
           <Link
             href="/admin/products/bundles"
             className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-white hover:border-[#00C4CC] transition shadow-sm"
@@ -519,6 +530,18 @@ export default function AdminProductsPage() {
         description={`Are you sure you want to permanently delete "${productToDelete?.name}"? This action cannot be undone and will remove all product images and inventory records.`}
         confirmText="Yes, Delete Product"
         isDeleting={deleting}
+      />
+
+      {/* Product Excel / CSV Bulk Import Modal */}
+      <ProductExcelImportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        onSuccess={(count) => {
+          setIsExcelModalOpen(false);
+          admin(`${count} products successfully imported as DRAFTS!`, 'Excel Import Completed');
+          setActiveFilter('unlisted');
+          load();
+        }}
       />
     </div>
   );

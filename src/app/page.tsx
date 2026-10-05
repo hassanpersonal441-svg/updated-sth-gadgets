@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import TopTicker from '@/components/storefront/TopTicker';
+import Navbar from '@/components/storefront/Navbar';
 import LiveStorefront from '@/components/storefront/LiveStorefront';
 import Footer from '@/components/storefront/Footer';
 import WhatsAppFloatingButton from '@/components/storefront/WhatsAppFloatingButton';
@@ -46,6 +47,9 @@ export default async function HomePage() {
 
       {/* Top Moving Text Banner */}
       <TopTicker settings={settings} />
+
+      {/* Premium E-commerce Top Navigation */}
+      <Navbar categories={categories} settings={settings} />
 
       {/* Main Storefront: Header + Search + Coupons + Controls + Categories + Products */}
       <main>

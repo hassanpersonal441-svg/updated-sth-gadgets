@@ -120,7 +120,7 @@ export default function RestoreModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700/80 bg-[#0C121D] p-6 shadow-2xl text-slate-100 my-8">
+      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700/80 bg-[#0C121D] p-6 shadow-2xl text-silver-bright my-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>

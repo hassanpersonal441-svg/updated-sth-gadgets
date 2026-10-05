@@ -121,11 +121,9 @@ function SingleSlipCard({
                 letterSpacing: '-0.5px',
                 color: '#ffffff',
                 lineHeight: 1,
-                display: 'flex',
-                alignItems: 'center',
               }}
             >
-              STH <span style={{ color: '#00c4cc', marginLeft: '2px' }}>⚡</span>
+              STH
             </div>
             <div
               style={{
@@ -940,7 +938,7 @@ export default function ShippingSlipModal({ order, orders, allOrders, onClose }:
           <div class="brand-box">
             <img class="brand-logo-img" src="${logoUrl}" alt="STH Logo" />
             <div class="brand-title-wrap">
-              <div class="brand-sth-text">STH <span>⚡</span></div>
+              <div class="brand-sth-text">STH</div>
               <div class="brand-gadgets-tag">GADGETS</div>
             </div>
           </div>
@@ -1300,12 +1298,6 @@ export default function ShippingSlipModal({ order, orders, allOrders, onClose }:
       letter-spacing: -0.5px;
       color: #ffffff !important;
       line-height: 1;
-      display: flex;
-      align-items: center;
-    }
-    .brand-sth-text span {
-      color: #00c4cc !important;
-      margin-left: 2px;
     }
     .brand-gadgets-tag {
       font-family: 'Space Grotesk', sans-serif;
@@ -1704,7 +1696,7 @@ export default function ShippingSlipModal({ order, orders, allOrders, onClose }:
 
       <div className="fixed inset-0" onClick={onClose} />
 
-      <div className="relative z-10 w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0C1420] text-slate-100 shadow-2xl my-auto max-h-[95vh] flex flex-col">
+      <div className="relative z-10 w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0C1420] text-silver-bright shadow-2xl my-auto max-h-[95vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 bg-gradient-to-r from-[#0F1E2E] via-[#0C1420] to-[#0F1E2E] px-4 sm:px-6 py-3 shrink-0">
           <div className="flex items-center gap-3">

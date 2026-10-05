@@ -468,22 +468,22 @@ ${matchingProductsStr || 'No direct category match — use full catalog to make 
         }
         conversationPrompt += `Customer: ${userMessage}\nAssistant:`;
 
+        const candidateChatModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'];
         let response;
-        try {
-          response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: conversationPrompt,
-            config: { systemInstruction, temperature: 0.25, maxOutputTokens: 800 },
-          });
-        } catch {
-          response = await ai.models.generateContent({
-            model: 'gemini-3.5-flash-lite',
-            contents: conversationPrompt,
-            config: { systemInstruction, temperature: 0.25, maxOutputTokens: 800 },
-          });
+        for (const model of candidateChatModels) {
+          try {
+            response = await ai.models.generateContent({
+              model,
+              contents: conversationPrompt,
+              config: { systemInstruction, temperature: 0.25, maxOutputTokens: 800 },
+            });
+            if (response?.text) break;
+          } catch (modelErr: any) {
+            console.warn(`Chat model ${model} failed:`, modelErr.message);
+          }
         }
 
-        const reply = response.text?.trim();
+        const reply = response?.text?.trim();
         if (reply) {
           return NextResponse.json({ reply, products: relevantProducts.slice(0, 4) });
         }

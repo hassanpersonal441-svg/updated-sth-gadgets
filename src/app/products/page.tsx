@@ -6,13 +6,19 @@ import { getActiveCategories, getFilteredProducts, getSettings } from '@/lib/dat
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: 'All Products' };
+export const metadata: Metadata = {
+  title: 'All Products & Official Catalog | STH Gadgets Pakistan',
+  description:
+    'Browse all mobile accessories, power banks, fast chargers, earbuds, cables, and gadgets with best official prices in Pakistan.',
+};
 export const revalidate = 30;
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; min?: string; max?: string; sort?: string }> | { q?: string; category?: string; min?: string; max?: string; sort?: string };
+  searchParams:
+    | Promise<{ q?: string; category?: string; min?: string; max?: string; sort?: string }>
+    | { q?: string; category?: string; min?: string; max?: string; sort?: string };
 }) {
   const resolvedSearchParams = await searchParams;
   const q = resolvedSearchParams?.q;
@@ -48,73 +54,120 @@ export default async function ProductsPage({
     <>
       <Navbar categories={categories} settings={settings} />
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-silver-bright">
-            {activeCategory ? activeCategory.name : q ? `Results for "${q}"` : 'All Products'}
+        {/* Page Header */}
+        <div className="mb-8 space-y-1.5">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#00C4CC] uppercase tracking-wider">
+            <Link href="/" className="hover:underline">
+              Home
+            </Link>
+            <span>/</span>
+            <span>Catalog</span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-black text-white">
+            {activeCategory ? activeCategory.name : q ? `Results for "${q}"` : 'All Products & Gadgets'}
           </h1>
-          <p className="mt-1 text-sm text-silver-dim">{products.length} product{products.length === 1 ? '' : 's'} found</p>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Showing <strong className="text-[#00C4CC]">{products.length}</strong> official items in catalog
+          </p>
         </div>
 
-        <div className="flex flex-col gap-6 md:flex-row">
+        <div className="flex flex-col gap-6 md:flex-row items-start">
           {/* Filters sidebar */}
-          <aside className="w-full shrink-0 md:w-56">
-            <div className="rounded-2xl border border-base-border bg-base-card p-4">
-              <h3 className="mb-3 font-display text-sm font-semibold text-silver-bright">Categories</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/products" className={`hover:text-electric-bright ${!activeCategory ? 'text-electric-bright' : 'text-silver-dim'}`}>
-                    All Categories
-                  </Link>
-                </li>
-                {categories.map((c) => (
-                  <li key={c.id}>
+          <aside className="w-full shrink-0 md:w-64 space-y-4">
+            <div className="rounded-3xl border border-slate-800 bg-[#0B121E] p-5 space-y-5 shadow-sm">
+              <div>
+                <h3 className="mb-3 font-display text-xs font-black uppercase tracking-wider text-[#00C4CC]">
+                  Browse Categories
+                </h3>
+                <ul className="space-y-1.5 text-xs">
+                  <li>
                     <Link
-                      href={`/products?category=${c.slug}`}
-                      className={`hover:text-electric-bright ${activeCategory?.id === c.id ? 'text-electric-bright' : 'text-silver-dim'}`}
+                      href="/products"
+                      className={`block px-3 py-2 rounded-xl font-bold transition duration-150 ${
+                        !activeCategory
+                          ? 'bg-[#00C4CC] text-black shadow-sm'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      }`}
                     >
-                      {c.name}
+                      All Categories
                     </Link>
                   </li>
-                ))}
-              </ul>
+                  {categories.map((c) => {
+                    const isSelected = activeCategory?.id === c.id;
+                    return (
+                      <li key={c.id}>
+                        <Link
+                          href={`/products?category=${c.slug}`}
+                          className={`block px-3 py-2 rounded-xl font-bold transition duration-150 ${
+                            isSelected
+                              ? 'bg-[#00C4CC] text-black shadow-sm'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                          }`}
+                        >
+                          {c.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
 
-              <h3 className="mb-3 mt-6 font-display text-sm font-semibold text-silver-bright">Sort By</h3>
-              <form className="space-y-2 text-sm">
-                {[
-                  { value: 'default', label: 'Featured / Recommended' },
-                  { value: 'newest', label: 'Newest' },
-                  { value: 'price_asc', label: 'Price: Low to High' },
-                  { value: 'price_desc', label: 'Price: High to Low' },
-                  { value: 'discount', label: 'Biggest Discount' },
-                ].map((opt) => (
-                  <Link
-                    key={opt.value}
-                    href={`/products?${new URLSearchParams({ ...(q ? { q } : {}), ...(category ? { category } : {}), sort: opt.value }).toString()}`}
-                    className={`block hover:text-electric-bright ${
-                      (sort || 'default') === opt.value ? 'text-electric-bright' : 'text-silver-dim'
-                    }`}
-                  >
-                    {opt.label}
-                  </Link>
-                ))}
-              </form>
+              <div className="border-t border-slate-800/80 pt-4">
+                <h3 className="mb-3 font-display text-xs font-black uppercase tracking-wider text-[#00C4CC]">
+                  Sort Products
+                </h3>
+                <div className="space-y-1 text-xs">
+                  {[
+                    { value: 'default', label: 'Featured / Recommended' },
+                    { value: 'newest', label: 'Newest Arrivals' },
+                    { value: 'price_asc', label: 'Price: Low to High' },
+                    { value: 'price_desc', label: 'Price: High to Low' },
+                    { value: 'discount', label: 'Biggest Discounts' },
+                  ].map((opt) => {
+                    const isSelected = (sort || 'default') === opt.value;
+                    return (
+                      <Link
+                        key={opt.value}
+                        href={`/products?${new URLSearchParams({
+                          ...(q ? { q } : {}),
+                          ...(category ? { category } : {}),
+                          sort: opt.value,
+                        }).toString()}`}
+                        className={`block px-3 py-2 rounded-xl font-medium transition duration-150 ${
+                          isSelected
+                            ? 'bg-[#00C4CC]/20 text-[#00C4CC] border border-[#00C4CC]/40 font-bold'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                        }`}
+                      >
+                        {opt.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </aside>
 
           {/* Product grid */}
-          <div className="flex-1">
+          <div className="flex-1 w-full">
             {products.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-base-border bg-base-card py-20 text-center">
-                <p className="font-display text-lg font-semibold text-silver-bright">No products found</p>
-                <p className="mt-2 text-sm text-silver-dim">Try a different search term or browse all categories.</p>
-                <Link href="/products" className="mt-4 rounded-xl bg-electric px-5 py-2 font-display text-sm font-semibold text-black">
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-slate-800 bg-[#0B121E] py-20 text-center">
+                <span className="text-5xl mb-3">📦</span>
+                <p className="font-display text-lg font-bold text-white">No products found</p>
+                <p className="mt-2 text-xs sm:text-sm text-slate-400 max-w-sm">
+                  Try clearing your search keyword or browse all categories.
+                </p>
+                <Link
+                  href="/products"
+                  className="mt-5 rounded-2xl bg-[#00C4CC] px-6 py-2.5 font-display text-xs font-black text-black shadow-md hover:brightness-110 transition"
+                >
                   View All Products
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {products.map((p) => (
-                  <ProductCard key={p.id} product={p} settings={settings} isLight={false} />
+              <div className="grid grid-cols-2 gap-3.5 sm:gap-5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+                {products.map((p, idx) => (
+                  <ProductCard key={p.id} product={p} settings={settings} priority={idx < 4} />
                 ))}
               </div>
             )}

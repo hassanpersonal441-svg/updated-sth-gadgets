@@ -27,10 +27,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setTheme(savedTheme);
         document.documentElement.setAttribute('data-theme', savedTheme);
       } else {
-        const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-        const initialMode = prefersLight ? 'light' : 'dark';
-        setTheme(initialMode);
-        document.documentElement.setAttribute('data-theme', initialMode);
+        // Default to dark theme for STH Gadgets cyberpunk storefront
+        setTheme('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
       }
     } catch {
       // ignore

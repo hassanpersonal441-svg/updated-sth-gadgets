@@ -491,19 +491,19 @@ export default function BorrowedAmountsPage() {
                     <div>
                       <span className="block text-[9px] text-slate-400 font-sans uppercase">Borrowed</span>
                       <span className="font-bold text-white text-xs">
-                        IDR {Number(b.borrowed_amount).toLocaleString()}
+                        PKR {Number(b.borrowed_amount).toLocaleString()}
                       </span>
                     </div>
                     <div>
                       <span className="block text-[9px] text-slate-400 font-sans uppercase">Repaid</span>
                       <span className="font-bold text-emerald-400 text-xs">
-                        IDR {Number(b.total_repaid).toLocaleString()}
+                        PKR {Number(b.total_repaid).toLocaleString()}
                       </span>
                     </div>
                     <div>
                       <span className="block text-[9px] text-slate-400 font-sans uppercase">Remaining</span>
                       <span className="font-bold text-rose-400 text-xs">
-                        IDR {Number(b.remaining_amount).toLocaleString()}
+                        PKR {Number(b.remaining_amount).toLocaleString()}
                       </span>
                     </div>
                   </div>

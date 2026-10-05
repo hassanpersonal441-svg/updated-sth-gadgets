@@ -10,6 +10,7 @@ interface InvoiceViewProps {
   settings?: Settings | null;
   onEdit?: () => void;
   showActions?: boolean;
+  showProfit?: boolean;
 }
 
 export default function InvoiceView({
@@ -17,6 +18,7 @@ export default function InvoiceView({
   settings,
   onEdit,
   showActions = true,
+  showProfit = false,
 }: InvoiceViewProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -416,8 +418,8 @@ export default function InvoiceView({
                 <span className="font-mono font-rose-700 print:text-rose-600">{currencySymbol} {invoice.remaining_amount.toLocaleString()}</span>
               </div>
 
-              {/* Profit Calculation - Only for Admin View (Hidden in Print) */}
-              {(() => {
+              {/* Profit Calculation - Only shown if explicitly enabled via showProfit prop (Hidden in Print) */}
+              {showProfit && (() => {
                 const totalItemCost = (invoice.invoice_items || []).reduce((sum, i) => {
                   return sum + ((Number((i as any).purchase_price) || 0) * (i.quantity || 1));
                 }, 0);

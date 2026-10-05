@@ -149,6 +149,21 @@ export default function ProductForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // SEO Metadata State
+  const [seoTitle, setSeoTitle] = useState(product?.seo_title || '');
+  const [seoDescription, setSeoDescription] = useState(product?.seo_description || '');
+  const [seoKeywords, setSeoKeywords] = useState<string>(
+    Array.isArray(product?.seo_keywords)
+      ? product.seo_keywords.join(', ')
+      : (product?.seo_keywords || '')
+  );
+  const [seoSlug, setSeoSlug] = useState(product?.seo_slug || product?.slug || '');
+  const [imageAltText, setImageAltText] = useState(product?.image_alt_text || '');
+  const [metaDescription, setMetaDescription] = useState(product?.meta_description || '');
+  const [isGeneratingSeo, setIsGeneratingSeo] = useState(false);
+  const [seoReviewMode, setSeoReviewMode] = useState(false);
+  const [showReplaceSeoModal, setShowReplaceSeoModal] = useState(false);
+
   // Live profit calculation logic
   const numPurchase = parseFloat(purchasePrice) || 0;
   const numSelling = parseFloat(price) || 0;
@@ -263,6 +278,99 @@ export default function ProductForm({
       showErrorToast(err.message || 'AI generation failed');
     } finally {
       setIsAiGenerating(false);
+    }
+  }
+
+  const isDuplicateSeoSlug = Boolean(
+    seoSlug.trim() &&
+    storeProducts.some((p) => p.slug === seoSlug.trim() && (!isEdit || p.id !== product?.id))
+  );
+
+  async function handleGenerateSeo(forceReplace = false) {
+    if (!name.trim()) {
+      showErrorToast('Please enter a product title/model first before generating SEO.');
+      return;
+    }
+
+    const hasExistingSeo = Boolean(
+      seoTitle.trim() ||
+      seoDescription.trim() ||
+      seoKeywords.trim() ||
+      imageAltText.trim() ||
+      metaDescription.trim()
+    );
+
+    if (hasExistingSeo && !forceReplace && !showReplaceSeoModal) {
+      setShowReplaceSeoModal(true);
+      return;
+    }
+
+    setShowReplaceSeoModal(false);
+    setIsGeneratingSeo(true);
+
+    try {
+      const selectedCat = categoryList.find((c) => c.id === categoryId);
+      const res = await fetch('/api/admin/ai/generate-seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          categoryName: selectedCat?.name || '',
+          description: description.trim(),
+          shortDescription: shortDescription.trim(),
+          specifications: specs.filter((s) => s.label.trim() && s.value.trim()),
+          keyFeatures: keyFeatures.filter((f) => f.title.trim()),
+          variants: colorVariants.map((v) => ({ variant_name: v.variant_name })),
+          price: Number(price) || 0,
+          existingSlug: slug,
+          existingKeywords: seoKeywords,
+        }),
+      });
+
+      const resJson = await res.json();
+      if (!res.ok || !resJson.success) {
+        throw new Error(resJson.error || 'SEO generation failed');
+      }
+
+      const seoData = resJson.data;
+
+      // Safe unique slug check
+      let finalSlug = seoData.seo_slug || slugify(name);
+      if (storeProducts.length > 0 && finalSlug) {
+        let unique = finalSlug;
+        let c = 1;
+        while (storeProducts.some((p) => p.slug === unique && (!isEdit || p.id !== product?.id))) {
+          c++;
+          unique = `${finalSlug}-${c}`;
+        }
+        finalSlug = unique;
+      }
+
+      setSeoTitle(seoData.seo_title || '');
+      setSeoDescription(seoData.seo_description || '');
+      setSeoKeywords(
+        Array.isArray(seoData.seo_keywords)
+          ? seoData.seo_keywords.join(', ')
+          : String(seoData.seo_keywords || '')
+      );
+      setSeoSlug(finalSlug);
+      setImageAltText(seoData.image_alt_text || '');
+      setMetaDescription(seoData.meta_description || '');
+      setSeoReviewMode(true);
+
+      // If user hasn't explicitly customized main slug, sync it
+      if (!slugTouched && !isEdit && finalSlug) {
+        setSlug(finalSlug);
+      }
+
+      showSuccessToast('✨ AI SEO generated! Review, edit fields below, and save product.');
+    } catch (err: any) {
+      showErrorToast(
+        err.message ||
+        'SEO generation failed. Your existing product information has not been changed. Please try again.'
+      );
+    } finally {
+      setIsGeneratingSeo(false);
     }
   }
 
@@ -384,6 +492,12 @@ export default function ProductForm({
       new_arrival: newArrival,
       free_delivery: freeDelivery,
       active,
+      seo_title: seoTitle.trim() || null,
+      seo_description: seoDescription.trim() || null,
+      seo_keywords: seoKeywords.trim() || null,
+      seo_slug: seoSlug.trim() || null,
+      image_alt_text: imageAltText.trim() || null,
+      meta_description: metaDescription.trim() || null,
       specifications: validSpecs,
       key_features: validFeatures,
       bundle_offers: bundleOffers
@@ -1005,6 +1119,297 @@ export default function ProductForm({
         onChange={setColorVariants}
         availableImages={images.map((img) => img.image_url)}
       />
+
+      {/* Search Engine Optimization (SEO & Metadata) Card */}
+      <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#00C4CC]/10 text-[#00C4CC] border border-[#00C4CC]/30 text-base">
+              🔍
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-sm font-bold uppercase tracking-wider text-silver-bright">
+                  Search Engine Optimization (SEO) &amp; Metadata
+                </h2>
+                {seoReviewMode && (
+                  <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                    ✨ AI Generated · Editable
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-silver-dim">
+                Create fact-accurate, search-engine-friendly metadata using strictly verified product info.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleGenerateSeo(false)}
+              disabled={isGeneratingSeo || !name.trim()}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#00C4CC] via-teal-400 to-cyan-500 px-4 py-2 text-xs font-black text-black shadow-md hover:brightness-110 disabled:opacity-40 transition active:scale-95"
+              title="Generate SEO title, description, keywords, slug, image alt text & meta description"
+            >
+              {isGeneratingSeo ? (
+                <>
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                  <span>✨ Generating SEO...</span>
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  <span>{seoTitle || seoDescription ? '🔄 Regenerate SEO' : '✨ Generate SEO with AI'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Live Google Search Result Preview Snippet */}
+        <div className="rounded-xl border border-slate-800 bg-[#060A11] p-4 space-y-1">
+          <div className="flex items-center justify-between text-[10px] text-silver-dim uppercase tracking-wider font-semibold mb-1">
+            <span>Google Search Result Preview</span>
+            <span className="text-[#00C4CC]">Google Pakistan (Mobile &amp; Desktop)</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono overflow-hidden text-ellipsis whitespace-nowrap">
+            <span className="text-[#00C4CC]">https://www.sthgadgets.store/products/</span>
+            <span className="text-white font-bold">{seoSlug || slug || 'your-product-slug'}</span>
+          </div>
+          <h3 className="text-base font-medium text-[#8ab4f8] hover:underline cursor-pointer line-clamp-1">
+            {seoTitle || `${name || 'Product Title'} | STH Gadgets`}
+          </h3>
+          <p className="text-xs text-[#bdc1c6] line-clamp-2 leading-relaxed">
+            {metaDescription || seoDescription || shortDescription || 'Official authentic gadget from STH Gadgets Pakistan with 7-day checking warranty & Cash on Delivery.'}
+          </p>
+        </div>
+
+        {/* 6 Editable SEO Fields */}
+        <div className="space-y-4">
+          {/* 1. SEO Title */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-silver-dim">
+                1. SEO Title (Page Title Tag) *
+              </label>
+              <span className={`text-[11px] font-mono ${seoTitle.length > 60 ? 'text-amber-400' : 'text-silver-dim'}`}>
+                {seoTitle.length}/60 chars (Recommended: 50–60)
+              </span>
+            </div>
+            <input
+              value={seoTitle}
+              onChange={(e) => setSeoTitle(e.target.value)}
+              placeholder="e.g. Redmi 33W Fast Charger with Type-C Cable | STH Gadgets"
+              className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+            />
+          </div>
+
+          {/* 2. SEO Description */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-silver-dim">
+                2. SEO Description (Search Engine Snippet)
+              </label>
+              <span className={`text-[11px] font-mono ${seoDescription.length > 160 ? 'text-amber-400' : 'text-silver-dim'}`}>
+                {seoDescription.length}/160 chars (Target: 120–160)
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              value={seoDescription}
+              onChange={(e) => setSeoDescription(e.target.value)}
+              placeholder="Search-engine-friendly description based strictly on verified product information..."
+              className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+            />
+          </div>
+
+          {/* 3. SEO Keywords */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-silver-dim">
+                3. SEO Keywords (Comma-Separated)
+              </label>
+              <span className="text-[10px] text-silver-dim">
+                Derived strictly from name, category &amp; verified features
+              </span>
+            </div>
+            <input
+              value={seoKeywords}
+              onChange={(e) => setSeoKeywords(e.target.value)}
+              placeholder="e.g. Redmi 33W charger, Redmi fast charger, Xiaomi charger, Type-C charger"
+              className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+            />
+            {seoKeywords.trim() && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {seoKeywords.split(',').map((kw, i) => {
+                  const t = kw.trim();
+                  if (!t) return null;
+                  return (
+                    <span key={i} className="inline-flex items-center rounded-lg bg-slate-800/80 border border-slate-700 px-2 py-0.5 text-[11px] text-sky-300">
+                      #{t}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* 4. SEO Slug */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-silver-dim">
+                  4. SEO Slug (URL-friendly)
+                </label>
+                {isDuplicateSeoSlug ? (
+                  <span className="text-[11px] text-amber-400 font-bold">⚠️ Already in use</span>
+                ) : seoSlug.trim() ? (
+                  <span className="text-[11px] text-emerald-400 font-medium">✓ Available</span>
+                ) : null}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={seoSlug}
+                  onChange={(e) => setSeoSlug(slugify(e.target.value))}
+                  placeholder="e.g. redmi-33w-fast-charger-type-c-cable"
+                  className={`w-full rounded-xl border px-4 py-2 text-sm font-mono text-silver-bright focus:outline-none ${
+                    isDuplicateSeoSlug
+                      ? 'border-amber-500/80 bg-[#161208] focus:border-amber-400'
+                      : 'border-slate-700/80 bg-[#080D15] focus:border-[#00C4CC]'
+                  }`}
+                />
+                {seoSlug && seoSlug !== slug && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSlug(seoSlug);
+                      setSlugTouched(true);
+                      showSuccessToast('Applied SEO slug to main product URL!');
+                    }}
+                    className="shrink-0 px-3 py-2 rounded-xl text-xs font-bold border border-[#00C4CC]/50 text-[#00C4CC] hover:bg-[#00C4CC]/10 transition"
+                    title="Copy this SEO slug to the main Product URL Slug"
+                  >
+                    Sync URL
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 5. Image Alt Text */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-silver-dim">
+                  5. Image Alt Text (Accessibility &amp; Image Search)
+                </label>
+                <span className="text-[10px] text-silver-dim">
+                  For Google Images &amp; screen readers
+                </span>
+              </div>
+              <input
+                value={imageAltText}
+                onChange={(e) => setImageAltText(e.target.value)}
+                placeholder="e.g. Redmi 33W fast charger with Type-C cable"
+                className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* 6. Product Meta Description */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-silver-dim">
+                6. Product Meta Description (Marketing-Focused)
+              </label>
+              <span className={`text-[11px] font-mono ${metaDescription.length > 160 ? 'text-amber-400' : 'text-silver-dim'}`}>
+                {metaDescription.length}/160 chars
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              value={metaDescription}
+              onChange={(e) => setMetaDescription(e.target.value)}
+              placeholder="Marketing-focused yet factually accurate description highlighting verified features..."
+              className="w-full rounded-xl border border-slate-700/80 bg-[#080D15] px-4 py-2 text-sm text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Action Controls for SEO */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-800/80 text-xs">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleGenerateSeo(false)}
+              disabled={isGeneratingSeo || !name.trim()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 font-semibold text-silver-bright hover:bg-slate-700 transition"
+            >
+              <span>🔄</span>
+              <span>Regenerate SEO</span>
+            </button>
+            {(seoTitle || seoDescription || seoKeywords || imageAltText || metaDescription) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSeoTitle('');
+                  setSeoDescription('');
+                  setSeoKeywords('');
+                  setSeoSlug('');
+                  setImageAltText('');
+                  setMetaDescription('');
+                  setSeoReviewMode(false);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition font-medium"
+              >
+                Clear SEO
+              </button>
+            )}
+          </div>
+          <span className="text-[11px] text-silver-dim">
+            💡 Click <strong>Save Changes / Create Product</strong> below to permanently save SEO.
+          </span>
+        </div>
+
+        {/* Existing Content Overwrite Confirmation Modal */}
+        {showReplaceSeoModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0C1420] p-6 shadow-2xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xl">
+                  ⚠️
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-white">
+                    Replace Existing SEO Content?
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    This will replace the current SEO content. Continue?
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed bg-[#080D15] p-3 rounded-xl border border-slate-800">
+                Your current SEO Title, Description, and Keywords will be updated with the AI results. You can review and edit them before saving the product.
+              </p>
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowReplaceSeoModal(false)}
+                  className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateSeo(true)}
+                  className="rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 px-4 py-2 text-xs font-bold text-white shadow-md hover:brightness-110"
+                >
+                  Yes, Replace
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Visibility & Stock Card */}
       <div className="-mt-3 rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm space-y-4">

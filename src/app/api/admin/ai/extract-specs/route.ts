@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || '';
 
     if (!apiKey) {
       // Return smart regex parsed results if no Gemini API key configured
@@ -95,18 +95,27 @@ Rules:
 - Return ONLY valid JSON array with format: [{"label": "...", "value": "..."}, ...]`;
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: `Extract specifications from this text:\n\n${rawText.slice(0, 4000)}`,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-          maxOutputTokens: 1200,
-        },
-      });
+      const candidateModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+      let response;
+      for (const model of candidateModels) {
+        try {
+          response = await ai.models.generateContent({
+            model,
+            contents: `Extract specifications from this text:\n\n${rawText.slice(0, 4000)}`,
+            config: {
+              systemInstruction,
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+              maxOutputTokens: 1200,
+            },
+          });
+          if (response?.text) break;
+        } catch (err: any) {
+          console.warn(`Extract specs model ${model} failed, trying next:`, err.message);
+        }
+      }
 
-      const text = response.text?.trim() || '[]';
+      const text = response?.text?.trim() || '[]';
       let json = JSON.parse(text);
 
       if (!Array.isArray(json) && typeof json === 'object') {

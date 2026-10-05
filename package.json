@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3005",
-    "dev:network": "next dev -H 0.0.0.0 -p 3005",
+    "dev": "next dev -H 0.0.0.0 -p 8000",
+    "dev:network": "next dev -H 0.0.0.0 -p 8000",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
-    "start": "next start -H 0.0.0.0 -p 3005",
-    "start:network": "next start -H 0.0.0.0 -p 3005",
+    "start": "next start -H 0.0.0.0 -p 8000",
+    "start:network": "next start -H 0.0.0.0 -p 8000",
     "lint": "next lint",
     "lighthouse": "lhci autorun"
   },
@@ -19,9 +19,10 @@
     "clsx": "^2.1.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
-    "next": "^16.3.5",
+    "next": "^16.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     const apiKeys = [
       process.env.GEMINI_API_KEY,
       process.env.GEMINI_API_KEY_2,
+      '',
     ].filter(Boolean) as string[];
 
     // Generate product information using AI

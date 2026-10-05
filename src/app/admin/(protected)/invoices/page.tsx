@@ -117,7 +117,7 @@ export default function AdminInvoicesPage() {
     const phone = cleanPhone.startsWith('0') ? '92' + cleanPhone.slice(1) : cleanPhone;
 
     const publicUrl = `${window.location.origin}/invoice/${inv.invoice_number || inv.id}`;
-    const message = `Hello ${inv.customer_name}!\n\nThank you for shopping with STH Gadgets.\n\nYour invoice details:\nInvoice No: ${inv.invoice_number}\nTotal Amount: IDR ${inv.grand_total.toLocaleString()}\nPayment Status: ${inv.payment_status}\n\nYou can view your invoice here:\n${publicUrl}\n\nThank you for choosing STH Gadgets.`;
+    const message = `Hello ${inv.customer_name}!\n\nThank you for shopping with STH Gadgets.\n\nYour invoice details:\nInvoice No: ${inv.invoice_number}\nTotal Amount: Rs. ${inv.grand_total.toLocaleString()}\nPayment Status: ${inv.payment_status}\n\nYou can view your invoice here:\n${publicUrl}\n\nThank you for choosing STH Gadgets.`;
 
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };

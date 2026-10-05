@@ -537,7 +537,7 @@ export default function AdminBackupPage() {
       {/* Preview Breakdown Modal */}
       {previewModalBackup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0C121D] p-6 shadow-2xl text-slate-100 space-y-4">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#0C121D] p-6 shadow-2xl text-silver-bright space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-white text-base">
                 Backup Preview: <span className="text-cyan-400">{previewModalBackup.backup_name}</span>

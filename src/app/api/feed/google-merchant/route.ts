@@ -43,10 +43,15 @@ export async function GET() {
       <g:link>${link}</g:link>
       <g:image_link>${primaryImage}</g:image_link>
       <g:availability>${availability}</g:availability>
-      <g:price>${prod.price} PKR</g:price>
+      <g:price>${Number(prod.price).toFixed(2)} PKR</g:price>
       <g:brand>STH Gadgets</g:brand>
       <g:condition>new</g:condition>
       ${prod.category?.name ? `<g:product_type>${prod.category.name}</g:product_type>` : ''}
+      <g:shipping>
+        <g:country>PK</g:country>
+        <g:service>Standard Nationwide Delivery</g:service>
+        <g:price>${prod.price >= 5000 ? '0.00' : '200.00'} PKR</g:price>
+      </g:shipping>
     </item>`;
     });
   }

@@ -3,29 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import OnlinePaymentModal from './OnlinePaymentModal';
-
-// Helper function to get logo path for payment methods
-function getPaymentMethodLogo(methodName: string): string {
-  const lowerName = (methodName || '').toLowerCase();
-  if (lowerName.includes('jazz')) return '/images/jazzcash-logo.png';
-  if (lowerName.includes('easy') || lowerName.includes('paisa')) return '/images/easy-paisa-logo.png';
-  if (lowerName.includes('meezan')) return '/images/meezan-bank-logo.png';
-  if (lowerName.includes('sada')) return '/images/sadapay-logo.png';
-  if (lowerName.includes('naya')) return '/images/nayapay-logo.png';
-  return ''; // Return empty string for others to fall back to emoji
-}
-
-// Helper function to get fallback emoji for payment methods
-function getPaymentMethodEmoji(methodName: string): string {
-  const lowerName = methodName.toLowerCase();
-  if (lowerName.includes('jazz')) return '📱';
-  if (lowerName.includes('easy')) return '📲';
-  if (lowerName.includes('bank') || lowerName.includes('meezan')) return '🏦';
-  if (lowerName.includes('sada')) return '💳';
-  if (lowerName.includes('naya')) return '🟢';
-  return '🏛️';
-}
 
 export default function CheckoutModal() {
   const {
@@ -36,12 +15,14 @@ export default function CheckoutModal() {
     couponDiscount,
     bundleDiscount,
     deliveryCharges,
-    freeShippingThreshold,
     totalAmount,
     isCheckoutOpen,
     closeCheckout,
     clearCart,
   } = useCart();
+
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
 
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -56,7 +37,6 @@ export default function CheckoutModal() {
   } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [onlinePaymentSettings, setOnlinePaymentSettings] = useState<any>(null);
-  const [paymentReference, setPaymentReference] = useState('');
   const [showOnlinePaymentModal, setShowOnlinePaymentModal] = useState(false);
   const [selectedPaymentAccount, setSelectedPaymentAccount] = useState<any>(null);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
@@ -69,8 +49,8 @@ export default function CheckoutModal() {
         const data = await res.json();
         if (data.settings && data.settings.online_payment_enabled) {
           setOnlinePaymentSettings(data.settings);
-          // Set first active account as default
-          const activeAccounts = data.settings.payment_accounts?.filter((acc: any) => acc.is_active) || [];
+          const activeAccounts =
+            data.settings.payment_accounts?.filter((acc: any) => acc.is_active) || [];
           if (activeAccounts.length > 0) {
             setSelectedPaymentAccount(activeAccounts[0]);
           }
@@ -105,7 +85,6 @@ export default function CheckoutModal() {
       return;
     }
 
-    // If online payment is selected, show the payment modal first
     if (paymentMethod === 'online' && !paymentConfirmed) {
       setShowOnlinePaymentModal(true);
       return;
@@ -138,20 +117,13 @@ export default function CheckoutModal() {
         throw new Error(data.error || 'Failed to submit order');
       }
 
-      // Save order complete state
       setOrderComplete({
         orderId: data.orderId,
         whatsappUrl: data.whatsappUrl,
         paymentReference: data.payment_reference,
       });
 
-      // Clear the cart
       clearCart();
-
-      // Open WhatsApp
-      if (typeof window !== 'undefined' && data.whatsappUrl) {
-        window.location.href = data.whatsappUrl;
-      }
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred while creating your order.');
     } finally {
@@ -159,334 +131,290 @@ export default function CheckoutModal() {
     }
   }
 
+  const cardBg = isLight
+    ? 'bg-white border-slate-200 shadow-[0_10px_35px_rgba(0,0,0,0.08)]'
+    : 'bg-[#0B121E] border-slate-800 shadow-[0_15px_50px_rgba(0,0,0,0.8)]';
+
+  const inputClass = `w-full rounded-2xl border px-4 py-3 text-xs sm:text-sm font-medium focus:border-[#00C4CC] focus:outline-none transition duration-200 ${
+    isLight
+      ? 'border-slate-300 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:bg-white'
+      : 'border-slate-700 bg-[#060A11] text-white placeholder:text-slate-500 focus:bg-[#080E18]'
+  }`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-      {/* Backdrop */}
-      <div className="fixed inset-0" onClick={orderComplete ? closeCheckout : undefined} />
-
-      <div className="relative z-10 w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-800 bg-[#0C1420] text-[#C9D2DB] p-4 sm:p-6 shadow-2xl">
-        {/* Close Button */}
-        <button
-          onClick={closeCheckout}
-          className="absolute right-4 top-4 rounded-lg border border-slate-800 p-1.5 text-silver-dim hover:text-white transition"
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div
+          className={`relative z-10 w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl border p-5 sm:p-8 transition-all ${cardBg}`}
         >
-          ✕
-        </button>
-
-        {orderComplete ? (
-          /* ============================================================ */
-          /* SUCCESS STATE */
-          /* ============================================================ */
-          <div className="text-center py-6 space-y-4">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 text-3xl text-emerald-400 border border-emerald-500/40">
-              ✓
+          {/* Close Header */}
+          <div className="flex items-center justify-between border-b border-slate-800/60 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🛍️</span>
+              <div>
+                <h2
+                  className={`font-display text-lg sm:text-xl font-black ${
+                    isLight ? 'text-slate-900' : 'text-white'
+                  }`}
+                >
+                  {orderComplete ? 'Order Placed Successfully!' : 'Complete Your Order'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {orderComplete
+                    ? 'Thank you! Finalize confirmation via WhatsApp.'
+                    : 'Fast & Secure Cash on Delivery across Pakistan'}
+                </p>
+              </div>
             </div>
-
-            <h3 className="font-display text-xl font-black text-silver-bright">
-              Order Submitted Successfully!
-            </h3>
-
-            <p className="text-xs sm:text-sm text-silver-dim max-w-sm mx-auto">
-              Your order is recorded and is currently <strong className="text-amber-400">PENDING</strong> verification.
-              Your pre-filled WhatsApp order chat was generated.
-            </p>
-
-            <div className="rounded-xl border border-slate-800 bg-[#080D15] p-3 text-xs font-mono text-silver-dim">
-              Ref ID: <span className="text-[#00C4CC]">{orderComplete.orderId}</span>
-              {orderComplete.paymentReference && (
-                <div className="mt-1">
-                  Payment Ref: <span className="text-[#00C4CC]">{orderComplete.paymentReference}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 flex flex-col gap-2">
-              <a
-                href={orderComplete.whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-3 px-4 font-display text-sm font-bold text-white shadow-sm transition hover:scale-[1.01]"
-              >
-                <svg viewBox="0 0 32 32" className="h-4 w-4 fill-white">
-                  <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
-                </svg>
-                <span>Re-open WhatsApp Message</span>
-              </a>
-
-              <button
-                onClick={closeCheckout}
-                className="rounded-xl border border-slate-800 py-2.5 font-display text-xs font-semibold text-silver-bright hover:border-[#00C4CC] transition"
-              >
-                Close & Return to Shop
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={closeCheckout}
+              className="rounded-xl border border-slate-700/60 p-2 text-slate-400 hover:text-white transition cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
-        ) : (
-          /* ============================================================ */
-          /* CUSTOMER FORM */
-          /* ============================================================ */
-          <div>
-            <div className="mb-5">
-              <span className="font-display text-xs font-bold uppercase tracking-wider text-[#00C4CC]">
-                Fast WhatsApp Checkout
-              </span>
-              <h2 className="font-display text-xl font-black text-silver-bright">
-                Delivery Details
-              </h2>
-              <p className="mt-1 text-xs text-silver-dim">
-                Please enter your contact details. Your order will be verified and dispatched via WhatsApp.
-              </p>
+
+          {/* ORDER COMPLETE STATE */}
+          {orderComplete ? (
+            <div className="py-8 space-y-6 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 border-2 border-emerald-500/50 text-3xl text-emerald-400 animate-bounce">
+                ✓
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-display text-xl sm:text-2xl font-black text-emerald-400">
+                  Order #{orderComplete.orderId.slice(0, 8).toUpperCase()} Created!
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Click the button below to open WhatsApp and send your order confirmation directly to our support team for instant dispatch.
+                </p>
+              </div>
+
+              <div className="pt-4 flex flex-col gap-3 max-w-sm mx-auto">
+                <a
+                  href={orderComplete.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2.5 rounded-2xl bg-[#25D366] hover:bg-[#20BD5A] py-3.5 px-6 font-display text-sm font-black text-white shadow-[0_0_25px_rgba(37,211,102,0.4)] transition hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <svg viewBox="0 0 32 32" className="h-5 w-5 fill-white shrink-0">
+                    <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
+                  </svg>
+                  <span>Confirm on WhatsApp</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={closeCheckout}
+                  className="rounded-2xl border border-slate-700/60 py-2.5 text-xs font-bold text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  Close & Return to Store
+                </button>
+              </div>
             </div>
-
-            {errorMsg && (
-              <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-400">
-                {errorMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-silver-bright mb-1">
-                  👤 Your Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Muhammad Ali"
-                  className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3.5 py-2 text-xs sm:text-sm text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-silver-bright mb-1">
-                  📱 WhatsApp Number *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. 0348 9593671 or +92 348 9593671"
-                  className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3.5 py-2 text-xs sm:text-sm text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none font-mono"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-silver-bright mb-1">
-                    🏙️ City *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="e.g. Karachi, Lahore..."
-                    className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3.5 py-2 text-xs sm:text-sm text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-silver-bright mb-1">
-                    � Payment Method *
-                  </label>
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentMethod('cod');
-                        setShowOnlinePaymentModal(false);
-                      }}
-                      className={`w-full rounded-xl border px-3 py-2 text-xs flex items-center justify-between transition ${
-                        paymentMethod === 'cod'
-                          ? 'border-[#00C4CC] bg-[#00C4CC]/10 text-[#00C4CC]'
-                          : 'border-slate-700 bg-[#080D15] text-silver-dim hover:border-slate-600'
-                      }`}
-                    >
-                      <span>Cash on Delivery</span>
-                      {paymentMethod === 'cod' && <span className="text-xs">✓</span>}
-                    </button>
-
-                    {onlinePaymentSettings && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPaymentMethod('online');
-                          // Auto-open payment modal when online payment is selected
-                          setShowOnlinePaymentModal(true);
-                        }}
-                        className={`w-full rounded-xl border px-3 py-2 text-xs flex items-center justify-between transition ${
-                          paymentMethod === 'online'
-                            ? 'border-[#00C4CC] bg-[#00C4CC]/10 text-[#00C4CC]'
-                            : 'border-slate-700 bg-[#080D15] text-silver-dim hover:border-slate-600'
-                        }`}
-                      >
-                        <span>Online Payment</span>
-                        {paymentMethod === 'online' && <span className="text-xs">✓</span>}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-silver-bright mb-1">
-                  📍 Complete Delivery Address *
-                </label>
-                <textarea
-                  required
-                  rows={2}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="House #, Street #, Sector, Area..."
-                  className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3.5 py-2 text-xs sm:text-sm text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none font-medium resize-none"
-                />
-              </div>
-
-              {/* Free Shipping Progress Banner */}
-              {subtotal > 0 && (
-                <div className="rounded-xl border border-slate-800 bg-[#0C1420] p-2.5 space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-silver-dim">🚚 Free Shipping Progress</span>
-                    <span className="text-[#00C4CC] font-bold">
-                      {freeShippingThreshold > 0 ? (
-                        subtotal >= freeShippingThreshold ? (
-                          <span className="text-emerald-400">✓ FREE Shipping!</span>
-                        ) : (
-                          <span>Rs. {subtotal.toLocaleString('en-PK')} / Rs. {freeShippingThreshold.toLocaleString('en-PK')}</span>
-                        )
-                      ) : (
-                        <span>Standard Delivery</span>
-                      )}
-                    </span>
-                  </div>
-                  {freeShippingThreshold > 0 && (
-                    <>
-                      <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[#00C4CC] to-[#00E5FF] transition-all duration-500"
-                          style={{ width: `${Math.min(100, (subtotal / freeShippingThreshold) * 100)}%` }}
-                        />
-                      </div>
-                      {subtotal < freeShippingThreshold && (
-                        <p className="text-[10px] text-center text-silver-dim">
-                          Add <span className="text-[#00C4CC] font-bold">Rs. {(freeShippingThreshold - subtotal).toLocaleString('en-PK')}</span> more for <span className="text-emerald-400 font-bold">FREE Delivery</span>!
-                        </p>
-                      )}
-                    </>
-                  )}
+          ) : (
+            /* CHECKOUT FORM */
+            <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+              {errorMsg && (
+                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs font-bold text-rose-400">
+                  ⚠️ {errorMsg}
                 </div>
               )}
 
-              {/* Online Payment Status Indicator */}
-              {paymentMethod === 'online' && onlinePaymentSettings && (
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-3">
-                  <div className="flex items-center gap-2 text-emerald-400">
-                    <span className="text-sm">✓</span>
-                    <span className="font-display text-xs font-bold">
-                      Online Payment Selected
-                    </span>
-                  </div>
-                  
-                  {/* Payment Account Selector */}
-                  {onlinePaymentSettings.payment_accounts && onlinePaymentSettings.payment_accounts.length > 1 && (
-                    <div>
-                      <label className="block text-xs font-semibold text-silver-bright mb-2">
-                        Select Payment Method:
-                      </label>
-                      <div className="space-y-2">
-                        {onlinePaymentSettings.payment_accounts
-                          .filter((acc: any) => acc.is_active)
-                          .map((account: any) => (
-                            <button
-                              key={account.id}
-                              type="button"
-                              onClick={() => setSelectedPaymentAccount(account)}
-                              className={`w-full rounded-xl border px-3 py-2 text-xs flex items-center justify-between transition ${
-                                selectedPaymentAccount?.id === account.id
-                                  ? 'border-[#00C4CC] bg-[#00C4CC]/10 text-[#00C4CC]'
-                                  : 'border-slate-700 bg-[#080D15] text-silver-dim hover:border-slate-600'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                {getPaymentMethodLogo(account.payment_method_name) ? (
-                                  <Image 
-                                    src={getPaymentMethodLogo(account.payment_method_name)} 
-                                    alt={account.payment_method_name} 
-                                    width={22} 
-                                    height={22} 
-                                    className="rounded object-contain shrink-0"
-                                  />
-                                ) : (
-                                  <span className="text-sm">{getPaymentMethodEmoji(account.payment_method_name)}</span>
-                                )}
-                                <span>{account.payment_method_name}</span>
-                              </div>
-                              {selectedPaymentAccount?.id === account.id && <span className="text-xs">✓</span>}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  )}
+              {/* Delivery Details Form */}
+              <div className="space-y-4">
+                <h3 className="font-display text-xs font-black uppercase tracking-wider text-[#00C4CC]">
+                  1. Shipping &amp; Delivery Details
+                </h3>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowOnlinePaymentModal(true)}
-                    className="w-full rounded-xl border border-[#00C4CC] bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 py-2 px-3 font-display text-xs font-bold text-[#00C4CC] transition"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="e.g. Muhammad Ali"
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                      WhatsApp Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. 0348 9593671"
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g. Lahore / Karachi"
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                      Complete Street Address *
+                    </label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="House/Shop #, Street, Area/Colony"
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="space-y-3 pt-2">
+                <h3 className="font-display text-xs font-black uppercase tracking-wider text-[#00C4CC]">
+                  2. Select Payment Method
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* COD */}
+                  <label
+                    onClick={() => setPaymentMethod('cod')}
+                    className={`flex items-center gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
+                      paymentMethod === 'cod'
+                        ? 'border-[#00C4CC] bg-[#00C4CC]/10 shadow-[0_0_15px_rgba(0,196,204,0.2)]'
+                        : isLight
+                        ? 'border-slate-200 bg-slate-50'
+                        : 'border-slate-800 bg-[#060A11]'
+                    }`}
                   >
-                    View Payment Details
-                  </button>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'cod'}
+                      onChange={() => setPaymentMethod('cod')}
+                      className="text-[#00C4CC] focus:ring-[#00C4CC]"
+                    />
+                    <div>
+                      <strong className={`block text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        💵 Cash on Delivery (COD)
+                      </strong>
+                      <span className="text-[10.5px] text-slate-400">
+                        Pay cash when rider delivers package
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Online Payment */}
+                  <label
+                    onClick={() => setPaymentMethod('online')}
+                    className={`flex items-center gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
+                      paymentMethod === 'online'
+                        ? 'border-[#00C4CC] bg-[#00C4CC]/10 shadow-[0_0_15px_rgba(0,196,204,0.2)]'
+                        : isLight
+                        ? 'border-slate-200 bg-slate-50'
+                        : 'border-slate-800 bg-[#060A11]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'online'}
+                      onChange={() => setPaymentMethod('online')}
+                      className="text-[#00C4CC] focus:ring-[#00C4CC]"
+                    />
+                    <div>
+                      <strong className={`block text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        💳 Online Transfer
+                      </strong>
+                      <span className="text-[10.5px] text-slate-400">
+                        EasyPaisa, JazzCash, Meezan Bank, SadaPay
+                      </span>
+                    </div>
+                  </label>
                 </div>
-              )}
+              </div>
 
-
-              {/* Order Summary Mini Box */}
-              <div className="rounded-xl border border-slate-800 bg-[#080D15] p-3 space-y-1.5 text-xs">
-                <div className="flex justify-between text-silver-dim">
-                  <span>Items ({totalItems})</span>
-                  <span>Rs. {subtotal.toLocaleString('en-PK')}</span>
+              {/* Order Summary Box */}
+              <div
+                className={`rounded-2xl border p-4 space-y-2 text-xs ${
+                  isLight ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-[#060A11]'
+                }`}
+              >
+                <div className="flex justify-between text-slate-400">
+                  <span>Items Total ({totalItems})</span>
+                  <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    Rs. {subtotal.toLocaleString('en-PK')}
+                  </span>
                 </div>
                 {couponDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-400">
+                  <div className="flex justify-between text-emerald-400 font-semibold">
                     <span>Coupon ({couponCode})</span>
                     <span>-Rs. {couponDiscount.toLocaleString('en-PK')}</span>
                   </div>
                 )}
                 {bundleDiscount > 0 && (
-                  <div className="flex justify-between text-amber-400">
-                    <span>Bundle Discount</span>
+                  <div className="flex justify-between text-amber-400 font-semibold">
+                    <span>Combo Savings</span>
                     <span>-Rs. {bundleDiscount.toLocaleString('en-PK')}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-silver-dim">
+                <div className="flex justify-between text-slate-400">
                   <span>Delivery Charges</span>
-                  <span>{deliveryCharges === 0 ? 'FREE' : `Rs. ${deliveryCharges.toLocaleString('en-PK')}`}</span>
+                  <span>
+                    {deliveryCharges === 0 ? (
+                      <span className="text-emerald-400 font-bold">FREE</span>
+                    ) : (
+                      `Rs. ${deliveryCharges.toLocaleString('en-PK')}`
+                    )}
+                  </span>
                 </div>
-                <div className="flex justify-between border-t border-slate-800 pt-1.5 font-display text-sm font-black text-silver-bright">
-                  <span>Total Amount</span>
-                  <span className="text-[#00C4CC]">Rs. {totalAmount.toLocaleString('en-PK')}</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={loading || items.length === 0}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] py-3.5 px-4 font-display text-sm font-bold text-white shadow-[0_0_20px_rgba(37,211,102,0.3)] transition hover:scale-[1.01] disabled:opacity-50"
+                <div
+                  className={`flex justify-between border-t pt-2 font-display text-sm sm:text-base font-black ${
+                    isLight ? 'border-slate-200 text-slate-900' : 'border-slate-800 text-white'
+                  }`}
                 >
-                  <svg viewBox="0 0 32 32" className="h-4 w-4 fill-white shrink-0">
-                    <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
-                  </svg>
-                  <span>{loading ? 'Processing Order...' : 'Submit & Order on WhatsApp'}</span>
-                </button>
+                  <span>Grand Total</span>
+                  <span className="text-[#00C4CC]">
+                    Rs. {totalAmount.toLocaleString('en-PK')}
+                  </span>
+                </div>
               </div>
-            </form>
-          </div>
-        )}
 
-        {/* Online Payment Modal */}
+              {/* Submit CTA */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#00C4CC] via-[#00E5FF] to-[#00C4CC] hover:brightness-110 py-4 px-6 font-display text-sm font-black text-[#04080F] shadow-[0_0_25px_rgba(0,196,204,0.4)] transition duration-200 hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+              >
+                <span>{loading ? 'Creating Order...' : 'Confirm & Place Order'}</span>
+                <span>→</span>
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+
+      {/* Online Payment Modal */}
+      {showOnlinePaymentModal && (
         <OnlinePaymentModal
           isOpen={showOnlinePaymentModal}
           onClose={() => setShowOnlinePaymentModal(false)}
@@ -497,7 +425,7 @@ export default function CheckoutModal() {
             setShowOnlinePaymentModal(false);
           }}
         />
-      </div>
-    </div>
+      )}
+    </>
   );
 }

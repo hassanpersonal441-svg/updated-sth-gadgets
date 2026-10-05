@@ -59,6 +59,12 @@ const productSchema = z.object({
   new_arrival: z.boolean().default(false),
   free_delivery: z.boolean().default(false),
   active: z.boolean().default(true),
+  seo_title: z.string().nullable().optional(),
+  seo_description: z.string().nullable().optional(),
+  seo_keywords: z.union([z.array(z.string()), z.string()]).nullable().optional(),
+  seo_slug: z.string().nullable().optional(),
+  image_alt_text: z.string().nullable().optional(),
+  meta_description: z.string().nullable().optional(),
   images: z.array(z.object({ image_url: z.string().url(), is_primary: z.boolean().default(false) })).optional().default([]),
 });
 
@@ -181,8 +187,12 @@ export async function POST(request: Request) {
   }
   productData.slug = candidateSlug;
 
-  // Remove fields that might not exist in database
-  const { product_type, series_id, model_number, ...safeProductData } = productData;
+  if (Array.isArray(productData.seo_keywords)) {
+    productData.seo_keywords = productData.seo_keywords.join(', ');
+  }
+
+  // Remove fields that might not exist in database if migrations have not run yet
+  const { product_type, series_id, model_number, seo_title, seo_description, seo_keywords, seo_slug, image_alt_text, meta_description, ...safeProductData } = productData;
   
   // Try to insert with all fields first
   let { data: product, error } = await service.from('products').insert({ ...productData, sort_order: nextSortOrder }).select().single();
@@ -190,7 +200,10 @@ export async function POST(request: Request) {
   // If error due to missing columns, try without those columns
   if (error && (error.message.includes("Could not find the 'product_type'") || 
                 error.message.includes("Could not find the 'series_id'") ||
-                error.message.includes("Could not find the 'model_number'"))) {
+                error.message.includes("Could not find the 'model_number'") ||
+                error.message.includes("Could not find the 'seo_") ||
+                error.message.includes("Could not find the 'image_alt_text'") ||
+                error.message.includes("Could not find the 'meta_description'"))) {
     const { data: retryProduct, error: retryError } = await service.from('products').insert({ ...safeProductData, sort_order: nextSortOrder }).select().single();
     product = retryProduct;
     error = retryError;

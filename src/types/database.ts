@@ -101,6 +101,12 @@ export interface Product {
   product_images?: ProductImage[];
   product_variants?: ProductVariant[];
   series?: ProductSeries | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_keywords?: string[] | string | null;
+  seo_slug?: string | null;
+  image_alt_text?: string | null;
+  meta_description?: string | null;
 }
 
 export interface Coupon {
@@ -134,6 +140,7 @@ export interface Settings {
   id: number;
   business_name: string;
   logo_url: string | null;
+  hero_image_url?: string | null;
   whatsapp_number: string;
   email: string | null;
   address: string | null;

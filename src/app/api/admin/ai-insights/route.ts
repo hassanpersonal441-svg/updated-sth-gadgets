@@ -87,7 +87,7 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 
     // Try primary model, fallback to lighter model if unavailable
     let responseText: string | undefined;
-    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+    const modelsToTry = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'];
 
     for (const modelName of modelsToTry) {
       try {

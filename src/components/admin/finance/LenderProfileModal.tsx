@@ -162,15 +162,15 @@ export default function LenderProfileModal({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-300 py-1 font-mono">
                   <div>
                     <span className="text-[10px] text-slate-500 block font-sans">Borrowed:</span>
-                    <span className="font-bold text-white">IDR {b.borrowed_amount?.toLocaleString()}</span>
+                    <span className="font-bold text-white">PKR {b.borrowed_amount?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-500 block font-sans">Repaid:</span>
-                    <span className="font-bold text-emerald-400">IDR {b.total_repaid?.toLocaleString()}</span>
+                    <span className="font-bold text-emerald-400">PKR {b.total_repaid?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-500 block font-sans">Remaining:</span>
-                    <span className="font-bold text-rose-400">IDR {b.remaining_amount?.toLocaleString()}</span>
+                    <span className="font-bold text-rose-400">PKR {b.remaining_amount?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-500 block font-sans">Purpose:</span>

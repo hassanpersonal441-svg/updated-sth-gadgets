@@ -14,25 +14,36 @@ export default function FloatingCartButton() {
   }
 
   return (
-    <div className="mobile-cart-summary fixed right-3 z-40 animate-slideUp sm:right-6">
+    <div className="mobile-cart-summary fixed right-4 bottom-20 sm:bottom-6 z-40 animate-slide-up">
       <button
+        type="button"
         onClick={openCart}
-        className="group flex items-center gap-3 rounded-full bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-4 py-2.5 sm:py-3 shadow-[0_4px_25px_rgba(0,196,204,0.45)] transition-all duration-300 ease-out hover:shadow-[0_8px_35px_rgba(0,196,204,0.6)] hover:scale-105 active:scale-95 relative overflow-hidden"
+        className="group relative overflow-hidden flex items-center gap-2.5 sm:gap-3 rounded-full bg-[#081220]/95 hover:bg-[#0B1A2E] text-white border border-[#00C4CC]/50 px-4 sm:px-5 py-2.5 sm:py-3 shadow-[0_10px_35px_rgba(0,0,0,0.7),0_0_25px_rgba(0,196,204,0.3)] backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer ring-1 ring-[#00C4CC]/30"
         aria-label="View shopping cart"
       >
-        <div className="relative flex items-center justify-center">
-          <span className="text-lg transition-transform duration-300 group-hover:rotate-12">🛒</span>
-          <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[10px] font-extrabold text-[#00C4CC] animate-pulse shadow-[0_0_8px_rgba(0,196,204,0.6)]">
-            {totalItems}
-          </span>
+        {/* Cart Icon & Items Count */}
+        <div className="flex items-center gap-1.5 font-display text-xs sm:text-sm font-bold text-silver-bright">
+          <span className="text-base sm:text-lg">🛒</span>
+          <span>{totalItems} {totalItems === 1 ? 'Item' : 'Items'}</span>
         </div>
-        <div className="font-display text-xs sm:text-sm font-black flex items-center gap-1.5 relative z-10">
+
+        <span className="text-slate-500 font-normal">|</span>
+
+        {/* Amount */}
+        <div className="font-mono text-xs sm:text-sm font-black text-[#00C4CC]">
+          ₨{totalAmount.toLocaleString('en-PK')}
+        </div>
+
+        <span className="text-slate-500 font-normal">|</span>
+
+        {/* View Cart Action CTA */}
+        <div className="font-display text-xs sm:text-sm font-black text-white group-hover:text-[#00C4CC] transition-colors flex items-center gap-1">
           <span>View Cart</span>
-          <span className="opacity-40">•</span>
-          <span>PKR {totalAmount.toLocaleString('en-PK')}</span>
+          <span className="group-hover:translate-x-0.5 transition-transform duration-200">→</span>
         </div>
-        {/* Button shine effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shine" />
+
+        {/* Ambient Subtle Rim Glow */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-[#00C4CC]/10 to-transparent -translate-x-full group-hover:animate-shine pointer-events-none" />
       </button>
     </div>
   );

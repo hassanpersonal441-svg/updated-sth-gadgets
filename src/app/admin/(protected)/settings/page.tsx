@@ -15,6 +15,9 @@ export default function AdminSettingsPage() {
   const [logo, setLogo] = useState<UploadedImage[]>(
     cachedSettings?.logo_url ? [{ image_url: cachedSettings.logo_url, is_primary: true }] : []
   );
+  const [heroImage, setHeroImage] = useState<UploadedImage[]>(
+    cachedSettings?.hero_image_url ? [{ image_url: cachedSettings.hero_image_url, is_primary: true }] : []
+  );
   const [loading, setLoading] = useState(!cachedSettings);
   const [saving, setSaving] = useState(false);
   const [resettingAction, setResettingAction] = useState<string | null>(null);
@@ -53,6 +56,7 @@ export default function AdminSettingsPage() {
           cachedSettings = data.settings;
           setSettings(data.settings);
           if (data.settings?.logo_url) setLogo([{ image_url: data.settings.logo_url, is_primary: true }]);
+          if (data.settings?.hero_image_url) setHeroImage([{ image_url: data.settings.hero_image_url, is_primary: true }]);
         }
         setLoading(false);
       })
@@ -72,11 +76,19 @@ export default function AdminSettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...settings, logo_url: logo[0]?.image_url || null }),
+        body: JSON.stringify({
+          ...settings,
+          logo_url: logo[0]?.image_url || null,
+          hero_image_url: heroImage[0]?.image_url || null,
+        }),
       });
       if (res.ok) {
         const savedData = await res.json().catch(() => null);
-        const nextSettings = savedData?.settings || { ...settings, logo_url: logo[0]?.image_url || null };
+        const nextSettings = savedData?.settings || {
+          ...settings,
+          logo_url: logo[0]?.image_url || null,
+          hero_image_url: heroImage[0]?.image_url || null,
+        };
         cachedSettings = nextSettings;
         setSettings(nextSettings);
         admin('Store & operations settings saved successfully!', 'Settings Saved');
@@ -157,6 +169,42 @@ export default function AdminSettingsPage() {
             <div>
               <label className="mb-1 block text-xs font-semibold text-silver-dim">Store Logo</label>
               <ImageUploader bucket="site-assets" images={logo} onChange={setLogo} multiple={false} />
+            </div>
+
+            {/* Homepage Hero Showcase Banner (All Products in One Photo) */}
+            <div className="pt-3 border-t border-slate-800/80">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <label className="block text-xs font-bold text-white">
+                    Homepage Hero Showcase Image (All Products in 1 Photo)
+                  </label>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Upload a single composite photo featuring all flagship products (Earbuds, Power Bank, Speaker, Charger, etc.). It will appear on the right side of the Homepage Hero.
+                  </p>
+                </div>
+                <span className="rounded-full bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-2.5 py-0.5 text-[10px] font-bold text-[#00C4CC] shrink-0">
+                  Hero Showcase
+                </span>
+              </div>
+              <ImageUploader bucket="site-assets" images={heroImage} onChange={setHeroImage} multiple={false} />
+              {heroImage.length > 0 ? (
+                <div className="mt-2 flex items-center justify-between p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <span>✓</span> Custom Hero Showcase Photo Active
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setHeroImage([])}
+                    className="text-red-400 hover:text-red-300 underline font-medium cursor-pointer"
+                  >
+                    Remove / Reset to Dynamic Products
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1 text-[11px] text-slate-500">
+                  When left empty, the homepage automatically displays a dynamic 3D showcase from active catalog products.
+                </div>
+              )}
             </div>
 
             {/* PWA App Status & Currency Safeguard Feature */}

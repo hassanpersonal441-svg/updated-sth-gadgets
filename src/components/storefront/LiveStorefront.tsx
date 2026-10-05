@@ -9,6 +9,10 @@ import { useCart } from '@/context/CartContext';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import ProductCard from './ProductCard';
 import SeriesCard from './SeriesCard';
+import FlashSaleBanner from './FlashSaleBanner';
+import OffersModal from './OffersModal';
+import HeroProductComposition from './HeroProductComposition';
+import ShopByCategoryGrid from './ShopByCategoryGrid';
 
 export default function LiveStorefront({
   initialProducts,
@@ -29,21 +33,55 @@ export default function LiveStorefront({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [inStockOnly, setInStockOnly] = useState(false);
   const [offersOnly, setOffersOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'discount' | 'newest'>('default');
+  const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<
+    'default' | 'price_asc' | 'price_desc' | 'discount' | 'newest'
+  >('default');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const rawPhone = settings?.whatsapp_number || '+92 348 9593671';
   const freeShippingThreshold = settings?.free_shipping_threshold ?? 5000;
-  const deliveryCharges = settings?.delivery_charges ?? 200;
   const [isMounted, setIsMounted] = useState(false);
 
   // Rotation tick: re-render every 60s so offset stays accurate
   const [tick, setTick] = useState(0);
 
+  // Count active deals / discount items
+  const dealsCount = useMemo(() => {
+    return initialProducts.filter(
+      (p) => (p.discount && p.discount > 0) || (p.old_price && p.old_price > p.price) || p.featured || p.best_seller
+    ).length;
+  }, [initialProducts]);
+
   useEffect(() => {
     setIsMounted(true);
     const interval = setInterval(() => setTick((t) => t + 1), 60_000);
-    return () => clearInterval(interval);
+
+    function handleOpenDeals() {
+      setIsOffersModalOpen(true);
+    }
+    function handleFilterDeals() {
+      setOffersOnly(true);
+      setSelectedCategory('all');
+      const el = document.getElementById('product-catalog');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    window.addEventListener('sth_open_deals_modal', handleOpenDeals);
+    window.addEventListener('sth_filter_deals', handleFilterDeals);
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('deals') === 'true' || params.get('offers') === 'true') {
+        setOffersOnly(true);
+      }
+    } catch {}
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('sth_open_deals_modal', handleOpenDeals);
+      window.removeEventListener('sth_filter_deals', handleFilterDeals);
+    };
   }, []);
 
   // Generate and print / save PDF Rate Sheet
@@ -73,16 +111,32 @@ export default function LiveStorefront({
       `;
       items.forEach((item, idx) => {
         const priceFormatted = formatPrice(item.price, settings);
-        const oldPriceFormatted = item.old_price && item.old_price > item.price ? formatPrice(item.old_price, settings) : '';
-        const statusText = item.stock_status === 'in_stock' ? 'In Stock' : item.stock_status === 'low_stock' ? 'Low Stock' : 'Out of Stock';
+        const oldPriceFormatted =
+          item.old_price && item.old_price > item.price
+            ? formatPrice(item.old_price, settings)
+            : '';
+        const statusText =
+          item.stock_status === 'in_stock'
+            ? 'In Stock'
+            : item.stock_status === 'low_stock'
+            ? 'Low Stock'
+            : 'Out of Stock';
         catalogRowsHtml += `
           <tr>
             <td>${idx + 1}</td>
-            <td><strong>${item.name}</strong> ${item.short_description ? `<br><small style="color:#666;">${item.short_description}</small>` : ''}</td>
+            <td><strong>${item.name}</strong> ${
+          item.short_description
+            ? `<br><small style="color:#666;">${item.short_description}</small>`
+            : ''
+        }</td>
             <td><span class="stock-${item.stock_status}">${statusText}</span></td>
             <td style="text-align:right;">
               <strong style="font-size:14px;">${priceFormatted}</strong>
-              ${oldPriceFormatted ? `<br><small style="text-decoration:line-through; color:#888;">${oldPriceFormatted}</small>` : ''}
+              ${
+                oldPriceFormatted
+                  ? `<br><small style="text-decoration:line-through; color:#888;">${oldPriceFormatted}</small>`
+                  : ''
+              }
             </td>
           </tr>
         `;
@@ -117,7 +171,7 @@ export default function LiveStorefront({
           </div>
           <div style="text-align:right; font-size: 13px;">
             <strong>WhatsApp Orders:</strong> ${rawPhone}<br>
-            <strong>Website:</strong> www.sthgadgets.com
+            <strong>Website:</strong> www.sthgadgets.store
           </div>
         </div>
         <table>
@@ -134,7 +188,9 @@ export default function LiveStorefront({
           </tbody>
         </table>
         <div class="footer">
-          Thank you for choosing ${settings?.business_name || 'STH Gadgets'}! Prices are subject to change based on market rates.
+          Thank you for choosing ${
+            settings?.business_name || 'STH Gadgets'
+          }! Prices are subject to change based on market rates.
         </div>
         <script>
           window.onload = function() {
@@ -158,7 +214,9 @@ export default function LiveStorefront({
       const q = searchQuery.toLowerCase().trim();
       list = list.filter((p) => {
         const nameMatch = p.name.toLowerCase().includes(q);
-        const descMatch = (p.short_description || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+        const descMatch =
+          (p.short_description || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q);
         const catMatch = p.category?.name.toLowerCase().includes(q);
         const specMatch = (p.specifications || []).some(
           (s) => s.label.toLowerCase().includes(q) || s.value.toLowerCase().includes(q)
@@ -205,8 +263,8 @@ export default function LiveStorefront({
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         });
 
-        // Auto-Rotate: circular shift based on current time slot
-        if (settings?.auto_rotate_products && list.length > 1) {
+        // Auto-Rotate: circular shift based on current time slot (after mount only to avoid hydration mismatch)
+        if (isMounted && settings?.auto_rotate_products && list.length > 1) {
           const intervalMs = (settings.auto_rotate_interval_minutes ?? 60) * 60 * 1000;
           const offset = Math.floor(Date.now() / intervalMs) % list.length;
           if (offset > 0) {
@@ -216,43 +274,43 @@ export default function LiveStorefront({
     }
 
     return list;
-  }, [initialProducts, searchQuery, selectedCategory, inStockOnly, offersOnly, sortBy, settings?.auto_rotate_products, settings?.auto_rotate_interval_minutes, tick]);
-
-  // Memoize handler functions to prevent unnecessary re-renders
-  const handleAddToCart = useCallback((product: Product) => {
-    addToCart(product, 1);
-  }, [addToCart]);
-
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
-
-  const handleCategoryChange = useCallback((category: string) => {
-    setSelectedCategory(category);
-  }, []);
-
-  const handleSortChange = useCallback((sort: 'default' | 'price_asc' | 'price_desc' | 'discount' | 'newest') => {
-    setSortBy(sort);
-  }, []);
+  }, [
+    initialProducts,
+    searchQuery,
+    selectedCategory,
+    inStockOnly,
+    offersOnly,
+    sortBy,
+    settings?.auto_rotate_products,
+    settings?.auto_rotate_interval_minutes,
+    isMounted,
+    tick,
+  ]);
 
   // Progressive rendering for optimal performance & loading speed
-  const [visibleCount, setVisibleCount] = useState(12); // Reduced initial count for faster initial render
+  const [visibleCount, setVisibleCount] = useState(16);
 
   useEffect(() => {
-    setVisibleCount(12);
+    setVisibleCount(16);
   }, [searchQuery, selectedCategory, inStockOnly, sortBy]);
 
   const displayedProducts = useMemo(() => {
     return filteredProducts.slice(0, visibleCount);
   }, [filteredProducts, visibleCount]);
 
-  const hasMoreProducts = filteredProducts.length > visibleCount;
-
-  const filteredSeries = useMemo(() => initialSeries.filter((series) =>
-    (selectedCategory === 'all' || series.category?.slug === selectedCategory) &&
-    (!searchQuery.trim() || `${series.name} ${series.description} ${series.brand || ''}`.toLowerCase().includes(searchQuery.toLowerCase().trim())) &&
-    (!inStockOnly || (series.model_count || 0) > 0)
-  ), [initialSeries, selectedCategory, searchQuery, inStockOnly]);
+  const filteredSeries = useMemo(
+    () =>
+      initialSeries.filter(
+        (series) =>
+          (selectedCategory === 'all' || series.category?.slug === selectedCategory) &&
+          (!searchQuery.trim() ||
+            `${series.name} ${series.description} ${series.brand || ''}`
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase().trim())) &&
+          (!inStockOnly || (series.model_count || 0) > 0)
+      ),
+    [initialSeries, selectedCategory, searchQuery, inStockOnly]
+  );
 
   // Counts per category
   const categoryCounts = useMemo(() => {
@@ -265,87 +323,6 @@ export default function LiveStorefront({
     return counts;
   }, [initialProducts]);
 
-  // Coupon state per product card
-  const [couponInputs, setCouponInputs] = useState<Record<string, string>>({});
-  const [appliedCoupons, setAppliedCoupons] = useState<
-    Record<
-      string,
-      {
-        code: string;
-        discount: number;
-        finalPrice: number;
-        status: 'idle' | 'checking' | 'valid' | 'invalid';
-        message?: string;
-      }
-    >
-  >({});
-
-  const handleApplyCoupon = useCallback(async (productId: string, price: number) => {
-    const code = (couponInputs[productId] || '').trim();
-    if (!code) return;
-
-    setAppliedCoupons((prev) => ({
-      ...prev,
-      [productId]: { code, discount: 0, finalPrice: price, status: 'checking' },
-    }));
-
-    try {
-      const res = await fetch('/api/coupons/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, orderAmount: price, productId }),
-      });
-      const data = await res.json();
-      if (data.valid) {
-        setAppliedCoupons((prev) => ({
-          ...prev,
-          [productId]: {
-            code: code.toUpperCase(),
-            discount: data.discountAmount,
-            finalPrice: Math.max(0, price - data.discountAmount),
-            status: 'valid',
-            message: `Saved ${formatPrice(data.discountAmount, settings)}`,
-          },
-        }));
-      } else {
-        setAppliedCoupons((prev) => ({
-          ...prev,
-          [productId]: {
-            code,
-            discount: 0,
-            finalPrice: price,
-            status: 'invalid',
-            message: data.reason || 'Invalid coupon',
-          },
-        }));
-      }
-    } catch {
-      setAppliedCoupons((prev) => ({
-        ...prev,
-        [productId]: {
-          code,
-          discount: 0,
-          finalPrice: price,
-          status: 'invalid',
-          message: 'Validation failed',
-        },
-      }));
-    }
-  }, [settings]);
-
-  const handleRemoveCoupon = useCallback((productId: string) => {
-    setAppliedCoupons((prev) => {
-      const next = { ...prev };
-      delete next[productId];
-      return next;
-    });
-    setCouponInputs((prev) => {
-      const next = { ...prev };
-      delete next[productId];
-      return next;
-    });
-  }, []);
-
   const trackWhatsAppClick = useCallback((productId: string) => {
     fetch('/api/analytics/whatsapp-click', {
       method: 'POST',
@@ -354,210 +331,345 @@ export default function LiveStorefront({
     }).catch(() => {});
   }, []);
 
-  const themeClasses = useMemo(() => 
-    isLight
-      ? 'bg-[#F4F6F9] text-[#111827]'
-      : 'bg-[#05080E] text-[#C9D2DB]',
-    [isLight]
-  );
-
-  const cardBg = useMemo(() => 
-    isLight ? 'bg-white border-slate-200' : 'bg-[#0C1420] border-slate-800',
-    [isLight]
-  );
-  
-  const inputBg = useMemo(() => 
-    isLight ? 'bg-slate-100 border-slate-300 text-slate-900 placeholder:text-slate-400' : 'bg-[#080D15] border-slate-800 text-silver-bright placeholder:text-silver-dim/50',
+  const cardBg = useMemo(
+    () =>
+      isLight
+        ? 'bg-white border-slate-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
+        : 'bg-[#0B121E] border-slate-800/80 shadow-[0_4px_25px_rgba(0,0,0,0.4)]',
     [isLight]
   );
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${themeClasses}`}>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen transition-colors duration-300">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6">
         {/* ============================================================ */}
-        {/* EXECUTIVE BRAND HEADER: BRAND + CENTERED SEARCH + CONTROLS  */}
+        {/* HERO BRAND HEADER & QUICK STORE BENEFIT BADGES              */}
         {/* ============================================================ */}
-        <header className="flex flex-col gap-3.5">
-          {/* Main Top Bar */}
-          <div className="flex items-center justify-between gap-3 sm:gap-6">
-            {/* Brand Left */}
-            <Link href="/" className="group flex shrink-0 items-center gap-3">
-              <div className="relative h-12 w-12 sm:h-13 sm:w-13 overflow-hidden rounded-full border-2 border-[#00C4CC]/80 shadow-[0_0_16px_rgba(0,196,204,0.4)] transition group-hover:scale-105">
-                <Image
-                  src={settings?.logo_url || '/images/logo.png'}
-                  alt={settings?.business_name || 'STH Gadgets'}
-                  fill
-                  className="object-cover rounded-full"
-                  priority
-                  sizes="(max-width: 640px) 48px, 52px"
-                />
-              </div>
-              <div>
-                <span className="block font-display text-xl sm:text-2xl font-black tracking-wider uppercase text-silver-bright group-hover:text-[#00C4CC] transition">
-                  {settings?.business_name || 'STH GADGETS'}
-                </span>
-                <span className="block text-[11px] sm:text-xs font-semibold text-[#00C4CC] tracking-wide">
-                  Mobile Accessories &amp; Official Rates
-                </span>
-              </div>
-            </Link>
+        {/* ============================================================ */}
+        {/* HERO SECTION — 2-COLUMN WITH 4-5 PRODUCT 3D COMPOSITION      */}
+        {/* ============================================================ */}
+        <section
+          className={`relative overflow-hidden rounded-3xl border p-6 sm:p-10 lg:p-12 backdrop-blur-2xl transition-all duration-300 ${
+            isLight
+              ? 'border-slate-200 bg-gradient-to-br from-white via-cyan-50/30 to-slate-50 text-slate-800 shadow-[0_10px_35px_rgba(0,0,0,0.04)]'
+              : 'border-[#00C4CC]/30 bg-gradient-to-br from-[#070D18] via-[#0B1526] to-[#040810] text-[#CBD5E1] shadow-[0_0_50px_rgba(0,196,204,0.12)]'
+          }`}
+        >
+          {/* Ambient Lighting Orbs */}
+          <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-[#00C4CC]/15 blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 -right-24 h-96 w-96 rounded-full bg-[#0066FF]/12 blur-3xl pointer-events-none" />
 
-            {/* Desktop Centered Search Bar */}
-            <div className="relative hidden md:block flex-1 max-w-lg lg:max-w-xl xl:max-w-2xl mx-2" data-tour="customer-search">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-silver-dim">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* LEFT COLUMN: HERO HEADLINE & ACTIONS (lg:col-span-6 xl:col-span-7) */}
+            <div className="lg:col-span-6 xl:col-span-7 space-y-5 text-center lg:text-left">
+              {/* Credibility Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>● 100% ORIGINAL PRODUCTS</span>
               </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search fast chargers, power banks, earbuds, speakers..."
-                className={`w-full rounded-full border py-2.5 pl-10 pr-9 text-xs sm:text-sm focus:border-[#00C4CC] focus:outline-none focus:ring-2 focus:ring-[#00C4CC]/30 transition shadow-inner font-medium ${cardBg}`}
-                enterKeyHint="search"
-                autoComplete="off"
-              />
-              {searchQuery && (
+
+              {/* Headline */}
+              <h1 className="font-display text-3xl sm:text-5xl xl:text-6xl font-black tracking-tight leading-[1.08]">
+                <span className={`block ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  Premium Tech.
+                </span>
+                <span className="block bg-gradient-to-r from-[#00C4CC] via-[#00E5FF] to-[#38BDF8] bg-clip-text text-transparent">
+                  Original Accessories.
+                </span>
+              </h1>
+
+              {/* Supporting Text */}
+              <p
+                className={`text-sm sm:text-base leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium ${
+                  isLight ? 'text-slate-700' : 'text-slate-200'
+                }`}
+                style={!isLight ? { color: '#F1F5F9' } : undefined}
+              >
+                Fast chargers, power banks, wireless earbuds, cables &amp; smart accessories — sourced at direct rates and delivered across Pakistan.
+              </p>
+
+              {/* CTA Action Buttons (Optimized Conversion Hierarchy) */}
+              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
+                {/* 1. Primary CTA: Shop Gadgets */}
+                <a
+                  href="#product-catalog"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#00C4CC] to-[#00E5FF] hover:brightness-110 px-6 py-3.5 font-display text-sm font-black text-[#04080F] shadow-[0_0_28px_rgba(0,196,204,0.45)] transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <span>Shop Gadgets →</span>
+                </a>
+
+                {/* 2. Secondary Prominent CTA: 🔥 Hot Deals */}
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-silver-dim hover:text-silver-bright transition"
-                  aria-label="Clear search"
+                  onClick={() => setOffersOnly((prev) => !prev)}
+                  className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-3.5 font-display text-sm font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer ${
+                    offersOnly
+                      ? 'border-rose-400 bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-[0_0_22px_rgba(244,63,94,0.45)]'
+                      : isLight
+                      ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                      : 'border-amber-500/50 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 shadow-[0_0_18px_rgba(245,158,11,0.2)]'
+                  }`}
                 >
-                  ✕
+                  <span>🔥</span>
+                  <span>{offersOnly ? 'Showing Deals' : 'Hot Deals'}</span>
                 </button>
-              )}
+
+                {/* 3. Tertiary De-emphasized CTA: Rate List */}
+                <button
+                  type="button"
+                  onClick={handleDownloadRateSheet}
+                  className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3.5 font-display text-xs font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer ${
+                    isLight
+                      ? 'border-slate-300 bg-slate-100/90 text-slate-700 hover:bg-slate-200'
+                      : 'border-slate-800 bg-[#0A1220]/70 text-slate-300 hover:text-white hover:bg-[#0F1C30] hover:border-slate-600'
+                  }`}
+                  title="Print or Save Official Catalog Price Sheet"
+                >
+                  <span>📄</span>
+                  <span>Rate List</span>
+                </button>
+              </div>
+
+              {/* Conversion-Focused Trust Trigger Line */}
+              <div className="pt-1 flex flex-wrap items-center justify-center lg:justify-start gap-x-3 gap-y-1.5 text-xs font-semibold">
+                <span className="inline-flex items-center gap-1.5 text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  COD Available Nationwide
+                </span>
+                <span className="text-slate-600 hidden sm:inline">•</span>
+                <span className="inline-flex items-center gap-1.5 text-slate-300">
+                  <span className="text-[#00C4CC]">💬</span> Easy WhatsApp Ordering
+                </span>
+              </div>
             </div>
 
-            {/* Action Controls Right */}
-            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              {/* Special Offers Toggle Button */}
-              <button
-                type="button"
-                onClick={() => setOffersOnly((prev) => !prev)}
-                className={`hidden sm:flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold shadow-md transition hover:scale-105 active:scale-95 ${
-                  offersOnly
-                    ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white ring-2 ring-rose-400'
-                    : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                }`}
-              >
-                <span>🔥</span>
-                <span>{offersOnly ? 'All Items' : 'Offers'}</span>
-              </button>
-
-              {/* Rate Sheet PDF Button */}
-              <button
-                type="button"
-                onClick={handleDownloadRateSheet}
-                className="hidden lg:flex items-center gap-1.5 rounded-full bg-[#00C4CC] hover:bg-[#00B2B9] px-3.5 py-1.5 text-xs font-bold text-black shadow-md transition hover:scale-105 active:scale-95"
-                title="Download / Print Catalog Rate Sheet"
-              >
-                <span>📄</span>
-                <span>Rate Sheet</span>
-              </button>
-
-              {/* Theme Toggle Button */}
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:scale-105 active:scale-95 ${
-                  isLight
-                    ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
-                    : 'border-slate-700/80 bg-[#0C1420] text-silver-bright hover:border-slate-600'
-                }`}
-                aria-label="Toggle Theme"
-              >
-                <span>{isLight ? '🌙' : '☀️'}</span>
-                <span className="hidden lg:inline">{isLight ? 'Dark' : 'Light'}</span>
-              </button>
-
-              {/* Shopping Cart Button */}
-              <button
-                type="button"
-                onClick={openCart}
-                data-tour="customer-cart"
-                className={`relative flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition hover:scale-105 active:scale-95 ${
-                  isLight
-                    ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
-                    : 'border-[#00C4CC]/50 bg-[#0C1420] text-[#00C4CC] hover:bg-[#00C4CC]/10'
-                }`}
-                aria-label="Shopping Cart"
-              >
-                <span>🛒</span>
-                <span className="hidden sm:inline">Cart</span>
-                {totalItems > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#00C4CC] px-1 text-[11px] font-black text-black shadow-[0_0_8px_rgba(0,196,204,0.6)]">
-                    {totalItems}
-                  </span>
-                )}
-              </button>
+            {/* RIGHT COLUMN: 4-5 GADGET COMMERCIAL COMPOSITION (lg:col-span-6 xl:col-span-5) */}
+            <div className="lg:col-span-6 xl:col-span-5 relative flex items-center justify-center">
+              <HeroProductComposition
+                products={initialProducts}
+                customHeroImage={settings?.hero_image_url}
+                isLight={isLight}
+              />
             </div>
           </div>
 
-          {/* Mobile Search Bar (Full Width, Sleek) */}
-          <div className="relative block md:hidden w-full" data-tour="customer-search-mobile">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-silver-dim">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+          {/* ─────────────────────────────────────────────────────────────
+              BENEFITS & TRUST VALUE PILLARS (Compact & Sleek)
+          ───────────────────────────────────────────────────────────── */}
+          <div className="mt-8 pt-6 border-t border-slate-800/50 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+            <div
+              className={`flex items-center gap-3 py-2.5 px-3 sm:px-3.5 rounded-2xl border transition-all duration-200 ${
+                isLight
+                  ? 'border-slate-200 bg-slate-50/80 text-slate-900 hover:border-slate-300'
+                  : 'border-slate-800/80 bg-[#091220]/70 text-white hover:border-[#00C4CC]/30 hover:bg-[#0C1728]'
+              }`}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00C4CC]/10 border border-[#00C4CC]/20 text-base shadow-[0_0_10px_rgba(0,196,204,0.15)]">
+                🛡️
+              </div>
+              <div className="min-w-0">
+                <strong className="block text-xs font-extrabold uppercase tracking-wider font-display truncate text-white">
+                  100% Authentic
+                </strong>
+                <span
+                  className={`block text-[11px] font-medium truncate ${isLight ? 'text-slate-600' : 'text-slate-300'}`}
+                  style={!isLight ? { color: '#CBD5E1' } : undefined}
+                >
+                  Original Products
+                </span>
+              </div>
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search fast chargers, power banks, earbuds, speakers..."
-              className={`w-full rounded-full border py-2.5 pl-10 pr-9 text-xs focus:border-[#00C4CC] focus:outline-none focus:ring-2 focus:ring-[#00C4CC]/30 transition shadow-inner font-medium ${cardBg}`}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-silver-dim hover:text-silver-bright transition"
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            )}
+
+            <div
+              className={`flex items-center gap-3 py-2.5 px-3 sm:px-3.5 rounded-2xl border transition-all duration-200 ${
+                isLight
+                  ? 'border-slate-200 bg-slate-50/80 text-slate-900 hover:border-slate-300'
+                  : 'border-slate-800/80 bg-[#091220]/70 text-white hover:border-[#00C4CC]/30 hover:bg-[#0C1728]'
+              }`}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-base shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+                🚚
+              </div>
+              <div className="min-w-0">
+                <strong className="block text-xs font-extrabold uppercase tracking-wider font-display truncate text-white">
+                  2–4 Day Delivery
+                </strong>
+                <span
+                  className={`block text-[11px] font-medium truncate ${isLight ? 'text-slate-600' : 'text-slate-300'}`}
+                  style={!isLight ? { color: '#CBD5E1' } : undefined}
+                >
+                  Pakistan-Wide
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={`flex items-center gap-3 py-2.5 px-3 sm:px-3.5 rounded-2xl border transition-all duration-200 ${
+                isLight
+                  ? 'border-slate-200 bg-slate-50/80 text-slate-900 hover:border-slate-300'
+                  : 'border-slate-800/80 bg-[#091220]/70 text-white hover:border-[#00C4CC]/30 hover:bg-[#0C1728]'
+              }`}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-base shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                💵
+              </div>
+              <div className="min-w-0">
+                <strong className="block text-xs font-extrabold uppercase tracking-wider font-display truncate text-white">
+                  Cash on Delivery
+                </strong>
+                <span
+                  className={`block text-[11px] font-medium truncate ${isLight ? 'text-slate-600' : 'text-slate-300'}`}
+                  style={!isLight ? { color: '#CBD5E1' } : undefined}
+                >
+                  Pay at Doorstep
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={`flex items-center gap-3 py-2.5 px-3 sm:px-3.5 rounded-2xl border transition-all duration-200 ${
+                isLight
+                  ? 'border-slate-200 bg-slate-50/80 text-slate-900 hover:border-slate-300'
+                  : 'border-slate-800/80 bg-[#091220]/70 text-white hover:border-[#00C4CC]/30 hover:bg-[#0C1728]'
+              }`}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 text-base shadow-[0_0_10px_rgba(59,130,246,0.15)]">
+                💬
+              </div>
+              <div className="min-w-0">
+                <strong className="block text-xs font-extrabold uppercase tracking-wider font-display truncate text-white">
+                  WhatsApp Support
+                </strong>
+                <span
+                  className={`block text-[11px] font-medium truncate ${isLight ? 'text-slate-600' : 'text-slate-300'}`}
+                  style={!isLight ? { color: '#CBD5E1' } : undefined}
+                >
+                  Quick Assistance
+                </span>
+              </div>
+            </div>
           </div>
-        </header>
+        </section>
+
+        {/* Real-time Flash Sale Countdown Urgency Banner */}
+        <FlashSaleBanner
+          onShopDeals={() => setIsOffersModalOpen(true)}
+          isLight={isLight}
+        />
+
+        {/* Exclusive Active Deals & Offers Modal */}
+        <OffersModal
+          isOpen={isOffersModalOpen}
+          onClose={() => setIsOffersModalOpen(false)}
+          products={initialProducts}
+          settings={settings}
+          onFilterDeals={() => {
+            setOffersOnly(true);
+            setIsOffersModalOpen(false);
+          }}
+          isLight={isLight}
+        />
 
         {/* Free Delivery Announcement Banner */}
         {isMounted && freeShippingThreshold > 0 && (
-          <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-4 text-center shadow-sm">
-            <div className="flex items-center justify-center gap-2 text-sm font-bold text-emerald-400">
-              <span className="text-xl">🚚</span>
-              <span className="font-display tracking-wide">
-                FREE DELIVERY on orders above Rs. {freeShippingThreshold.toLocaleString('en-PK')}
+          <div
+            className={`rounded-2xl border p-3.5 sm:p-4 text-center transition-all ${
+              isLight
+                ? 'border-emerald-200 bg-emerald-50/70 text-emerald-900 shadow-sm'
+                : 'border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-black">
+              <span className="text-base sm:text-lg">🚚</span>
+              <span className="font-display tracking-wide uppercase">
+                FREE Nationwide Delivery on orders above Rs. {freeShippingThreshold.toLocaleString('en-PK')}
               </span>
-              <span className="text-xl">✨</span>
+              <span className="text-base sm:text-lg">✨</span>
             </div>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* STATS & FILTER CONTROLS */}
+        {/* SHOP BY CATEGORY COMPONENT                                   */}
         {/* ============================================================ */}
+        <div className="hidden sm:block">
+          <ShopByCategoryGrid
+            categories={categories}
+            products={initialProducts}
+            selectedCategory={selectedCategory}
+            onSelectCategory={(slug) => {
+              setSelectedCategory(slug);
+              setOffersOnly(false);
+            }}
+            isLight={isLight}
+          />
+        </div>
+
+        {/* ============================================================ */}
+        {/* STATS BAR + INSTOCK SWITCH + SORTING SELECTOR                */}
+        {/* ============================================================ */}
+        <div id="product-catalog" className="scroll-mt-24 space-y-4 pt-2">
         {(() => {
-          const activeCategoriesCount = categories.filter((c) => (categoryCounts[c.slug] || 0) > 0).length;
+          const activeCategoriesCount = categories.filter(
+            (c) => (categoryCounts[c.slug] || 0) > 0
+          ).length;
           return (
-            <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="text-xs sm:text-sm font-medium text-silver-dim">
-                Showing <span className="font-bold text-[#00C4CC]">{filteredProducts.length}</span> products ·{' '}
-                <span className="font-bold text-silver-bright">{activeCategoriesCount}</span> categories
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <div className="text-xs sm:text-sm font-medium text-slate-400 flex items-center gap-2">
+                <span>Showing</span>
+                <span className="font-extrabold text-[#00C4CC] font-display">
+                  {filteredProducts.length}
+                </span>
+                <span>products across</span>
+                <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  {activeCategoriesCount}
+                </span>
+                <span>categories</span>
               </div>
 
               <div className="flex items-center gap-2.5">
-                {/* In-Stock Only Toggle Pill */}
+                {/* Hot Deals Toggle Pill */}
                 <button
-                  onClick={() => setInStockOnly((prev) => !prev)}
-                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                    inStockOnly
-                      ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
-                      : 'border-slate-800 bg-[#0C1420] text-silver-dim hover:border-slate-700'
+                  type="button"
+                  onClick={() => setOffersOnly((prev) => !prev)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition duration-200 cursor-pointer ${
+                    offersOnly
+                      ? 'border-rose-500 bg-rose-500/20 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)] ring-1 ring-rose-500'
+                      : isLight
+                      ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                      : 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-400 hover:bg-amber-500/20'
                   }`}
                 >
-                  <span className={`h-1.5 w-1.5 rounded-full ${inStockOnly ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></span>
+                  <span>🔥</span>
+                  <span>Hot Deals</span>
+                  {dealsCount > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[9px] font-black ${
+                        offersOnly ? 'bg-rose-500 text-white' : 'bg-amber-500/30 text-amber-300'
+                      }`}
+                    >
+                      {dealsCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* In-Stock Toggle Pill */}
+                <button
+                  type="button"
+                  onClick={() => setInStockOnly((prev) => !prev)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition duration-200 cursor-pointer ${
+                    inStockOnly
+                      ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                      : isLight
+                      ? 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+                      : 'border-slate-800 bg-[#0B121E] text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      inStockOnly ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                    }`}
+                  />
                   <span>In-Stock Only</span>
                 </button>
 
@@ -565,148 +677,208 @@ export default function LiveStorefront({
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className={`cursor-pointer rounded-lg border px-3 py-1 text-xs font-semibold focus:border-[#00C4CC] focus:outline-none ${cardBg}`}
+                  className={`cursor-pointer rounded-xl border px-3 py-1.5 text-xs font-bold focus:border-[#00C4CC] focus:outline-none transition ${cardBg}`}
                 >
                   <option value="default">Sort: Default ▾</option>
                   <option value="price_asc">Price: Low to High</option>
                   <option value="price_desc">Price: High to Low</option>
                   <option value="discount">Biggest Discount</option>
-                  <option value="newest">Newest</option>
+                  <option value="newest">Newest Arrivals</option>
                 </select>
+
+                {/* View Mode Switcher */}
+                <div
+                  className={`hidden sm:flex items-center rounded-xl border p-1 text-xs font-semibold ${cardBg}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition duration-150 ${
+                      viewMode === 'grid'
+                        ? 'bg-[#00C4CC]/20 text-[#00C4CC] border border-[#00C4CC]/40 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Grid View"
+                  >
+                    <span>⊞</span>
+                    <span>Grid</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition duration-150 ${
+                      viewMode === 'list'
+                        ? 'bg-[#00C4CC]/20 text-[#00C4CC] border border-[#00C4CC]/40 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="List View"
+                  >
+                    <span>☰</span>
+                    <span>List</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
         })()}
 
         {/* ============================================================ */}
-        {/* CYAN GLOW DIVIDER */}
+        {/* CATEGORY TABS HORIZONTAL SCROLLER                           */}
         {/* ============================================================ */}
-        <div className="mt-3.5 h-[2px] w-full bg-gradient-to-r from-transparent via-[#00C4CC] to-transparent shadow-[0_0_12px_rgba(0,196,204,0.7)]"></div>
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none" data-tour="customer-categories">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategory('all');
+              setOffersOnly(false);
+            }}
+            className={`shrink-0 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition duration-200 shadow-sm cursor-pointer ${
+              selectedCategory === 'all' && !offersOnly
+                ? 'bg-gradient-to-r from-[#00C4CC] to-[#00E5FF] text-[#04080F] shadow-[0_0_15px_rgba(0,196,204,0.4)]'
+                : isLight
+                ? 'border border-slate-200 bg-white text-slate-600 hover:border-[#0891B2]/50 hover:text-slate-900'
+                : 'border border-slate-800 bg-[#0B121E] text-slate-300 hover:text-white hover:border-[#00C4CC]/50'
+            }`}
+          >
+            All Products ({initialProducts.length})
+          </button>
 
-        {/* ============================================================ */}
-        {/* CATEGORY TABS + VIEW MODE SWITCHER */}
-        {/* ============================================================ */}
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Category Tabs (Hides categories with 0 products) */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none" data-tour="customer-categories">
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`shrink-0 rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold transition shadow-sm ${
-                selectedCategory === 'all'
-                  ? 'bg-[#00C4CC] text-black shadow-[0_0_12px_rgba(0,196,204,0.4)]'
-                  : `border border-slate-800 text-silver-dim hover:text-silver-bright hover:border-[#00C4CC]/50 ${cardBg}`
-              }`}
-            >
-              All Products ({initialProducts.length})
-            </button>
-            {categories.map((c) => {
-              const count = categoryCounts[c.slug] || 0;
-              if (count === 0) return null; // Hide 0-product categories completely
-              const isSelected = selectedCategory === c.slug;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCategory(c.slug)}
-                  className={`shrink-0 rounded-full px-4 py-1.5 text-xs sm:text-sm font-semibold transition ${
-                    isSelected
-                      ? 'bg-[#00C4CC] text-black font-bold shadow-[0_0_12px_rgba(0,196,204,0.4)]'
-                      : `border border-slate-800 text-silver-dim hover:text-silver-bright hover:border-[#00C4CC]/50 ${cardBg}`
-                  }`}
-                >
-                  {c.name} ({count})
-                </button>
-              );
-            })}
-          </div>
+          {/* Dedicated Hot Deals Tab */}
+          <button
+            type="button"
+            onClick={() => {
+              setOffersOnly(true);
+              setSelectedCategory('all');
+            }}
+            className={`shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition duration-200 shadow-sm cursor-pointer ${
+              offersOnly
+                ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-[0_0_18px_rgba(245,158,11,0.5)] ring-1 ring-rose-400'
+                : isLight
+                ? 'border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                : 'border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-400 hover:bg-amber-500/20'
+            }`}
+          >
+            <span>🔥</span>
+            <span>Hot Deals</span>
+            {dealsCount > 0 && (
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                  offersOnly ? 'bg-black/40 text-amber-300' : 'bg-amber-500/30 text-amber-300'
+                }`}
+              >
+                {dealsCount}
+              </span>
+            )}
+          </button>
 
-          {/* View Mode Switcher */}
-          <div className={`flex items-center self-end sm:self-auto shrink-0 rounded-lg border p-1 text-xs font-semibold ${cardBg}`}>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition ${
-                viewMode === 'grid'
-                  ? 'bg-[#00C4CC]/20 text-[#00C4CC] border border-[#00C4CC]/50 shadow-sm'
-                  : 'text-silver-dim hover:text-silver-bright'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z" />
-              </svg>
-              <span>Grid</span>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition ${
-                viewMode === 'list'
-                  ? 'bg-[#00C4CC]/20 text-[#00C4CC] border border-[#00C4CC]/50 shadow-sm'
-                  : 'text-silver-dim hover:text-silver-bright'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
-              </svg>
-              <span>List</span>
-            </button>
-          </div>
+          {categories.map((c) => {
+            const count = categoryCounts[c.slug] || 0;
+            if (count === 0) return null;
+            const isSelected = selectedCategory === c.slug && !offersOnly;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(c.slug);
+                  setOffersOnly(false);
+                }}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold transition duration-200 shadow-sm cursor-pointer ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-[#00C4CC] to-[#00E5FF] text-[#04080F] font-bold shadow-[0_0_15px_rgba(0,196,204,0.4)]'
+                    : isLight
+                    ? 'border border-slate-200 bg-white text-slate-600 hover:border-[#0891B2]/50 hover:text-slate-900'
+                    : 'border border-slate-800 bg-[#0B121E] text-slate-300 hover:text-white hover:border-[#00C4CC]/50'
+                }`}
+              >
+                {c.name} ({count})
+              </button>
+            );
+          })}
         </div>
 
         {/* ============================================================ */}
-        {/* PRODUCTS AREA */}
+        {/* PRODUCTS LISTING / GRID AREA                                 */}
         {/* ============================================================ */}
-        <div className="mt-6">
+        <div className="pt-2">
           {filteredProducts.length === 0 && filteredSeries.length === 0 ? (
-            <div className={`flex flex-col items-center justify-center rounded-2xl border py-20 text-center ${cardBg}`}>
-              <span className="text-4xl mb-3">📦</span>
-              <p className="font-display text-lg font-bold text-silver-bright">No products found</p>
-              <p className="mt-1 text-xs sm:text-sm text-silver-dim">
-                Try searching for a different keyword or choose another category.
+            <div className={`flex flex-col items-center justify-center rounded-3xl border py-20 text-center ${cardBg}`}>
+              <span className="text-5xl mb-3">📦</span>
+              <p className="font-display text-lg font-bold">No products match your filter</p>
+              <p className="mt-1 text-xs sm:text-sm text-slate-400 max-w-md">
+                We couldn&apos;t find any gadgets matching your query. Try resetting your search or selecting a different category.
               </p>
-              {(searchQuery || selectedCategory !== 'all' || inStockOnly) && (
+              {(searchQuery || selectedCategory !== 'all' || inStockOnly || offersOnly) && (
                 <button
+                  type="button"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedCategory('all');
                     setInStockOnly(false);
+                    setOffersOnly(false);
                   }}
-                  className="mt-4 rounded-xl bg-[#00C4CC] px-5 py-2 font-display text-xs sm:text-sm font-bold text-black shadow-sm transition hover:brightness-110"
+                  className="mt-5 rounded-2xl bg-[#00C4CC] px-6 py-2.5 font-display text-xs sm:text-sm font-black text-black shadow-md transition hover:brightness-110"
                 >
-                  Clear Filters
+                  Clear All Filters
                 </button>
               )}
             </div>
           ) : viewMode === 'grid' ? (
-            /* ============================================================ */
-            /* CARDS GRID VIEW (2 cols mobile, 3 tablet, 4 desktop) */
-            /* ============================================================ */
+            /* CARDS GRID VIEW */
             <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-3 lg:grid-cols-4">
               {filteredSeries.map((series) => (
                 <SeriesCard key={`series-${series.id}`} series={series} settings={settings} isLight={isLight} />
               ))}
-              {displayedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} settings={settings} isLight={isLight} />
+              {displayedProducts.map((product, idx) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  settings={settings}
+                  isLight={isLight}
+                  priority={idx < 4}
+                />
               ))}
             </div>
           ) : (
-            /* ============================================================ */
             /* COMPACT LIST / RATE SHEET VIEW */
-            /* ============================================================ */
-            <div className={`overflow-hidden rounded-2xl border divide-y divide-slate-800 ${cardBg}`}>
+            <div className={`overflow-hidden rounded-3xl border divide-y ${cardBg} ${isLight ? 'divide-slate-200' : 'divide-slate-800/80'}`}>
               {displayedProducts.map((product) => {
                 const primaryImage =
                   product.product_images?.find((i) => i.is_primary)?.image_url ||
                   product.product_images?.[0]?.image_url ||
                   '/images/logo.png';
 
+                const productUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products/${product.slug}`;
+                const phone = settings?.whatsapp_number && settings.whatsapp_number.trim()
+                  ? settings.whatsapp_number
+                  : '+92 348 9593671';
+
+                const orderLink = buildWhatsAppOrderLink({
+                  whatsappNumber: phone,
+                  template: settings?.order_message_template || null,
+                  productName: product.name,
+                  price: product.price,
+                  quantity: 1,
+                  discount: 0,
+                  finalPrice: product.price,
+                  productUrl,
+                  currencySymbol: settings?.currency_symbol || 'Rs.',
+                });
+
                 return (
                   <div
                     key={product.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 hover:bg-[#00C4CC]/5 transition duration-200"
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 transition duration-150 ${
+                      isLight ? 'hover:bg-slate-50' : 'hover:bg-[#0F1A2A]'
+                    }`}
                   >
-                    {/* Left: Thumbnail & Details */}
-                    <div className="flex items-center gap-3 min-w-0">
+                    {/* Thumbnail & Title */}
+                    <div className="flex items-center gap-3.5 min-w-0">
                       <Link
                         href={`/products/${product.slug}`}
-                        className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 overflow-hidden rounded-xl border border-slate-800 bg-black/30 p-1"
+                        className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border p-1 ${
+                          isLight ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-black/40'
+                        }`}
                       >
                         <Image
                           src={primaryImage}
@@ -720,15 +892,23 @@ export default function LiveStorefront({
                         <div className="flex items-center gap-2">
                           <Link href={`/products/${product.slug}`}>
                             <h4
-                              className={`font-display text-xs sm:text-sm font-bold hover:text-[#00C4CC] transition truncate ${
-                                isLight ? 'text-slate-900' : 'text-white'
+                              className={`font-display text-xs sm:text-sm font-bold transition truncate ${
+                                isLight
+                                  ? 'text-slate-900 hover:text-[#0891B2]'
+                                  : 'text-white hover:text-[#00C4CC]'
                               }`}
                             >
                               {product.name}
                             </h4>
                           </Link>
                           {product.category && (
-                            <span className="hidden sm:inline-block rounded-full bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-2 py-0.5 text-[10px] font-bold text-[#00C4CC]">
+                            <span
+                              className={`hidden sm:inline-block rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                                isLight
+                                  ? 'bg-cyan-50 text-cyan-800 border border-cyan-200'
+                                  : 'bg-[#00C4CC]/10 text-[#00C4CC] border border-[#00C4CC]/30'
+                              }`}
+                            >
                               {product.category.name}
                             </span>
                           )}
@@ -740,21 +920,23 @@ export default function LiveStorefront({
                           )}
                         </div>
                         {product.short_description && (
-                          <p className="text-xs text-silver-dim truncate">{product.short_description}</p>
+                          <p className="text-xs text-slate-400 truncate mt-0.5">
+                            {product.short_description}
+                          </p>
                         )}
                       </div>
                     </div>
 
-                    {/* Right: Stock + Price + WhatsApp button */}
-                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-14 sm:pl-0">
+                    {/* Stock + Price + Direct Actions */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-16 sm:pl-0">
                       {/* Stock badge */}
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold whitespace-nowrap ${
                           product.stock_status === 'in_stock'
                             ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             : product.stock_status === 'low_stock'
                             ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                            : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                         }`}
                       >
                         {product.stock_status === 'in_stock'
@@ -766,15 +948,13 @@ export default function LiveStorefront({
 
                       {/* Prices */}
                       <div className="text-right whitespace-nowrap">
-                        <div
-                          className="font-display text-sm sm:text-base font-black text-[#00C4CC]"
-                        >
+                        <div className="font-display text-sm sm:text-base font-black text-[#00C4CC]">
                           {formatPrice(product.price, settings)}
                         </div>
                         {product.old_price && product.old_price > product.price && (
                           <div
                             className={`text-[10px] line-through ${
-                              isLight ? 'text-slate-500' : 'text-slate-400'
+                              isLight ? 'text-slate-400' : 'text-slate-500'
                             }`}
                           >
                             {formatPrice(product.old_price, settings)}
@@ -782,64 +962,39 @@ export default function LiveStorefront({
                         )}
                       </div>
 
-                      {/* Action Buttons */}
-                      {(() => {
-                        const productUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/products/${product.slug}`;
-                        const phone =
-                          settings?.whatsapp_number && settings.whatsapp_number.trim()
-                            ? settings.whatsapp_number
-                            : '+92 348 9593671';
-
-                        const orderLink = buildWhatsAppOrderLink({
-                          whatsappNumber: phone,
-                          template: settings?.order_message_template || null,
-                          productName: product.name,
-                          price: product.price,
-                          quantity: 1,
-                          discount: 0,
-                          finalPrice: product.price,
-                          productUrl,
-                          currencySymbol: settings?.currency_symbol || 'Rs.',
-                        });
-
-                        return (
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <a
-                              href={orderLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={() => trackWhatsAppClick(product.id)}
-                              className="flex items-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-3 py-1.5 text-xs font-black text-white shadow-sm transition hover:scale-[1.02] whitespace-nowrap"
-                            >
-                              <svg viewBox="0 0 32 32" className="h-3.5 w-3.5 fill-white shrink-0">
-                                <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
-                              </svg>
-                              <span>Order</span>
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => addToCart(product, 1)}
-                              className="flex items-center gap-1 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] text-black px-2.5 py-1.5 text-xs font-black transition whitespace-nowrap"
-                              title="Add to cart"
-                            >
-                              <span>🛒</span>
-                              <span className="hidden sm:inline">Cart</span>
-                            </button>
-                            {product.free_delivery && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-400 whitespace-nowrap">
-                                <span>🚚</span>
-                                <span>Free Delivery</span>
-                              </span>
-                            )}
-                            <Link
-                              href={`/products/${product.slug}`}
-                              className="rounded-xl border border-slate-700/80 hover:border-[#00C4CC] px-2.5 py-1.5 text-center font-display text-xs font-semibold text-silver-bright hover:text-[#00C4CC] transition whitespace-nowrap"
-                            >
-                              Details
-                            </Link>
-                          </div>
-                        );
-                      })()}
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={orderLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => trackWhatsAppClick(product.id)}
+                          className="flex items-center gap-1.5 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] px-3 py-1.5 text-xs font-black text-white shadow-sm transition hover:scale-105 active:scale-95 whitespace-nowrap"
+                        >
+                          <svg viewBox="0 0 32 32" className="h-3.5 w-3.5 fill-white shrink-0">
+                            <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.34.687 4.52 1.872 6.35L4 29l7.86-1.83A11.94 11.94 0 0016 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3z" />
+                          </svg>
+                          <span>Order</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => addToCart(product, 1)}
+                          className="flex items-center gap-1 rounded-xl bg-[#00C4CC] hover:bg-[#00E5FF] text-black px-2.5 py-1.5 text-xs font-black transition hover:scale-105 active:scale-95 whitespace-nowrap"
+                          title="Add to cart"
+                        >
+                          <span>🛒</span>
+                        </button>
+                        <Link
+                          href={`/products/${product.slug}`}
+                          className={`rounded-xl border px-2.5 py-1.5 text-center font-display text-xs font-bold transition whitespace-nowrap ${
+                            isLight
+                              ? 'border-slate-300 text-slate-700 hover:border-[#0891B2]'
+                              : 'border-slate-700 text-slate-300 hover:border-[#00C4CC] hover:text-[#00C4CC]'
+                          }`}
+                        >
+                          Details
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );
@@ -853,21 +1008,22 @@ export default function LiveStorefront({
               <button
                 type="button"
                 onClick={() => setVisibleCount((prev) => prev + 24)}
-                className="group flex items-center gap-2 rounded-2xl border border-[#00C4CC]/40 bg-[#00C4CC]/10 hover:bg-[#00C4CC] px-8 py-3.5 font-display text-sm font-bold text-[#00C4CC] hover:text-black transition shadow-[0_0_20px_rgba(0,196,204,0.15)] hover:scale-[1.02]"
+                className="group relative overflow-hidden flex items-center gap-2.5 rounded-2xl border border-[#00C4CC]/50 bg-[#00C4CC]/10 hover:bg-[#00C4CC] px-8 py-3.5 font-display text-sm font-black text-[#00C4CC] hover:text-black transition duration-200 shadow-[0_0_25px_rgba(0,196,204,0.15)] hover:scale-105 active:scale-95"
               >
                 <span>Load More Products</span>
-                <span className="rounded-full bg-[#00C4CC]/20 group-hover:bg-black/20 px-2.5 py-0.5 text-xs font-semibold">
+                <span className="rounded-full bg-[#00C4CC]/20 group-hover:bg-black/20 px-2 py-0.5 text-xs font-black">
                   +{Math.min(24, filteredProducts.length - visibleCount)} more
                 </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:animate-shine" />
               </button>
-              <span className="text-xs text-silver-dim">
-                Showing {displayedProducts.length} of {filteredProducts.length} items
+              <span className="text-xs text-slate-400">
+                Showing {displayedProducts.length} of {filteredProducts.length} products
               </span>
             </div>
           )}
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
-

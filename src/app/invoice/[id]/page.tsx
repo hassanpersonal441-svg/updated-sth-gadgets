@@ -15,6 +15,10 @@ export async function generateMetadata({ params }: PublicInvoicePageProps): Prom
   return {
     title: `Invoice ${id} — STH Gadgets`,
     description: `Official digital invoice from STH Gadgets for invoice ${id}.`,
+    robots: {
+      index: false,
+      follow: false,
+    },
   };
 }
 

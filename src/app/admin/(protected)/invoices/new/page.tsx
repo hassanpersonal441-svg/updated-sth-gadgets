@@ -273,7 +273,7 @@ function CreateInvoiceContent() {
 
     const effectiveSubtotal = subtotal - itemDiscountTotal;
     if (effectiveSubtotal < (found.minimum_order || 0)) {
-      setCouponError(`Minimum order amount of IDR ${found.minimum_order} required for this coupon`);
+      setCouponError(`Minimum order amount of Rs. ${found.minimum_order} required for this coupon`);
       setAppliedCoupon(null);
       return;
     }
@@ -746,7 +746,7 @@ function CreateInvoiceContent() {
                           />
                         </td>
                         <td className="p-3 text-right font-mono font-bold text-[#00C4CC]">
-                          IDR {item.total.toLocaleString()}
+                          Rs. {item.total.toLocaleString()}
                         </td>
                         <td className="p-3 text-center">
                           <button
@@ -808,7 +808,7 @@ function CreateInvoiceContent() {
                   {couponError && <p className="text-[11px] text-rose-400 mt-1">{couponError}</p>}
                   {appliedCoupon && (
                     <p className="text-[11px] text-emerald-400 mt-1 font-mono">
-                      ✓ Coupon Applied: {appliedCoupon.code} (-IDR {couponDiscountAmount.toLocaleString()})
+                      ✓ Coupon Applied: {appliedCoupon.code} (-Rs. {couponDiscountAmount.toLocaleString()})
                     </p>
                   )}
                 </div>
@@ -900,7 +900,7 @@ function CreateInvoiceContent() {
                   </div>
                   {itemDiscountTotal > 0 && (
                     <div className="flex justify-between items-center text-amber-400 bg-amber-500/10 p-2 rounded-lg border border-amber-500/30">
-                      <span className="font-bold">🏷️ Price Adjusted (خود دیا گیا ڈسکاؤنٹ):</span>
+                      <span className="font-bold">🏷️ Price Adjusted (Manual Discount):</span>
                       <span className="font-bold">-PKR {itemDiscountTotal.toLocaleString()}</span>
                     </div>
                   )}

@@ -4,19 +4,19 @@
 
 :root {
   color-scheme: dark;
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
 
-  /* Default Dark Mode CSS Variables */
-  --bg-main: #080D15;
-  --bg-surface: #0C1420;
-  --bg-card: #0C1420;
-  --bg-header: rgba(8, 13, 21, 0.95);
-  --border-color: #1E293B;
-  --border-hover: #334155;
-  --text-main: #C9D2DB;
+  /* Dark Mode Tokens */
+  --bg-main: #060A11;
+  --bg-surface: #0B121E;
+  --bg-card: #0F1A2A;
+  --bg-header: rgba(6, 10, 17, 0.85);
+  --border-color: #1E2C40;
+  --border-hover: #00C4CC;
+  --text-main: #CBD5E1;
   --text-bright: #FFFFFF;
-  --text-muted: #64748B;
+  --text-muted: #8E9BAE;
   --brand-cyan: #00C4CC;
   --brand-cyan-glow: rgba(0, 196, 204, 0.4);
 }
@@ -24,7 +24,7 @@
 html {
   scroll-behavior: smooth;
   color-scheme: dark;
-  background-color: #080D15;
+  background-color: #060A11;
   max-width: 100%;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
@@ -32,242 +32,88 @@ html {
 }
 
 body {
-  background-color: #080D15;
-  color: #C9D2DB;
+  background-color: #060A11;
+  color: #CBD5E1;
   color-scheme: dark;
   max-width: 100%;
   overflow-x: hidden;
-  -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%;
-}
-
-/* Keep mobile fixed actions positioned correctly with side navigation */
-@media (max-width: 639px) {
-  body {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .mobile-exclusive-offer,
-  .mobile-chat-launcher {
-    bottom: 1.5rem;
-  }
-
-  .mobile-cart-summary {
-    bottom: 5rem;
-    max-width: calc(100vw - 1.5rem);
-  }
-}
-
-@media (min-width: 640px) {
-  .mobile-exclusive-offer { bottom: 1.5rem; }
-  .mobile-cart-summary { bottom: 6rem; }
-  .mobile-chat-launcher { bottom: 1.5rem; }
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ============================================================ */
-/* LIGHT MODE GLOBAL SYSTEM & ENHANCED THEME STYLING */
+/* LIGHT THEME SYSTEM OVERRIDES                                 */
 /* ============================================================ */
-
 html[data-theme="light"] {
   color-scheme: light !important;
   --bg-main: #F8FAFC;
   --bg-surface: #FFFFFF;
   --bg-card: #FFFFFF;
-  --bg-header: rgba(255, 255, 255, 0.95);
+  --bg-header: rgba(255, 255, 255, 0.88);
   --border-color: #E2E8F0;
-  --border-hover: #CBD5E1;
-  --text-main: #0F172A;
-  --text-bright: #020617;
-  --text-muted: #475569;
-  --brand-cyan: #008B94;
-  --brand-cyan-glow: rgba(0, 139, 148, 0.2);
+  --border-hover: #0891B2;
+  --text-main: #1E293B;
+  --text-bright: #0F172A;
+  --text-muted: #64748B;
+  --brand-cyan: #0891B2;
+  --brand-cyan-glow: rgba(8, 145, 178, 0.2);
 }
 
 html[data-theme="light"],
 html[data-theme="light"] body {
   background-color: #F8FAFC !important;
-  color: #0F172A !important;
+  color: #1E293B !important;
   color-scheme: light !important;
 }
 
-html[data-theme="light"] ::-webkit-scrollbar-track {
-  background: #F1F5F9 !important;
-}
-
-html[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: #CBD5E1 !important;
-  border-radius: 8px !important;
-}
-
-html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8 !important;
-}
-
-/* Page & Outer Container Backgrounds */
+/* Base Light Mode Background Overrides */
+html[data-theme="light"] .bg-\[\#060A11\],
 html[data-theme="light"] .bg-\[\#080D15\],
 html[data-theme="light"] .bg-\[\#05080E\],
 html[data-theme="light"] .bg-\[\#050608\],
 html[data-theme="light"] .bg-\[\#04070C\],
 html[data-theme="light"] .bg-slate-950,
-html[data-theme="light"] .bg-slate-900,
-html[data-theme="light"] .bg-base,
-html[data-theme="light"] .bg-base-raised {
+html[data-theme="light"] .bg-base {
   background-color: #F8FAFC !important;
 }
 
-/* Header Backgrounds */
-html[data-theme="light"] .bg-\[\#080D15\]\/95,
-html[data-theme="light"] .bg-\[\#0C1420\]\/95,
-html[data-theme="light"] .bg-\[\#0C1420\]\/90 {
-  background-color: rgba(255, 255, 255, 0.96) !important;
-  backdrop-filter: blur(12px) !important;
-}
-
-/* Cards, Modals, Drawers, Dropdowns, Sidebars & Surfaces */
+html[data-theme="light"] .bg-\[\#0B121E\],
 html[data-theme="light"] .bg-\[\#0C1420\],
 html[data-theme="light"] .bg-\[\#0C1422\],
+html[data-theme="light"] .bg-\[\#0F1A2A\],
 html[data-theme="light"] .bg-\[\#0A101A\],
-html[data-theme="light"] .bg-\[\#060A10\],
-html[data-theme="light"] .bg-\[\#08101A\],
 html[data-theme="light"] .bg-\[\#070B12\],
-html[data-theme="light"] .bg-\[\#04080F\],
+html[data-theme="light"] .bg-\[\#08101A\],
 html[data-theme="light"] .bg-base-card,
-html[data-theme="light"] .bg-slate-900\/60,
-html[data-theme="light"] .bg-slate-900\/80,
-html[data-theme="light"] .bg-slate-900\/90 {
+html[data-theme="light"] .bg-base-raised {
   background-color: #FFFFFF !important;
 }
 
-html[data-theme="light"] .bg-slate-800,
-html[data-theme="light"] .bg-slate-800\/80,
-html[data-theme="light"] .bg-slate-800\/50,
-html[data-theme="light"] .bg-slate-800\/90 {
-  background-color: #F1F5F9 !important;
-}
-
-/* Gradients in Light Mode */
-html[data-theme="light"] .from-\[\#0F1C2D\],
-html[data-theme="light"] .via-\[\#0C1420\],
-html[data-theme="light"] .to-\[\#080D15\] {
-  --tw-gradient-from: #FFFFFF var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: #F8FAFC var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-from), var(--tw-gradient-to)) !important;
-}
-
-/* Image Containers & Inner Wells in Light Mode */
-html[data-theme="light"] .bg-black\/20,
+html[data-theme="light"] .bg-\[\#04080F\],
 html[data-theme="light"] .bg-black\/30,
-html[data-theme="light"] .bg-black\/40,
-html[data-theme="light"] .bg-black\/50,
-html[data-theme="light"] div[class*="overflow-hidden"][class*="rounded"]:not([class*="bg-"]):not([class*="p-"]),
-html[data-theme="light"] .relative.aspect-square.bg-black\/20,
-html[data-theme="light"] .relative.aspect-square.bg-black\/30 {
-  background-color: #F8FAFC !important;
-}
-
-/* Modal Backdrops in Light Mode: Frosted Glass Slate Overlay */
-html[data-theme="light"] .bg-black\/70,
-html[data-theme="light"] .bg-black\/80,
-html[data-theme="light"] .bg-black\/90 {
-  background-color: rgba(15, 23, 42, 0.5) !important;
-  backdrop-filter: blur(8px) !important;
-}
-
-/* Hover States in Light Mode */
-html[data-theme="light"] .hover\:bg-\[\#080D15\]:hover,
-html[data-theme="light"] .hover\:bg-slate-800:hover,
-html[data-theme="light"] .hover\:bg-slate-700:hover {
+html[data-theme="light"] .bg-black\/20 {
   background-color: #F1F5F9 !important;
 }
 
-/* Borders in Light Mode */
+/* Light Mode Borders */
 html[data-theme="light"] .border-slate-800,
-html[data-theme="light"] .border-slate-800\/80,
 html[data-theme="light"] .border-slate-800\/90,
+html[data-theme="light"] .border-slate-800\/80,
 html[data-theme="light"] .border-slate-700,
-html[data-theme="light"] .border-slate-700\/80,
-html[data-theme="light"] .border-slate-700\/50,
 html[data-theme="light"] .border-slate-900,
 html[data-theme="light"] .border-base-border,
-html[data-theme="light"] .border-\[\#1C222B\],
-html[data-theme="light"] .card-hairline {
+html[data-theme="light"] .border-\[\#1E2C40\] {
   border-color: #E2E8F0 !important;
 }
 
-/* Dividers in Light Mode */
-html[data-theme="light"] .divide-slate-800 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #E2E8F0 !important;
+/* Light Mode Typography Defaults (without overriding explicit component text classes) */
+html[data-theme="light"] {
+  --text-main: #1E293B;
+  --text-bright: #0F172A;
+  --text-muted: #64748B;
 }
 
-/* Text Colors in Light Mode */
-html[data-theme="light"] .text-silver,
-html[data-theme="light"] .text-silver-bright,
-html[data-theme="light"] .text-\[\#C9D2DB\] {
-  color: #0F172A !important;
-}
-
-html[data-theme="light"] .text-silver-dim,
-html[data-theme="light"] .text-slate-400,
-html[data-theme="light"] .text-slate-300,
-html[data-theme="light"] .text-slate-500 {
-  color: #475569 !important;
-}
-
-/* Typography Headings & Body with text-white on light cards */
-html[data-theme="light"] h1.text-white,
-html[data-theme="light"] h2.text-white,
-html[data-theme="light"] h3.text-white,
-html[data-theme="light"] h4.text-white,
-html[data-theme="light"] p.text-white,
-html[data-theme="light"] .font-display.text-white,
-html[data-theme="light"] span.text-white:not([class*="bg-"]):not([class*="rounded-full"]),
-html[data-theme="light"] div.text-white:not([class*="bg-"]) {
-  color: #0F172A !important;
-}
-
-/* Dark mode contrast fix: any black text on dark surfaces must render white */
-html[data-theme="dark"] .text-black,
-html[data-theme="dark"] .text-slate-950,
-html[data-theme="dark"] .text-neutral-950,
-html[data-theme="dark"] .text-zinc-950,
-html[data-theme="dark"] .text-gray-950,
-html[data-theme="dark"] .text-slate-900,
-html[data-theme="dark"] .text-slate-800 {
-  color: #F8FAFC !important;
-}
-
-html[data-theme="dark"] .bg-\[\#00C4CC\].text-black,
-html[data-theme="dark"] .bg-\[\#00C4CC\].text-slate-950,
-html[data-theme="dark"] .bg-\[\#00C4CC\].text-slate-900,
-html[data-theme="dark"] .bg-\[\#00C4CC\].text-slate-800,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/10.text-black,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/10.text-slate-950,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/10.text-slate-900,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/10.text-slate-800,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/20.text-black,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/20.text-slate-950,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/20.text-slate-900,
-html[data-theme="dark"] .bg-\[\#00C4CC\]\/20.text-slate-800 {
-  color: #020617 !important;
-}
-
-/* Tables in Light Mode */
-html[data-theme="light"] table th {
-  background-color: #F1F5F9 !important;
-  color: #1E293B !important;
-  border-color: #E2E8F0 !important;
-}
-
-html[data-theme="light"] table td {
-  border-color: #E2E8F0 !important;
-  color: #0F172A !important;
-}
-
-html[data-theme="light"] table tr:hover {
-  background-color: #F8FAFC !important;
-}
-
-/* Inputs, Textareas, Selects & Options */
+/* Inputs & Form Elements in Light Mode */
 html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]),
 html[data-theme="light"] select,
 html[data-theme="light"] textarea {
@@ -276,9 +122,13 @@ html[data-theme="light"] textarea {
   border-color: #CBD5E1 !important;
 }
 
-html[data-theme="light"] select option {
-  background-color: #FFFFFF !important;
-  color: #0F172A !important;
+/* Dedicated Radiant Price Display */
+.price-display {
+  color: #00C4CC !important;
+}
+
+html[data-theme="light"] .price-display {
+  color: #0891B2 !important;
 }
 
 html[data-theme="light"] input::placeholder,
@@ -286,228 +136,144 @@ html[data-theme="light"] textarea::placeholder {
   color: #94A3B8 !important;
 }
 
-/* Dropdowns & Popovers */
-html[data-theme="light"] [role="dialog"],
-html[data-theme="light"] .dropdown-menu {
-  background-color: #FFFFFF !important;
-  border-color: #E2E8F0 !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Selection Highlight */
+/* ============================================================ */
+/* SELECTION & SCROLLBAR STYLING                                */
+/* ============================================================ */
 ::selection {
-  background: rgba(59, 180, 255, 0.35);
-  color: #F2F5F8;
+  background: rgba(0, 196, 204, 0.35);
+  color: #FFFFFF;
 }
 
-/* Thin scrollbar */
+html[data-theme="light"] ::selection {
+  background: rgba(8, 145, 178, 0.25);
+  color: #0F172A;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #050608;
+  background: #060A11;
 }
+
+html[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
 ::-webkit-scrollbar-thumb {
-  background: #1C222B;
-  border-radius: 8px;
+  background: #1E2C40;
+  border-radius: 9999px;
 }
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #2E9BFF;
+  background: #00C4CC;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #0891B2;
+}
+
+/* ============================================================ */
+/* MODERN UI UTILITIES & MICRO-ANIMATIONS                       */
+/* ============================================================ */
+.glass-panel {
+  background: rgba(15, 26, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 196, 204, 0.2);
+}
+
+html[data-theme="light"] .glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .text-gradient {
-  background: linear-gradient(90deg, #F2F5F8 0%, #5FC1FF 60%, #2E9BFF 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, #67E8F9 50%, #00C4CC 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.card-hairline {
-  border: 1px solid #1C222B;
+html[data-theme="light"] .text-gradient {
+  background: linear-gradient(135deg, #0F172A 0%, #0891B2 60%, #00C4CC 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-.focus-ring:focus-visible {
-  outline: 2px solid #3BB4FF;
-  outline-offset: 2px;
+.glow-border {
+  border: 1px solid rgba(0, 196, 204, 0.35);
+  box-shadow: 0 0 15px rgba(0, 196, 204, 0.15);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.glow-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(24px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.glow-card-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 196, 204, 0.7);
+  box-shadow: 0 12px 30px -8px rgba(0, 196, 204, 0.3);
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease-out;
-}
-
-.animate-slideUp {
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+html[data-theme="light"] .glow-card-hover:hover {
+  border-color: rgba(8, 145, 178, 0.5);
+  box-shadow: 0 12px 25px -8px rgba(8, 145, 178, 0.2);
 }
 
 @keyframes marquee {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
 }
 
 .animate-marquee {
   display: flex;
   width: max-content;
-  animation: marquee 25s linear infinite;
+  animation: marquee 24s linear infinite;
   will-change: transform;
 }
 
 @keyframes shine {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
 }
 
 .animate-shine {
-  animation: shine 0.75s ease-in-out;
+  animation: shine 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-/* Optimize rendering performance */
-* {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
 }
 
-/* Reduce paint operations */
-.gpu-accelerated {
-  transform: translateZ(0);
-  will-change: transform;
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }
 
-/* Enhanced smooth scroll */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Custom selection with brand color */
-::selection {
-  background: rgba(0, 196, 204, 0.3);
-  color: inherit;
-}
-
-/* Smooth transitions for all interactive elements */
-button, a, input, select, textarea {
-  transition: all 0.2s ease-in-out;
-}
-
-/* Focus visible enhancement */
+/* Focus styles */
 *:focus-visible {
   outline: 2px solid #00C4CC;
   outline-offset: 2px;
 }
 
-/* Image styling */
-img {
-  max-width: 100%;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Additional Mobile Responsive Utilities */
-@media (max-width: 480px) {
-  .text-responsive {
-    font-size: 0.875rem;
-  }
-  
-  .container-responsive {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-  
-  /* Force proper scaling on mobile */
-  * {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  
-  /* Prevent horizontal scroll */
-  html, body {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-  
-  /* Fix flex containers */
-  .flex, .inline-flex {
-    flex-wrap: wrap !important;
-  }
-}
-
-/* Touch-friendly tap targets */
-@media (hover: none) and (pointer: coarse) {
-  button, a, input, select, textarea {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  button:not([class*="h-"]), a:not([class*="h-"]) {
-    padding: 0.75rem 1rem;
-  }
-}
-
-/* Improved mobile text rendering */
-@media (max-width: 640px) {
+/* Safe area padding for mobile nav */
+@media (max-width: 639px) {
   body {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-  
-  /* Prevent horizontal scroll on mobile */
-  * {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  
-  html, body {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-  
-  /* Better mobile spacing */
-  .gap-responsive {
-    gap: 0.5rem;
-  }
-  
-  /* Fix containers on mobile */
-  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
-/* Landscape mobile optimizations */
-@media (max-width: 640px) and (orientation: landscape) {
-  .mobile-landscape-hide {
-    display: none;
-  }
-  
-  .mobile-landscape-compact {
-    padding: 0.5rem;
-  }
+/* Defer off-screen rendering for faster initial paint & smoother mobile scrolling */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 400px;
 }
-
+ 

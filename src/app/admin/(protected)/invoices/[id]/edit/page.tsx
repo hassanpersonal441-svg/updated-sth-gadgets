@@ -249,7 +249,7 @@ export default function EditInvoicePage({
 
     const effectiveSubtotal = subtotal - itemDiscountTotal;
     if (effectiveSubtotal < (found.minimum_order || 0)) {
-      setCouponError(`Minimum order amount of IDR ${found.minimum_order} required for this coupon`);
+      setCouponError(`Minimum order amount of Rs. ${found.minimum_order} required for this coupon`);
       setAppliedCoupon(null);
       return;
     }
@@ -656,7 +656,7 @@ export default function EditInvoicePage({
                         />
                       </td>
                       <td className="p-3 text-right font-mono font-bold text-[#00C4CC]">
-                        IDR {item.total.toLocaleString()}
+                        Rs. {item.total.toLocaleString()}
                       </td>
                       <td className="p-3 text-center">
                         <button
@@ -684,7 +684,7 @@ export default function EditInvoicePage({
               <div className="space-y-3 text-xs">
                 <div>
                   <label className="block font-bold text-silver-dim mb-1">
-                    Delivery / Shipping Charges (IDR)
+                    Delivery / Shipping Charges (PKR)
                   </label>
                   <input
                     type="number"
