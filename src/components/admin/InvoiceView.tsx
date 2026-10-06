@@ -200,7 +200,7 @@ export default function InvoiceView({
           ref={printRef}
           id="invoice-printable-content"
           className="p-8 sm:p-12 bg-white text-slate-900 text-sm leading-relaxed print:bg-white print:text-slate-900"
-          style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+          style={{ backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' }}
         >
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b-2 border-slate-900 pb-8 print:border-slate-900">

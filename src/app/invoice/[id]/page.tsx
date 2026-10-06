@@ -6,6 +6,8 @@ import { getSettings } from '@/lib/data';
 import InvoiceView from '@/components/admin/InvoiceView';
 import type { Invoice } from '@/types/database';
 
+export const dynamic = 'force-dynamic';
+
 interface PublicInvoicePageProps {
   params: Promise<{ id: string }>;
 }
