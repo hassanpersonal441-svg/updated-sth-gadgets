@@ -149,7 +149,7 @@ export default async function ProductDetailPage({ params }: { params: any }) {
       hasMerchantReturnPolicy: {
         '@type': 'MerchantReturnPolicy',
         applicableCountry: 'PK',
-        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnPeriod',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
         merchantReturnDays: 7,
         returnMethod: 'https://schema.org/ReturnByMail',
         returnFees: 'https://schema.org/FreeReturn',
