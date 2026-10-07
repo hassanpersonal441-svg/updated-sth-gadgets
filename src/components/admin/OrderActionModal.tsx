@@ -52,6 +52,13 @@ export default function OrderActionModal({
   const [editActualCourierCost, setEditActualCourierCost] = useState<number | string>(Number(order?.actual_courier_cost ?? order?.delivery_charges) || 0);
   const [editDeliveryPaidBy, setEditDeliveryPaidBy] = useState<'customer' | 'store' | 'partial'>(order?.delivery_paid_by || 'customer');
 
+  // COD Settlement State
+  const [editCodCourierFees, setEditCodCourierFees] = useState<number | string>(Number(order?.cod_courier_fees) || 0);
+  const [editTaxDeductions, setEditTaxDeductions] = useState<number | string>(Number(order?.tax_deductions) || 0);
+  const [editSettlementAmount, setEditSettlementAmount] = useState<number | string>(Number(order?.settlement_amount_received) || 0);
+  const [editSettlementStatus, setEditSettlementStatus] = useState<'pending' | 'received' | 'reconciled'>(order?.settlement_status || 'pending');
+  const [editSettlementDate, setEditSettlementDate] = useState<string>(order?.settlement_date ? order.settlement_date.split('T')[0] : '');
+
   // Delete State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -79,6 +86,11 @@ export default function OrderActionModal({
       setEditDeliveryCharges(Number(order.delivery_charges) || 0);
       setEditActualCourierCost(Number(order.actual_courier_cost ?? order.delivery_charges) || 0);
       setEditDeliveryPaidBy(order.delivery_paid_by || 'customer');
+      setEditCodCourierFees(Number(order.cod_courier_fees) || 0);
+      setEditTaxDeductions(Number(order.tax_deductions) || 0);
+      setEditSettlementAmount(Number(order.settlement_amount_received) || 0);
+      setEditSettlementStatus(order.settlement_status || 'pending');
+      setEditSettlementDate(order.settlement_date ? order.settlement_date.split('T')[0] : '');
       setIsEditing(false);
       setShowDeleteConfirm(false);
       setErrorMsg('');
@@ -348,6 +360,11 @@ export default function OrderActionModal({
           actual_courier_cost: parsedCourier,
           delivery_paid_by: editDeliveryPaidBy,
           total_amount: parsedTotal,
+          cod_courier_fees: Math.max(0, parseFloat(String(editCodCourierFees)) || 0),
+          tax_deductions: Math.max(0, parseFloat(String(editTaxDeductions)) || 0),
+          settlement_amount_received: Math.max(0, parseFloat(String(editSettlementAmount)) || 0),
+          settlement_status: editSettlementStatus,
+          settlement_date: editSettlementDate ? new Date(editSettlementDate).toISOString() : null,
         }),
       });
 
@@ -629,6 +646,66 @@ export default function OrderActionModal({
                       placeholder="430"
                       className="w-full rounded-lg border border-amber-500/40 bg-[#0C1420] px-3 py-1.5 text-xs font-mono font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
                     />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-800 col-span-1 sm:col-span-2">
+                    <h4 className="text-[11px] font-bold text-blue-400 mb-3 uppercase tracking-wider">COD Settlement & Reconciliation</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Settlement Status</label>
+                        <select
+                          value={editSettlementStatus}
+                          onChange={(e) => setEditSettlementStatus(e.target.value as any)}
+                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="received">Received</option>
+                          <option value="reconciled">Reconciled</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Settlement Date</label>
+                        <input
+                          type="date"
+                          value={editSettlementDate}
+                          onChange={(e) => setEditSettlementDate(e.target.value)}
+                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-rose-400 mb-1">Courier COD Fee (PKR)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editCodCourierFees}
+                          onChange={(e) => setEditCodCourierFees(e.target.value)}
+                          placeholder="e.g. 80"
+                          className="w-full rounded-lg border border-rose-500/30 bg-slate-900 px-3 py-1.5 text-xs font-mono text-rose-300 focus:border-rose-400 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-rose-400 mb-1">Tax / Withholding (PKR)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editTaxDeductions}
+                          onChange={(e) => setEditTaxDeductions(e.target.value)}
+                          placeholder="e.g. 50"
+                          className="w-full rounded-lg border border-rose-500/30 bg-slate-900 px-3 py-1.5 text-xs font-mono text-rose-300 focus:border-rose-400 focus:outline-none"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] font-semibold text-emerald-400 mb-1">Actual Amount Received to Bank (PKR)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editSettlementAmount}
+                          onChange={(e) => setEditSettlementAmount(e.target.value)}
+                          placeholder="e.g. 2570"
+                          className="w-full rounded-lg border border-emerald-500/50 bg-[#0C1420] px-3 py-2 text-sm font-mono font-bold text-emerald-400 focus:border-emerald-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1339,3 +1416,7 @@ export default function OrderActionModal({
     </div>
   );
 }
+
+
+
+

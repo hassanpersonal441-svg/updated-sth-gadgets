@@ -62,6 +62,11 @@ async function getStats() {
   let totalActualCourierCost = 0;
   let totalStoreDeliveryExpense = 0;
 
+  let totalCodCourierFees = 0;
+  let totalTaxDeductions = 0;
+  let totalExpectedCod = 0;
+  let totalActualReceived = 0;
+
   // Process approved/counted customer orders
   (approvedOrders || []).forEach((o: any) => {
     // 1. Calculate actual product revenue received from customer
@@ -109,10 +114,18 @@ async function getStats() {
 
     totalRevenue += orderRevenue;
     totalCost += orderCost;
+
+    const isCOD = o.payment_method === 'Cash on Delivery' || !o.payment_method;
+    if (isCOD) {
+      totalCodCourierFees += Number(o.cod_courier_fees) || 0;
+      totalTaxDeductions += Number(o.tax_deductions) || 0;
+      totalExpectedCod += orderTotal;
+      totalActualReceived += Number(o.settlement_amount_received) || 0;
+    }
   });
 
-  const grossProfit = totalRevenue - totalCost;
-  const netProfit = grossProfit - totalStoreDeliveryExpense;
+  const grossProfit = totalRevenue - totalCost - totalStoreDeliveryExpense;
+  const netProfit = grossProfit - totalCodCourierFees - totalTaxDeductions;
   const avgMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 10000) / 100 : 0;
 
   const pendingVendorCount = (vendorPurchases || []).filter((p: any) => p.status === 'pending').length;
@@ -143,6 +156,10 @@ async function getStats() {
     totalCustomerDeliveryFees,
     totalActualCourierCost,
     totalStoreDeliveryExpense,
+    totalCodCourierFees,
+    totalTaxDeductions,
+    totalExpectedCod,
+    totalActualReceived,
     pendingVendorCount,
     totalVendorCost,
     recentVendorPurchases: recentVendorPurchases || [],
@@ -154,123 +171,58 @@ async function getStats() {
 export default async function AdminDashboardPage() {
   const stats = await getStats();
 
-  const cards = [
-    {
-      label: 'Total Revenue',
-      value: `PKR ${stats.totalRevenue.toLocaleString('en-PK')}`,
-      icon: '💰',
-      color: 'from-cyan-500/20 to-transparent',
-      borderColor: 'border-cyan-500/30',
-      textColor: 'text-[#00C4CC]',
-      href: '/admin/orders',
-    },
-    {
-      label: 'Gross Profit',
-      value: `PKR ${stats.grossProfit.toLocaleString('en-PK')}`,
-      icon: '📈',
-      color: 'from-amber-500/20 to-transparent',
-      borderColor: 'border-amber-500/30',
-      textColor: 'text-amber-400',
-      href: '/admin/profit',
-    },
-    {
-      label: 'Total Profit',
-      value: `PKR ${stats.netProfit.toLocaleString('en-PK')}`,
-      icon: '💎',
-      color: 'from-emerald-500/20 to-transparent',
-      borderColor: 'border-emerald-500/30',
-      textColor: 'text-emerald-400',
-      href: '/admin/profit',
-    },
-    {
-      label: 'Profit Margin',
-      value: `${stats.avgMargin}%`,
-      icon: '📊',
-      color: 'from-blue-500/20 to-transparent',
-      borderColor: 'border-blue-500/30',
-      textColor: 'text-blue-400',
-      href: '/admin/profit',
-    },
-    {
-      label: 'Total Orders',
-      value: stats.totalOrders,
-      icon: '📋',
-      color: 'from-violet-500/20 to-transparent',
-      borderColor: 'border-violet-500/30',
-      textColor: 'text-violet-400',
-      href: '/admin/orders',
-    },
-    {
-      label: "Today's Revenue",
-      value: `PKR ${stats.todayRevenue.toLocaleString('en-PK')}`,
-      icon: '💵',
-      color: 'from-teal-500/20 to-transparent',
-      borderColor: 'border-teal-500/30',
-      textColor: 'text-teal-400',
-      href: '/admin/orders',
-    },
-    {
-      label: 'Active Products',
-      value: stats.activeProducts,
-      icon: '📦',
-      color: 'from-emerald-500/20 to-transparent',
-      borderColor: 'border-emerald-500/30',
-      textColor: 'text-emerald-400',
-      href: '/admin/products',
-    },
-    {
-      label: 'Store Delivery Expense',
-      value: `PKR ${stats.totalStoreDeliveryExpense.toLocaleString('en-PK')}`,
-      icon: '🚚',
-      color: 'from-orange-500/20 to-transparent',
-      borderColor: 'border-orange-500/30',
-      textColor: 'text-orange-400',
-      href: '/admin/profit',
-    },
-    {
-      label: 'Total Vendor Cost',
-      value: `PKR ${stats.totalVendorCost.toLocaleString('en-PK')}`,
-      icon: '💳',
-      color: 'from-pink-500/20 to-transparent',
-      borderColor: 'border-pink-500/30',
-      textColor: 'text-pink-400',
-      href: '/admin/vendor-purchases',
-    },
-  ];
-
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-silver-bright">
-              Dashboard Overview
-            </h1>
-            <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Live Synced
-            </span>
-          </div>
-          <p className="mt-1 text-xs sm:text-sm text-silver-dim">
-            Manage your mobile accessories catalog, WhatsApp rate sheets, and business configuration.
-          </p>
+    <div className="space-y-6 sm:space-y-8">
+      {/* Financial Overview (User Requested Layout) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm relative overflow-hidden group">
+          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-slate-400">Sales</h3>
+          <p className="mt-2 text-2xl font-black text-cyan-400">PKR {stats.totalRevenue.toLocaleString('en-PK')}</p>
         </div>
-
-        {/* Action Button */}
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/products/new"
-            className="flex items-center gap-2 rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] px-4 py-2.5 font-display text-xs sm:text-sm font-bold text-black shadow-[0_0_15px_rgba(0,196,204,0.35)] transition hover:scale-[1.02]"
-          >
-            <span>+</span>
-            <span>Add New Product</span>
-          </Link>
+        
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm relative overflow-hidden group">
+          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-slate-400">Gross Profit</h3>
+          <p className="mt-2 text-2xl font-black text-amber-400">PKR {stats.grossProfit.toLocaleString('en-PK')}</p>
+        </div>
+        
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm relative overflow-hidden group">
+          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-slate-400">COD / Courier Fees</h3>
+          <p className="mt-2 text-2xl font-black text-rose-400">PKR {stats.totalCodCourierFees.toLocaleString('en-PK')}</p>
+        </div>
+        
+        <div className="rounded-2xl border border-slate-800 bg-[#0C1420] p-6 shadow-sm relative overflow-hidden group">
+          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-slate-400">Taxes / Withholding</h3>
+          <p className="mt-2 text-2xl font-black text-rose-400">PKR {stats.totalTaxDeductions.toLocaleString('en-PK')}</p>
+        </div>
+        
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-6 shadow-sm relative overflow-hidden group">
+          <h3 className="font-display text-xs font-bold uppercase tracking-wider text-emerald-500">Net Profit</h3>
+          <p className="mt-2 text-2xl font-black text-emerald-400">PKR {stats.netProfit.toLocaleString('en-PK')}</p>
         </div>
       </div>
 
-      {/* Metrics Grid (3x3 Layout with Eye Reveal/Hide) */}
-      <DashboardMetricsGrid cards={cards} />
+      {/* COD Settlement Section */}
+      <div className="rounded-2xl border border-blue-500/30 bg-[#0C1420] p-6 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+          <h2 className="font-display text-lg font-bold text-blue-400">COD Settlement / Courier Reconciliation</h2>
+          <Link href="/admin/orders" className="text-sm text-blue-500 hover:underline">View Orders</Link>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-400">Expected COD</h3>
+            <p className="text-xl font-bold text-slate-200 mt-1">PKR {stats.totalExpectedCod.toLocaleString('en-PK')}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-400">Actual Received</h3>
+            <p className="text-xl font-bold text-emerald-400 mt-1">PKR {stats.totalActualReceived.toLocaleString('en-PK')}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-400">Unsettled / Deducted</h3>
+            <p className="text-xl font-bold text-rose-400 mt-1">PKR {(stats.totalExpectedCod - stats.totalActualReceived).toLocaleString('en-PK')}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Dashboard Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">

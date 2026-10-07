@@ -90,6 +90,11 @@ const updateOrderSchema = z.object({
   actual_courier_cost: z.number().min(0).optional(),
   delivery_paid_by: z.enum(['customer', 'store', 'partial']).optional(),
   total_amount: z.number().min(0).optional(),
+  cod_courier_fees: z.number().min(0).optional(),
+  tax_deductions: z.number().min(0).optional(),
+  settlement_amount_received: z.number().min(0).optional(),
+  settlement_status: z.enum(['pending', 'received', 'reconciled']).optional(),
+  settlement_date: z.string().nullable().optional(),
 });
 
 // PATCH: Update order details (customer info, admin notes, order number, custom prices/discounts)
@@ -149,6 +154,13 @@ export async function PATCH(
     if (parsed.data.actual_courier_cost !== undefined) updateData.actual_courier_cost = parsed.data.actual_courier_cost;
     if (parsed.data.delivery_paid_by !== undefined) updateData.delivery_paid_by = parsed.data.delivery_paid_by;
     if (parsed.data.total_amount !== undefined) updateData.total_amount = parsed.data.total_amount;
+    
+    // Settlement Fields
+    if (parsed.data.cod_courier_fees !== undefined) updateData.cod_courier_fees = parsed.data.cod_courier_fees;
+    if (parsed.data.tax_deductions !== undefined) updateData.tax_deductions = parsed.data.tax_deductions;
+    if (parsed.data.settlement_amount_received !== undefined) updateData.settlement_amount_received = parsed.data.settlement_amount_received;
+    if (parsed.data.settlement_status !== undefined) updateData.settlement_status = parsed.data.settlement_status;
+    if (parsed.data.settlement_date !== undefined) updateData.settlement_date = parsed.data.settlement_date;
 
     // Handle order_number update / reassignment
     if (parsed.data.order_number !== undefined) {
@@ -252,3 +264,4 @@ export async function DELETE(
     return NextResponse.json({ error: err.message || 'Error deleting order' }, { status: 500 });
   }
 }
+

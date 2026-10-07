@@ -238,6 +238,12 @@ export interface Order {
   customer_notification_sent?: boolean;
   admin_notes: string | null;
   order_items?: OrderItem[];
+  // Courier Settlement Fields
+  cod_courier_fees?: number;
+  tax_deductions?: number;
+  settlement_amount_received?: number;
+  settlement_status?: 'pending' | 'received' | 'reconciled';
+  settlement_date?: string | null;
 }
 
 export interface Payment {
