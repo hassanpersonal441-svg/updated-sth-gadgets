@@ -41,6 +41,13 @@ export default function CodSettlementPage() {
   const [settlementDate, setSettlementDate] = useState<string>(todayStr());
   const [saving, setSaving] = useState(false);
 
+  // Combined payment (one courier payment covering several orders)
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkTotal, setBulkTotal] = useState<string>('');
+  const [bulkAlloc, setBulkAlloc] = useState<Record<string, string>>({});
+  const [bulkDate, setBulkDate] = useState<string>(todayStr());
+
   async function fetchOrders() {
     setLoading(true);
     setFetchError(null);
@@ -153,6 +160,117 @@ export default function CodSettlementPage() {
     }
   }
 
+  const selectedOrders = useMemo(
+    () => codOrders.filter((o) => selectedIds.includes(o.id)),
+    [codOrders, selectedIds]
+  );
+  const selectedExpected = selectedOrders.reduce((s, o) => s + (Number(o.total_amount) || 0), 0);
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((o) => selectedIds.includes(o.id));
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      const ids = new Set(filtered.map((o) => o.id));
+      setSelectedIds((prev) => prev.filter((id) => !ids.has(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...filtered.map((o) => o.id)])));
+    }
+  }
+
+  // Split a total proportionally to each order's expected amount (last order takes the remainder)
+  function splitTotal(total: number, list: Order[]): Record<string, string> {
+    const expectedSum = list.reduce((s, o) => s + (Number(o.total_amount) || 0), 0);
+    const result: Record<string, string> = {};
+    let allocated = 0;
+    list.forEach((o, idx) => {
+      const exp = Number(o.total_amount) || 0;
+      let share: number;
+      if (idx === list.length - 1) {
+        share = Math.max(0, total - allocated);
+      } else {
+        share = expectedSum > 0 ? Math.round((exp / expectedSum) * total) : 0;
+        allocated += share;
+      }
+      result[o.id] = String(share);
+    });
+    return result;
+  }
+
+  function openBulk() {
+    if (selectedOrders.length === 0) return;
+    setBulkTotal('');
+    setBulkAlloc({});
+    setBulkDate(todayStr());
+    setBulkOpen(true);
+  }
+
+  function handleBulkTotalChange(value: string) {
+    setBulkTotal(value);
+    const total = Math.max(0, parseFloat(value) || 0);
+    setBulkAlloc(total > 0 ? splitTotal(total, selectedOrders) : {});
+  }
+
+  function handleAllocChange(id: string, value: string) {
+    const next = { ...bulkAlloc, [id]: value };
+    setBulkAlloc(next);
+    const sum = selectedOrders.reduce((s, o) => s + (Math.max(0, parseFloat(next[o.id]) || 0)), 0);
+    setBulkTotal(sum > 0 ? String(sum) : '');
+  }
+
+  async function saveBulk() {
+    const total = Math.max(0, parseFloat(bulkTotal) || 0);
+    if (total <= 0) {
+      showErrorToast('Please enter the total amount received.');
+      return;
+    }
+    const missing = selectedOrders.filter((o) => !(parseFloat(bulkAlloc[o.id]) > 0));
+    if (missing.length > 0) {
+      showErrorToast(`Amount missing for ${missing.map((o) => o.order_number || 'order').join(', ')}.`);
+      return;
+    }
+
+    setSaving(true);
+    const results = await Promise.allSettled(
+      selectedOrders.map(async (o) => {
+        const res = await fetch(`/api/admin/orders/${o.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            settlement_amount_received: Math.max(0, parseFloat(bulkAlloc[o.id]) || 0),
+            settlement_status: 'received',
+            settlement_date: bulkDate || todayStr(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Failed');
+        return data.order as Order;
+      })
+    );
+
+    const updated: Order[] = [];
+    const failed: string[] = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') updated.push(r.value);
+      else failed.push(selectedOrders[i].order_number || 'order');
+    });
+
+    if (updated.length > 0) {
+      setOrders((prev) => prev.map((o) => updated.find((u) => u.id === o.id) ? { ...o, ...updated.find((u) => u.id === o.id)! } : o));
+    }
+    if (failed.length > 0) {
+      showErrorToast(`Failed to save: ${failed.join(', ')}`);
+      setSelectedIds(selectedOrders.filter((o) => failed.includes(o.order_number || 'order')).map((o) => o.id));
+    } else {
+      success(`Recorded PKR ${formatNumber(total)} across ${updated.length} orders.`);
+      setSelectedIds([]);
+      setBulkOpen(false);
+    }
+    setSaving(false);
+  }
+
   const modalExpected = activeOrder ? Number(activeOrder.total_amount) || 0 : 0;
   const modalReceived = Math.max(0, parseFloat(amountReceived) || 0);
   const modalDiff = modalExpected - modalReceived;
@@ -251,6 +369,15 @@ export default function CodSettlementPage() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-800 bg-[#070D18] text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                 <tr>
+                  <th className="w-10 px-3 py-3.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-0 cursor-pointer"
+                      title="Select all"
+                    />
+                  </th>
                   <th className="px-4 py-3.5">Order #</th>
                   <th className="px-4 py-3.5">Customer</th>
                   <th className="px-4 py-3.5">Expected</th>
@@ -270,8 +397,24 @@ export default function CodSettlementPage() {
                     <tr
                       key={o.id}
                       onClick={() => openModal(o)}
-                      className="cursor-pointer hover:bg-[#0E1A2C] transition-colors"
+                      className={`cursor-pointer transition-colors ${
+                        selectedIds.includes(o.id) ? 'bg-sky-950/30 hover:bg-sky-950/40' : 'hover:bg-[#0E1A2C]'
+                      }`}
                     >
+                      <td
+                        className="w-10 px-3 py-3.5 text-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(o.id);
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(o.id)}
+                          readOnly
+                          className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-0 cursor-pointer pointer-events-none"
+                        />
+                      </td>
                       <td className="px-4 py-3.5 font-mono">
                         <span className="inline-flex rounded-lg bg-[#00C4CC]/10 px-2.5 py-1 text-xs font-bold text-[#00C4CC] border border-[#00C4CC]/25">
                           {o.order_number || 'Pending'}
@@ -335,6 +478,167 @@ export default function CodSettlementPage() {
           </div>
         )}
       </div>
+
+      {/* Selection bar */}
+      {selectedIds.length > 0 && !bulkOpen && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 rounded-2xl border border-sky-500/40 bg-[#0C1420] px-4 py-3 shadow-2xl">
+          <div className="text-xs text-silver-bright">
+            <span className="font-black">{selectedIds.length}</span> order{selectedIds.length > 1 ? 's' : ''} selected •{' '}
+            <span className="font-mono font-bold text-sky-300">PKR {selectedExpected.toLocaleString('en-PK')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={openBulk}
+            className="rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] px-4 py-2 text-xs font-black text-black transition"
+          >
+            Record Combined Payment
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds([])}
+            className="text-xs text-slate-400 hover:text-white"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Combined Payment Modal */}
+      {bulkOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => !saving && setBulkOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-700 bg-[#0C1420] p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display text-lg font-black text-silver-bright">Combined COD Payment</h3>
+                <p className="text-xs text-silver-dim mt-0.5">
+                  Courier ne {selectedOrders.length} orders ki payment ek saath bheji hai.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !saving && setBulkOpen(false)}
+                className="text-slate-400 hover:text-white text-lg leading-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-[#080D15] p-3 flex items-center justify-between">
+              <span className="text-xs text-silver-dim">Total Expected ({selectedOrders.length} orders)</span>
+              <span className="font-mono font-black text-silver-bright">PKR {formatNumber(selectedExpected)}</span>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-emerald-400 mb-1">
+                Total Amount Received (PKR)
+              </label>
+              <input
+                type="number"
+                min={0}
+                autoFocus
+                value={bulkTotal}
+                onChange={(e) => handleBulkTotalChange(e.target.value)}
+                placeholder={String(selectedExpected)}
+                className="w-full rounded-lg border border-emerald-500/40 bg-[#0C1420] px-3 py-2.5 font-mono text-base font-bold text-emerald-400 focus:border-emerald-400 focus:outline-none"
+              />
+              <p className="mt-1 text-[11px] text-silver-dim">
+                Ye total har order ki amount ke hisaab se khud taqseem ho jata hai. Chahein to neeche har order ki amount badal sakte hain.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {selectedOrders.map((o) => {
+                const exp = Number(o.total_amount) || 0;
+                const got = Math.max(0, parseFloat(bulkAlloc[o.id]) || 0);
+                const diff = exp - got;
+                return (
+                  <div key={o.id} className="rounded-xl border border-slate-800 bg-[#080D15] p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-xs font-bold text-[#00C4CC]">{o.order_number || 'Order'}</div>
+                      <div className="text-[11px] text-silver-dim truncate">
+                        {o.customer_name} • Expected PKR {formatNumber(exp)}
+                      </div>
+                    </div>
+                    <div className="w-32 shrink-0">
+                      <input
+                        type="number"
+                        min={0}
+                        value={bulkAlloc[o.id] ?? ''}
+                        onChange={(e) => handleAllocChange(o.id, e.target.value)}
+                        placeholder="0"
+                        className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-2 py-1.5 font-mono text-xs font-bold text-emerald-400 focus:border-emerald-400 focus:outline-none"
+                      />
+                      {got > 0 && (
+                        <div className={`mt-0.5 text-[10px] font-mono text-right ${diff > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {diff > 0 ? `-${formatNumber(diff)}` : diff < 0 ? `+${formatNumber(Math.abs(diff))}` : 'OK'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {(() => {
+              const total = Math.max(0, parseFloat(bulkTotal) || 0);
+              const diff = selectedExpected - total;
+              if (total <= 0) return null;
+              return (
+                <div
+                  className={`rounded-xl border p-3 text-xs flex items-center justify-between ${
+                    diff > 0
+                      ? 'border-rose-500/30 bg-rose-500/5 text-rose-300'
+                      : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300'
+                  }`}
+                >
+                  <span className="font-semibold">
+                    {diff > 0 ? 'Courier deduction (profit se minus)' : diff < 0 ? 'Extra received' : 'No deduction'}
+                  </span>
+                  <span className="font-mono font-black">
+                    {diff > 0 ? '-' : diff < 0 ? '+' : ''}PKR {formatNumber(Math.abs(diff))}
+                  </span>
+                </div>
+              );
+            })()}
+
+            <div>
+              <label className="block text-[11px] font-semibold text-silver-dim mb-1">Settlement Date</label>
+              <input
+                type="date"
+                value={bulkDate}
+                onChange={(e) => setBulkDate(e.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-3 py-2 text-xs text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setBulkOpen(false)}
+                disabled={saving}
+                className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold text-silver-bright hover:border-slate-500 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveBulk}
+                disabled={saving}
+                className="rounded-xl bg-[#00C4CC] hover:bg-[#00B2B9] px-5 py-2 text-xs font-black text-black transition disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : `Save ${selectedOrders.length} Orders`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settlement Modal */}
       {activeOrder && (
