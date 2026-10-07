@@ -117,10 +117,22 @@ async function getStats() {
 
     const isCOD = o.payment_method === 'Cash on Delivery' || !o.payment_method;
     if (isCOD) {
-      totalCodCourierFees += Number(o.cod_courier_fees) || 0;
-      totalTaxDeductions += Number(o.tax_deductions) || 0;
+      const codFee = Number(o.cod_courier_fees) || 0;
+      const taxFee = Number(o.tax_deductions) || 0;
+      const amountReceived = Number(o.settlement_amount_received) || 0;
+      
       totalExpectedCod += orderTotal;
-      totalActualReceived += Number(o.settlement_amount_received) || 0;
+      totalActualReceived += amountReceived;
+
+      if (amountReceived > 0) {
+        // Auto-calculate difference if they only typed the received amount
+        if (codFee === 0 && taxFee === 0) {
+          totalCodCourierFees += Math.max(0, orderTotal - amountReceived);
+        } else {
+          totalCodCourierFees += codFee;
+          totalTaxDeductions += taxFee;
+        }
+      }
     }
   });
 
@@ -615,5 +627,8 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
+
+
+
 
 
