@@ -116,7 +116,8 @@ async function getStats() {
     totalCost += orderCost;
 
     const isCOD = o.payment_method === 'Cash on Delivery' || !o.payment_method;
-    if (isCOD) {
+    const hasRecordedSettlement = (Number(o.settlement_amount_received) || 0) > 0;
+    if (isCOD || hasRecordedSettlement) {
       const codFee = Number(o.cod_courier_fees) || 0;
       const taxFee = Number(o.tax_deductions) || 0;
       const amountReceived = Number(o.settlement_amount_received) || 0;

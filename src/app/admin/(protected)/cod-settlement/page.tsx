@@ -34,6 +34,7 @@ export default function CodSettlementPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [tab, setTab] = useState<SettlementTab>('pending');
   const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'cod' | 'online' | 'all'>('cod');
 
   // Modal state
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -67,14 +68,24 @@ export default function CodSettlementPage() {
     fetchOrders();
   }, []);
 
-  // Only COD orders that are actually going out / delivered
-  const codOrders = useMemo(
-    () => orders.filter((o) => isCodOrder(o) && COUNTED_STATUSES.includes(o.status)),
+  // All orders that are actually going out / delivered (COD and online-paid)
+  const baseOrders = useMemo(
+    () => orders.filter((o) => COUNTED_STATUSES.includes(o.status)),
     [orders]
+  );
+  const onlineCount = useMemo(() => baseOrders.filter((o) => !isCodOrder(o)).length, [baseOrders]);
+
+  // Orders that count toward the summary cards: every COD order, plus any online-paid
+  // order the courier has actually paid us for.
+  const codOrders = useMemo(
+    () => baseOrders.filter((o) => isCodOrder(o) || isSettled(o)),
+    [baseOrders]
   );
 
   const filtered = useMemo(() => {
-    return codOrders.filter((o) => {
+    return baseOrders.filter((o) => {
+      if (typeFilter === 'cod' && !isCodOrder(o)) return false;
+      if (typeFilter === 'online' && isCodOrder(o)) return false;
       if (tab === 'pending' && isSettled(o)) return false;
       if (tab === 'received' && !isSettled(o)) return false;
       if (search.trim()) {
@@ -88,7 +99,7 @@ export default function CodSettlementPage() {
       }
       return true;
     });
-  }, [codOrders, tab, search]);
+  }, [baseOrders, tab, search, typeFilter]);
 
   const stats = useMemo(() => {
     const settled = codOrders.filter(isSettled);
@@ -161,8 +172,8 @@ export default function CodSettlementPage() {
   }
 
   const selectedOrders = useMemo(
-    () => codOrders.filter((o) => selectedIds.includes(o.id)),
-    [codOrders, selectedIds]
+    () => baseOrders.filter((o) => selectedIds.includes(o.id)),
+    [baseOrders, selectedIds]
   );
   const selectedExpected = selectedOrders.reduce((s, o) => s + (Number(o.total_amount) || 0), 0);
 
@@ -325,11 +336,11 @@ export default function CodSettlementPage() {
 
       {/* Tabs + Search */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {([
             { id: 'pending', label: `Pending (${stats.pendingCount})` },
             { id: 'received', label: `Received (${stats.settledCount})` },
-            { id: 'all', label: 'All COD Orders' },
+            { id: 'all', label: 'All' },
           ] as { id: SettlementTab; label: string }[]).map((t) => (
             <button
               key={t.id}
@@ -337,6 +348,24 @@ export default function CodSettlementPage() {
               className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
                 tab === t.id
                   ? 'bg-[#00C4CC] text-black font-bold shadow-sm'
+                  : 'border border-slate-800 bg-[#0C1420] text-silver-dim hover:text-silver-bright hover:border-slate-700'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+          <span className="mx-1 h-5 w-px bg-slate-800" />
+          {([
+            { id: 'cod', label: 'COD Orders' },
+            { id: 'online', label: `Online Paid (${onlineCount})` },
+            { id: 'all', label: 'COD + Online' },
+          ] as { id: 'cod' | 'online' | 'all'; label: string }[]).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTypeFilter(t.id)}
+              className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
+                typeFilter === t.id
+                  ? 'bg-violet-500 text-black font-bold shadow-sm'
                   : 'border border-slate-800 bg-[#0C1420] text-silver-dim hover:text-silver-bright hover:border-slate-700'
               }`}
             >
@@ -419,6 +448,11 @@ export default function CodSettlementPage() {
                         <span className="inline-flex rounded-lg bg-[#00C4CC]/10 px-2.5 py-1 text-xs font-bold text-[#00C4CC] border border-[#00C4CC]/25">
                           {o.order_number || 'Pending'}
                         </span>
+                        {!isCodOrder(o) && (
+                          <span className="ml-1.5 inline-flex rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300 border border-violet-500/30">
+                            Online
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="font-semibold text-silver-bright">{o.customer_name}</div>
@@ -667,6 +701,12 @@ export default function CodSettlementPage() {
                 ✕
               </button>
             </div>
+
+            {!isCodOrder(activeOrder) && (
+              <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 text-[11px] text-violet-200">
+                Ye order pehle hi online paid hai ({activeOrder.payment_method}). Yahan wohi amount likhein jo courier ne COD ke taur par collect karke aapko di.
+              </div>
+            )}
 
             <div className="rounded-xl border border-slate-800 bg-[#080D15] p-3 flex items-center justify-between">
               <span className="text-xs text-silver-dim">Expected COD Amount</span>
