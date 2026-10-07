@@ -28,7 +28,7 @@ const links = [
     ),
   },
   {
-    href: '/admin/orders',
+    href: '/admin/cod-settlement',
     label: 'COD Settlement',
     tourId: 'admin-cod',
     icon: (
