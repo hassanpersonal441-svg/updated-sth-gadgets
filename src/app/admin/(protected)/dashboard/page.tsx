@@ -174,8 +174,8 @@ export default async function AdminDashboardPage() {
   const cards = [
     {
       label: 'Total Revenue',
-      value: "PKR " + stats.totalRevenue.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.totalRevenue.toLocaleString('en-PK')}`,
+      icon: '💰',
       color: 'from-cyan-500/20 to-transparent',
       borderColor: 'border-cyan-500/30',
       textColor: 'text-[#00C4CC]',
@@ -183,8 +183,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Gross Profit',
-      value: "PKR " + stats.grossProfit.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.grossProfit.toLocaleString('en-PK')}`,
+      icon: '📈',
       color: 'from-amber-500/20 to-transparent',
       borderColor: 'border-amber-500/30',
       textColor: 'text-amber-400',
@@ -192,8 +192,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Total Profit',
-      value: "PKR " + stats.netProfit.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.netProfit.toLocaleString('en-PK')}`,
+      icon: '💎',
       color: 'from-emerald-500/20 to-transparent',
       borderColor: 'border-emerald-500/30',
       textColor: 'text-emerald-400',
@@ -201,8 +201,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Profit Margin',
-      value: "${stats.avgMargin}%",
-      icon: '??',
+      value: `${stats.avgMargin}%`,
+      icon: '📊',
       color: 'from-blue-500/20 to-transparent',
       borderColor: 'border-blue-500/30',
       textColor: 'text-blue-400',
@@ -211,7 +211,7 @@ export default async function AdminDashboardPage() {
     {
       label: 'Total Orders',
       value: stats.totalOrders,
-      icon: '??',
+      icon: '📋',
       color: 'from-violet-500/20 to-transparent',
       borderColor: 'border-violet-500/30',
       textColor: 'text-violet-400',
@@ -219,8 +219,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: "Today's Revenue",
-      value: "PKR " + stats.todayRevenue.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.todayRevenue.toLocaleString('en-PK')}`,
+      icon: '💵',
       color: 'from-teal-500/20 to-transparent',
       borderColor: 'border-teal-500/30',
       textColor: 'text-teal-400',
@@ -229,7 +229,7 @@ export default async function AdminDashboardPage() {
     {
       label: 'Active Products',
       value: stats.activeProducts,
-      icon: '??',
+      icon: '📦',
       color: 'from-emerald-500/20 to-transparent',
       borderColor: 'border-emerald-500/30',
       textColor: 'text-emerald-400',
@@ -237,8 +237,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Store Delivery Expense',
-      value: "PKR " + stats.totalStoreDeliveryExpense.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.totalStoreDeliveryExpense.toLocaleString('en-PK')}`,
+      icon: '🚚',
       color: 'from-orange-500/20 to-transparent',
       borderColor: 'border-orange-500/30',
       textColor: 'text-orange-400',
@@ -246,8 +246,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Total Vendor Cost',
-      value: "PKR " + stats.totalVendorCost.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.totalVendorCost.toLocaleString('en-PK')}`,
+      icon: '💳',
       color: 'from-pink-500/20 to-transparent',
       borderColor: 'border-pink-500/30',
       textColor: 'text-pink-400',
@@ -255,8 +255,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'COD / Courier Fees',
-      value: "PKR " + stats.totalCodCourierFees.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.totalCodCourierFees.toLocaleString('en-PK')}`,
+      icon: '🛵',
       color: 'from-orange-500/20 to-transparent',
       borderColor: 'border-orange-500/30',
       textColor: 'text-orange-400',
@@ -264,8 +264,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Taxes / Withholding',
-      value: "PKR " + stats.totalTaxDeductions.toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${stats.totalTaxDeductions.toLocaleString('en-PK')}`,
+      icon: '🧾',
       color: 'from-rose-500/20 to-transparent',
       borderColor: 'border-rose-500/30',
       textColor: 'text-rose-400',
@@ -273,8 +273,8 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Unsettled / Deducted',
-      value: "PKR " + (stats.totalExpectedCod - stats.totalActualReceived).toLocaleString('en-PK'),
-      icon: '??',
+      value: `PKR ${(stats.totalExpectedCod - stats.totalActualReceived).toLocaleString('en-PK')}`,
+      icon: '⚠️',
       color: 'from-amber-500/20 to-transparent',
       borderColor: 'border-amber-500/30',
       textColor: 'text-amber-400',
