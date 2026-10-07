@@ -27,6 +27,10 @@ function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
 
+function cityKey(city: string | null | undefined) {
+  return (city || '').trim().toLowerCase();
+}
+
 export default function CodSettlementPage() {
   const { success, error: showErrorToast, admin } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -35,6 +39,7 @@ export default function CodSettlementPage() {
   const [tab, setTab] = useState<SettlementTab>('pending');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'cod' | 'online' | 'all'>('cod');
+  const [cityFilter, setCityFilter] = useState<string>('all');
 
   // Modal state
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -88,6 +93,7 @@ export default function CodSettlementPage() {
       if (typeFilter === 'online' && isCodOrder(o)) return false;
       if (tab === 'pending' && isSettled(o)) return false;
       if (tab === 'received' && !isSettled(o)) return false;
+      if (cityFilter !== 'all' && cityKey(o.city) !== cityFilter) return false;
       if (search.trim()) {
         const q = search.toLowerCase().trim();
         return (
@@ -99,7 +105,32 @@ export default function CodSettlementPage() {
       }
       return true;
     });
-  }, [baseOrders, tab, search, typeFilter]);
+  }, [baseOrders, tab, search, typeFilter, cityFilter]);
+
+  // Cities available in the current type/status view, with order counts
+  const cityOptions = useMemo(() => {
+    const map = new Map<string, { label: string; count: number }>();
+    baseOrders.forEach((o) => {
+      if (typeFilter === 'cod' && !isCodOrder(o)) return;
+      if (typeFilter === 'online' && isCodOrder(o)) return;
+      if (tab === 'pending' && isSettled(o)) return;
+      if (tab === 'received' && !isSettled(o)) return;
+      const key = cityKey(o.city);
+      if (!key) return;
+      const existing = map.get(key);
+      if (existing) existing.count += 1;
+      else map.set(key, { label: (o.city || '').trim(), count: 1 });
+    });
+    return Array.from(map.entries())
+      .map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [baseOrders, typeFilter, tab]);
+
+  useEffect(() => {
+    if (cityFilter !== 'all' && !cityOptions.some((c) => c.key === cityFilter)) {
+      setCityFilter('all');
+    }
+  }, [cityOptions, cityFilter]);
 
   const stats = useMemo(() => {
     const settled = codOrders.filter(isSettled);
@@ -373,13 +404,27 @@ export default function CodSettlementPage() {
             </button>
           ))}
         </div>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by customer, phone, STH #..."
-          className="w-full sm:w-72 rounded-xl border border-slate-800 bg-[#080D15] px-3.5 py-2 text-xs text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none"
-        />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <select
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="rounded-xl border border-slate-800 bg-[#080D15] px-3 py-2 text-xs font-semibold text-silver-bright focus:border-[#00C4CC] focus:outline-none"
+          >
+            <option value="all">All Cities</option>
+            {cityOptions.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label} ({c.count})
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by customer, phone, STH #..."
+            className="w-full sm:w-64 rounded-xl border border-slate-800 bg-[#080D15] px-3.5 py-2 text-xs text-silver-bright placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none"
+          />
+        </div>
       </div>
 
       {/* List */}
