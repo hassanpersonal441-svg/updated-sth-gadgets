@@ -137,8 +137,15 @@ async function getStats() {
     }
   });
 
-  const grossProfit = totalRevenue - totalCost - totalStoreDeliveryExpense;
-  const netProfit = grossProfit - totalCodCourierFees - totalTaxDeductions;
+  const round10 = (num: number) => Math.round(num / 10) * 10;
+  let grossProfit = totalRevenue - totalCost - totalStoreDeliveryExpense;
+  let netProfit = grossProfit - totalCodCourierFees - totalTaxDeductions;
+  
+  totalRevenue = round10(totalRevenue);
+  grossProfit = round10(grossProfit);
+  netProfit = round10(netProfit);
+  totalExpectedCod = round10(totalExpectedCod);
+  
   const avgMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 10000) / 100 : 0;
 
   const pendingVendorCount = (vendorPurchases || []).filter((p: any) => p.status === 'pending').length;
