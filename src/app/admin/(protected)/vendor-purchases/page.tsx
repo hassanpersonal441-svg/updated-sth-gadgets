@@ -537,7 +537,6 @@ export default function VendorPurchasesPage() {
       setSubmitting(false);
     }
   }
-
   const pendingCount = purchases.filter((p) => p.status === 'pending').length;
   const pendingCostSum = purchases
     .filter((p) => p.status === 'pending')
@@ -545,6 +544,10 @@ export default function VendorPurchasesPage() {
   const purchasedCostSum = purchases
     .filter((p) => p.status === 'purchased')
     .reduce((sum, p) => sum + (Number(p.wholesale_cost) || 0) * (Number(p.quantity) || 1), 0);
+
+  const totalCostOverall = pendingCostSum + purchasedCostSum;
+  const totalPaidSum = purchases.reduce((sum, p) => sum + (Number(p.amount_paid) || 0), 0);
+  const totalRemainingSum = Math.max(0, totalCostOverall - totalPaidSum);
 
   return (
     <div className="space-y-6 text-[#C9D2DB]">
@@ -596,47 +599,79 @@ export default function VendorPurchasesPage() {
       </div>
 
       {/* Summary Stats Grid (Finance Styling) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Pending Purchases */}
-        <div className="rounded-2xl border border-amber-500/30 bg-[#0C1420] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">⏳</div>
-          <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
-            Pending Vendor Purchases
-          </span>
-          <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-white">
-            {pendingCount} Record{pendingCount === 1 ? '' : 's'}
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Pending Purchases */}
+          <div className="rounded-2xl border border-amber-500/30 bg-[#0C1420] p-5 shadow-lg relative overflow-hidden">
+            <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">⏳</div>
+            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+              Pending Vendor Purchases
+            </span>
+            <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-white">
+              {pendingCount} Record{pendingCount === 1 ? '' : 's'}
+            </div>
+            <span className="text-xs text-amber-300/90 block font-medium mt-1">
+              Required Capital: PKR {pendingCostSum.toLocaleString('en-PK')}
+            </span>
           </div>
-          <span className="text-xs text-amber-300/90 block font-medium mt-1">
-            Required Capital: PKR {pendingCostSum.toLocaleString('en-PK')}
-          </span>
-        </div>
 
-        {/* Purchased & Received */}
-        <div className="rounded-2xl border border-emerald-500/30 bg-[#0C1420] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">✅</div>
-          <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
-            Purchased & Received
-          </span>
-          <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-white">
-            {purchases.filter((p) => p.status === 'purchased').length} Record{purchases.filter((p) => p.status === 'purchased').length === 1 ? '' : 's'}
+          {/* Purchased & Received */}
+          <div className="rounded-2xl border border-emerald-500/30 bg-[#0C1420] p-5 shadow-lg relative overflow-hidden">
+            <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">✅</div>
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
+              Purchased & Received
+            </span>
+            <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-white">
+              {purchases.filter((p) => p.status === 'purchased').length} Record{purchases.filter((p) => p.status === 'purchased').length === 1 ? '' : 's'}
+            </div>
+            <span className="text-xs text-emerald-300/90 block font-medium mt-1">
+              Fulfilled Capital: PKR {purchasedCostSum.toLocaleString('en-PK')}
+            </span>
           </div>
-          <span className="text-xs text-emerald-300/90 block font-medium mt-1">
-            Fulfilled Capital: PKR {purchasedCostSum.toLocaleString('en-PK')}
-          </span>
-        </div>
 
-        {/* Total Cost */}
-        <div className="rounded-2xl border border-[#00C4CC]/30 bg-[#0C1420] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">💰</div>
-          <span className="text-xs font-bold text-[#00C4CC] uppercase tracking-wider block">
-            Total Purchase Cost
-          </span>
-          <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-[#00C4CC]">
-            PKR {(pendingCostSum + purchasedCostSum).toLocaleString('en-PK')}
+          {/* Total Cost */}
+          <div className="rounded-2xl border border-[#00C4CC]/30 bg-[#0C1420] p-5 shadow-lg relative overflow-hidden">
+            <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">💰</div>
+            <span className="text-xs font-bold text-[#00C4CC] uppercase tracking-wider block">
+              Total Purchase Cost
+            </span>
+            <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-[#00C4CC]">
+              PKR {totalCostOverall.toLocaleString('en-PK')}
+            </div>
+            <span className="text-xs text-slate-400 block font-medium mt-1">
+              Across {purchases.length} total procurement items
+            </span>
           </div>
-          <span className="text-xs text-slate-400 block font-medium mt-1">
-            Across {purchases.length} total procurement items
-          </span>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Total Paid */}
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 shadow-lg relative overflow-hidden">
+            <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">💸</div>
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
+              Total Amount Paid
+            </span>
+            <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-emerald-400">
+              PKR {totalPaidSum.toLocaleString('en-PK')}
+            </div>
+            <span className="text-xs text-emerald-400/80 block font-medium mt-1">
+              Sum of all cleared vendor payments
+            </span>
+          </div>
+
+          {/* Remaining Balance */}
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 shadow-lg relative overflow-hidden">
+            <div className="absolute right-4 top-4 text-2xl leading-none opacity-100 brightness-150">📉</div>
+            <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block">
+              Remaining Vendor Balance
+            </span>
+            <div className="mt-2 font-mono text-2xl sm:text-3xl font-black text-rose-400">
+              PKR {totalRemainingSum.toLocaleString('en-PK')}
+            </div>
+            <span className="text-xs text-rose-400/80 block font-medium mt-1">
+              Total outstanding balance to clear
+            </span>
+          </div>
         </div>
       </div>
 
@@ -791,7 +826,10 @@ export default function VendorPurchasesPage() {
                         }`}>
                           {p.payment_status || 'unpaid'}
                         </span>
-                        <span className="block mt-1 text-[10px] text-slate-500">{p.payment_method || 'cash'}</span>
+                        <div className="mt-2 text-[10px] font-mono leading-tight">
+                          <div className="text-emerald-400">Paid: {Number(p.amount_paid || 0).toLocaleString('en-PK')}</div>
+                          <div className="text-rose-400">Bal: {Math.max(0, lineTotal - Number(p.amount_paid || 0)).toLocaleString('en-PK')}</div>
+                        </div>
                         {p.payment_due_date && (
                           <span className="mt-1 block text-[10px] font-semibold text-orange-300">Due: {p.payment_due_date}</span>
                         )}

@@ -266,33 +266,6 @@ export default async function AdminDashboardPage() {
       textColor: 'text-pink-400',
       href: '/admin/vendor-purchases',
     },
-    {
-      label: 'COD / Courier Fees',
-      value: `PKR ${stats.totalCodCourierFees.toLocaleString('en-PK')}`,
-      icon: '🛵',
-      color: 'from-orange-500/20 to-transparent',
-      borderColor: 'border-orange-500/30',
-      textColor: 'text-orange-400',
-      href: '/admin/profit',
-    },
-    {
-      label: 'Taxes / Withholding',
-      value: `PKR ${stats.totalTaxDeductions.toLocaleString('en-PK')}`,
-      icon: '🧾',
-      color: 'from-rose-500/20 to-transparent',
-      borderColor: 'border-rose-500/30',
-      textColor: 'text-rose-400',
-      href: '/admin/profit',
-    },
-    {
-      label: 'Unsettled / Deducted',
-      value: `PKR ${(stats.totalExpectedCod - stats.totalActualReceived).toLocaleString('en-PK')}`,
-      icon: '⚠️',
-      color: 'from-amber-500/20 to-transparent',
-      borderColor: 'border-amber-500/30',
-      textColor: 'text-amber-400',
-      href: '/admin/orders',
-    },
   ];
 
   return (
@@ -328,22 +301,26 @@ export default async function AdminDashboardPage() {
       {/* COD Settlement Section */}
       <div className="rounded-2xl border border-blue-500/30 bg-[#0C1420] p-6 shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-          <h2 className="font-display text-lg font-bold text-blue-400">COD Settlement / Courier Reconciliation</h2>
-          <Link href="/admin/orders" className="text-sm text-blue-500 hover:underline">View Orders</Link>
+          <h2 className="font-display text-lg font-bold text-blue-400">COD Settlement & Reconciliation</h2>
+          <Link href="/admin/cod-settlement" className="text-sm text-blue-500 hover:underline">View COD Orders -></Link>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-slate-400">Expected COD</h3>
+            <h3 className="text-sm font-semibold text-slate-400">Total COD Expected</h3>
             <p className="text-xl font-bold text-slate-200 mt-1">PKR {stats.totalExpectedCod.toLocaleString('en-PK')}</p>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-400">Actual Received</h3>
+            <h3 className="text-sm font-semibold text-slate-400">Settled & Received</h3>
             <p className="text-xl font-bold text-emerald-400 mt-1">PKR {stats.totalActualReceived.toLocaleString('en-PK')}</p>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-400">Unsettled / Deducted</h3>
-            <p className="text-xl font-bold text-rose-400 mt-1">PKR {(stats.totalExpectedCod - stats.totalActualReceived).toLocaleString('en-PK')}</p>
+            <h3 className="text-sm font-semibold text-slate-400">Pending Cash (Courier)</h3>
+            <p className="text-xl font-bold text-amber-400 mt-1">PKR {Math.max(0, stats.totalExpectedCod - stats.totalActualReceived - stats.totalCodCourierFees - stats.totalTaxDeductions).toLocaleString('en-PK')}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-400">Shortfall (Deductions)</h3>
+            <p className="text-xl font-bold text-rose-400 mt-1">PKR {(stats.totalCodCourierFees + stats.totalTaxDeductions).toLocaleString('en-PK')}</p>
           </div>
         </div>
       </div>
@@ -628,6 +605,7 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
+
 
 
 

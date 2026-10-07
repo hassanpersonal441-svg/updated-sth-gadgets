@@ -672,28 +672,7 @@ export default function OrderActionModal({
                           className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-silver-bright focus:border-[#00C4CC] focus:outline-none"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-rose-400 mb-1">Courier COD Fee (PKR)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={editCodCourierFees}
-                          onChange={(e) => setEditCodCourierFees(e.target.value)}
-                          placeholder="e.g. 80"
-                          className="w-full rounded-lg border border-rose-500/30 bg-slate-900 px-3 py-1.5 text-xs font-mono text-rose-300 focus:border-rose-400 focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-rose-400 mb-1">Tax / Withholding (PKR)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={editTaxDeductions}
-                          onChange={(e) => setEditTaxDeductions(e.target.value)}
-                          placeholder="e.g. 50"
-                          className="w-full rounded-lg border border-rose-500/30 bg-slate-900 px-3 py-1.5 text-xs font-mono text-rose-300 focus:border-rose-400 focus:outline-none"
-                        />
-                      </div>
+
                       <div className="sm:col-span-2">
                         <label className="block text-[11px] font-semibold text-emerald-400 mb-1">Actual Amount Received to Bank (PKR)</label>
                         <input
@@ -721,7 +700,21 @@ export default function OrderActionModal({
                     const cost = Number(it.purchase_price) || Number((it.product as any)?.wholesale_price) || Number((it.product as any)?.purchase_price) || 0;
                     return sum + cost * q;
                   }, 0);
-                  const currentProfit = currentProductRevenue - totalItemCost - currentStoreExpense;
+
+                  const currentSettlementAmount = parseFloat(String(editSettlementAmount)) || 0;
+                  const currentTotalCodFees = parseFloat(String(editCodCourierFees)) || 0;
+                  const currentTotalTax = parseFloat(String(editTaxDeductions)) || 0;
+                  
+                  let settlementDeductions = 0;
+                  if (currentSettlementAmount > 0) {
+                    if (currentTotalCodFees === 0 && currentTotalTax === 0) {
+                       settlementDeductions = Math.max(0, currentTotal - currentSettlementAmount);
+                    } else {
+                       settlementDeductions = currentTotalCodFees + currentTotalTax;
+                    }
+                  }
+
+                  const currentProfit = currentProductRevenue - totalItemCost - currentStoreExpense - settlementDeductions;
 
                   return (
                     <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-1.5 text-xs">
@@ -737,6 +730,9 @@ export default function OrderActionModal({
                         <span>Sale Revenue: <strong className="text-white font-mono">PKR {currentProductRevenue.toLocaleString('en-PK')}</strong></span>
                         <span>Product Cost: <strong className="text-amber-300 font-mono">PKR {totalItemCost.toLocaleString('en-PK')}</strong></span>
                         <span>Store Courier Expense: <strong className="text-orange-300 font-mono">PKR {currentStoreExpense.toLocaleString('en-PK')}</strong></span>
+                        {settlementDeductions > 0 && (
+                          <span>Settlement Shortfall (Deducted): <strong className="text-rose-400 font-mono">PKR {settlementDeductions.toLocaleString('en-PK')}</strong></span>
+                        )}
                       </div>
                     </div>
                   );

@@ -160,32 +160,42 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
 
   // Add item to order
   function handleAddItem() {
-    if (!selectedProduct) {
-      showErrorToast('Please select a product');
+    if (!selectedProduct && !productSearchQuery.trim()) {
+      showErrorToast('Please select or type a product name');
       return;
     }
 
     const product = products.find((p) => p.id === selectedProduct);
-    if (!product) return;
+    
+    // Determine product name and ID
+    const finalProductName = product ? product.name : productSearchQuery.trim();
+    const finalProductId = product ? product.id : null;
 
-    // Use custom sale price if provided, otherwise fall back to website price
+    // Use custom sale price if provided, otherwise fall back to website price or 0
     const salePrice = typeof customSalePrice === 'number' && customSalePrice > 0
       ? customSalePrice
-      : product.price;
+      : (product?.price || 0);
+
+    if (!salePrice || salePrice <= 0) {
+      showErrorToast('Please enter a valid sale price for the custom product');
+      return;
+    }
 
     // Use custom purchase/wholesale cost if provided
     const purchaseCost = typeof customPurchaseCost === 'number' && customPurchaseCost > 0
       ? customPurchaseCost
-      : ((product as any).wholesale_price || (product as any).purchase_price || 0);
+      : ((product as any)?.wholesale_price || (product as any)?.purchase_price || 0);
 
     // Get product image
-    const productImage = (product as any).product_images?.find((i: any) => i.is_primary)?.image_url
-      || (product as any).product_images?.[0]?.image_url
-      || null;
+    const productImage = product
+      ? ((product as any).product_images?.find((i: any) => i.is_primary)?.image_url
+        || (product as any).product_images?.[0]?.image_url
+        || null)
+      : null;
 
     const newItem: OrderItem = {
-      product_id: product.id,
-      product_name: product.name,
+      product_id: finalProductId,
+      product_name: finalProductName,
       product_image: productImage,
       quantity: itemQuantity,
       unit_price: salePrice,
@@ -583,7 +593,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                   <div className="space-y-2.5 rounded-xl border border-slate-700/60 bg-[#0C1420] p-3">
                     <div className="relative z-40">
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
-                        Select Product
+                        Select or Type Product Name <span className="text-slate-500 normal-case font-normal">(Custom product allowed)</span>
                       </label>
                       <input
                         type="text"
@@ -594,7 +604,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                         }}
                         onFocus={handleInputFocus}
                         onBlur={handleInputBlur}
-                        placeholder="Search products..."
+                        placeholder="Search catalog or type a custom product..."
                         className="w-full rounded-xl border border-slate-700 bg-[#080D15] px-3 py-2.5 text-xs font-bold text-white placeholder:text-slate-500 focus:border-[#00C4CC] focus:ring-1 focus:ring-[#00C4CC]/30 focus:outline-none transition"
                         disabled={loading}
                       />
@@ -619,7 +629,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                             ))
                           ) : (
                             <div className="p-3 text-center text-xs text-slate-400">
-                              {loading ? 'Loading products...' : productSearchQuery.trim() ? 'No products found' : 'Start typing to search...'}
+                              {loading ? 'Loading products...' : productSearchQuery.trim() ? 'No match found. You can add it as a custom product by filling the price and clicking "+ Add to Order".' : 'Start typing to search...'}
                             </div>
                           )}
                         </div>
@@ -682,7 +692,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                     <button
                       type="button"
                       onClick={handleAddItem}
-                      disabled={loading || !selectedProduct}
+                      disabled={loading || (!selectedProduct && !productSearchQuery.trim())}
                       className="w-full rounded-xl bg-gradient-to-r from-[#00C4CC] to-cyan-600 hover:brightness-110 py-2.5 text-xs font-black text-slate-950 shadow-md transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
                       + Add to Order
