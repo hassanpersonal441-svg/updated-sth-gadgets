@@ -239,14 +239,26 @@ export async function GET() {
       }
     });
 
-    const grossProfit = totalRevenue - totalSoldProductCost;
-    const netProfit = grossProfit - totalStoreDeliveryExpense;
+    const round10 = (num: number) => Math.round(num / 10) * 10;
+
+    let grossProfit = totalRevenue - totalSoldProductCost;
+    let netProfit = grossProfit - totalStoreDeliveryExpense;
+    
+    // Round off to nearest 10 for cleaner dashboard figures
+    totalRevenue = round10(totalRevenue);
+    totalSoldProductCost = round10(totalSoldProductCost);
+    grossProfit = round10(grossProfit);
+    netProfit = round10(netProfit);
+    todayProfit = round10(todayProfit);
+    weekProfit = round10(weekProfit);
+    monthProfit = round10(monthProfit);
+
     const averageMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 10000) / 100 : 0;
 
     // Profit by source
-    const webProfit = webRevenue - webCost;
-    const whatsappProfit = whatsappRevenue - whatsappCost;
-    const randomProfit = randomRevenue - randomCost;
+    const webProfit = round10(webRevenue - webCost);
+    const whatsappProfit = round10(whatsappRevenue - whatsappCost);
+    const randomProfit = round10(randomRevenue - randomCost);
 
     const productList = Array.from(productStats.values());
     const categoryList = Array.from(categoryStats.values()).filter((c) => c.productsSold > 0 || c.revenue > 0);

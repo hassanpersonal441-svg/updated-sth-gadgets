@@ -79,25 +79,60 @@ export async function POST(req: NextRequest) {
 
     // Support batch insert from Bill Scanner
     if (Array.isArray(body.items) && body.items.length > 0) {
-      const recordsToInsert = body.items.map((item: any) => ({
-        vendor_name: (item.vendor_name || 'Voltix Mobile').trim(),
-        order_number: (item.order_number || body.order_number || 'STH-BILL').trim().toUpperCase(),
-        product_name: String(item.product_name || 'Unnamed Item').trim(),
-        quantity: Math.max(1, Number(item.quantity) || 1),
-        wholesale_cost: Math.max(0, Number(item.wholesale_cost) || 0),
-        status: item.status === 'purchased' || body.status === 'purchased' ? 'purchased' : 'pending',
-        payment_status: ['unpaid', 'partial', 'paid'].includes(item.payment_status || body.payment_status)
-          ? item.payment_status || body.payment_status
-          : 'unpaid',
-        payment_method: ['cash', 'bank_transfer', 'easypaisa', 'jazzcash', 'other'].includes(item.payment_method || body.payment_method)
-          ? item.payment_method || body.payment_method
-          : 'cash',
-        amount_paid: Math.max(0, Number(item.amount_paid || body.amount_paid) || 0),
-        payment_due_date: item.payment_due_date || body.payment_due_date || null,
-        purchase_date: item.purchase_date || body.purchase_date || new Date().toISOString().split('T')[0],
-        notes: (item.notes || '').trim() || null,
-        created_at: new Date().toISOString(),
-      }));
+      let remainingPaid = Math.max(0, Number(body.amount_paid) || 0);
+
+      // Generate a shared purchase_number for the entire batch
+      let sharedPurchaseNumber = 'STH-VNR-001';
+      const { data: lastRecord } = await supabase
+        .from('vendor_purchases')
+        .select('purchase_number')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+        
+      if (lastRecord && lastRecord.purchase_number) {
+        const match = lastRecord.purchase_number.match(/STH-VNR-(\d+)/);
+        if (match) {
+          sharedPurchaseNumber = `STH-VNR-${String(Number(match[1]) + 1).padStart(3, '0')}`;
+        }
+      }
+
+      const recordsToInsert = body.items.map((item: any) => {
+        const qty = Math.max(1, Number(item.quantity) || 1);
+        const cost = Math.max(0, Number(item.wholesale_cost) || 0);
+        const lineTotal = qty * cost;
+        
+        // Waterfall distribution of total amount_paid
+        let itemPaid = 0;
+        if (remainingPaid >= lineTotal) {
+          itemPaid = lineTotal;
+          remainingPaid -= lineTotal;
+        } else if (remainingPaid > 0) {
+          itemPaid = remainingPaid;
+          remainingPaid = 0;
+        }
+
+        return {
+          purchase_number: sharedPurchaseNumber,
+          vendor_name: (item.vendor_name || 'Voltix Mobile').trim(),
+          order_number: (item.order_number || body.order_number || 'STH-BILL').trim().toUpperCase(),
+          product_name: String(item.product_name || 'Unnamed Item').trim(),
+          quantity: qty,
+          wholesale_cost: cost,
+          status: item.status === 'purchased' || body.status === 'purchased' ? 'purchased' : 'pending',
+          payment_status: ['unpaid', 'partial', 'paid'].includes(item.payment_status || body.payment_status)
+            ? item.payment_status || body.payment_status
+            : 'unpaid',
+          payment_method: ['cash', 'bank_transfer', 'easypaisa', 'jazzcash', 'other'].includes(item.payment_method || body.payment_method)
+            ? item.payment_method || body.payment_method
+            : 'cash',
+          amount_paid: item.amount_paid !== undefined ? Math.max(0, Number(item.amount_paid) || 0) : itemPaid,
+          payment_due_date: item.payment_due_date || body.payment_due_date || null,
+          purchase_date: item.purchase_date || body.purchase_date || new Date().toISOString().split('T')[0],
+          notes: (item.notes || '').trim() || null,
+          created_at: new Date().toISOString(),
+        };
+      });
 
       const { data, error } = await supabase.from('vendor_purchases').insert(recordsToInsert).select();
       if (error) {
@@ -112,7 +147,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
     }
 
+    let sharedPurchaseNumber = 'STH-VNR-001';
+    const { data: lastRecord } = await supabase
+      .from('vendor_purchases')
+      .select('purchase_number')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+      
+    if (lastRecord && lastRecord.purchase_number) {
+      const match = lastRecord.purchase_number.match(/STH-VNR-(\d+)/);
+      if (match) {
+        sharedPurchaseNumber = `STH-VNR-${String(Number(match[1]) + 1).padStart(3, '0')}`;
+      }
+    }
+
     const recordToInsert = {
+      purchase_number: sharedPurchaseNumber,
       vendor_name: 'Voltix Mobile',
       order_number: (order_number || 'STH-GENERAL').trim().toUpperCase(),
       product_name: product_name.trim(),

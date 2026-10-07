@@ -743,35 +743,63 @@ export default function VendorPurchasesPage() {
                   </td>
                 </tr>
               ) : (
-                purchases.map((p) => {
-                  const lineTotal = (Number(p.wholesale_cost) || 0) * (Number(p.quantity) || 1);
+                (() => {
+                  const groups: (typeof purchases)[] = [];
+                  let currentGroup: typeof purchases = [];
+                  
+                  purchases.forEach((p, i) => {
+                    if (i === 0) {
+                      currentGroup.push(p);
+                    } else {
+                      const prev = purchases[i - 1];
+                      if (p.purchase_number === prev.purchase_number && p.purchase_number && p.purchase_number.startsWith('STH-VNR')) {
+                        currentGroup.push(p);
+                      } else {
+                        groups.push(currentGroup);
+                        currentGroup = [p];
+                      }
+                    }
+                  });
+                  if (currentGroup.length > 0) {
+                    groups.push(currentGroup);
+                  }
 
-                  return (
-                    <tr key={p.id} className="hover:bg-slate-800/40 transition">
-                      {/* Vendor Logo & Name */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-[#00C4CC]/40 bg-black/60 p-0.5">
-                            <Image
-                              src={profile.logo_url || '/images/logo.png'}
-                              alt={profile.name}
-                              fill
-                              className="object-contain p-0.5"
-                            />
-                          </div>
-                          <span className="font-bold text-white text-xs">{profile.name}</span>
-                        </div>
-                      </td>
+                  return groups.map((group, groupIdx) => {
+                    return group.map((p, itemIdx) => {
+                      const lineTotal = (Number(p.wholesale_cost) || 0) * (Number(p.quantity) || 1);
+                      const isFirst = itemIdx === 0;
+                      const rowSpan = group.length;
 
-                      {/* Related Order Number */}
-                      <td className="py-3.5 px-4">
-                        <span className="font-mono font-bold text-[#00C4CC] bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-2.5 py-0.5 rounded-md text-[11px]">
-                          {p.status === 'pending' ? 'Pending' : p.purchase_number}
-                        </span>
-                        <span className="block mt-1 text-[10px] text-slate-500 font-mono">
-                          {p.status === 'pending' ? 'Vendor ID will activate after purchase' : `Order: ${p.order_number}`}
-                        </span>
-                      </td>
+                      return (
+                        <tr key={p.id} className={`hover:bg-slate-800/40 transition ${rowSpan > 1 && itemIdx === rowSpan - 1 ? 'border-b-2 border-slate-700/80' : ''}`}>
+                          {/* Vendor Logo & Name */}
+                          {isFirst && (
+                            <td rowSpan={rowSpan} className={`py-3.5 px-4 ${rowSpan > 1 ? 'border-r border-slate-700/40 bg-slate-900/20' : ''}`}>
+                              <div className="flex flex-col items-center justify-center gap-2">
+                                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#00C4CC]/40 bg-black/60 p-0.5">
+                                  <Image
+                                    src={profile.logo_url || '/images/logo.png'}
+                                    alt={profile.name}
+                                    fill
+                                    className="object-contain p-0.5"
+                                  />
+                                </div>
+                                <span className="font-bold text-white text-[10px] text-center max-w-[60px] leading-tight">{profile.name}</span>
+                              </div>
+                            </td>
+                          )}
+
+                          {/* Related Order Number */}
+                          {isFirst && (
+                            <td rowSpan={rowSpan} className={`py-3.5 px-4 text-center ${rowSpan > 1 ? 'border-r border-slate-700/40 bg-slate-900/20' : ''}`}>
+                              <span className="font-mono font-bold text-[#00C4CC] bg-[#00C4CC]/10 border border-[#00C4CC]/30 px-3 py-1 rounded-md text-xs block mx-auto w-max">
+                                {p.status === 'pending' ? 'Pending' : p.purchase_number}
+                              </span>
+                              <span className="block mt-2 text-[10px] text-slate-500 font-mono">
+                                {p.status === 'pending' ? 'Vendor ID will activate after purchase' : `Order: ${p.order_number}`}
+                              </span>
+                            </td>
+                          )}
 
                       {/* Product Name */}
                       <td className="py-3.5 px-4 font-semibold text-white">
@@ -817,22 +845,34 @@ export default function VendorPurchasesPage() {
 
                       {/* Payment */}
                       <td className="py-3.5 px-4 text-center">
-                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase border ${
-                          p.payment_status === 'paid'
-                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                            : p.payment_status === 'partial'
-                              ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
-                              : 'bg-rose-500/15 border-rose-500/40 text-rose-400'
-                        }`}>
-                          {p.payment_status || 'unpaid'}
-                        </span>
-                        <div className="mt-2 text-[10px] font-mono leading-tight">
-                          <div className="text-emerald-400">Paid: {Number(p.amount_paid || 0).toLocaleString('en-PK')}</div>
-                          <div className="text-rose-400">Bal: {Math.max(0, lineTotal - Number(p.amount_paid || 0)).toLocaleString('en-PK')}</div>
-                        </div>
-                        {p.payment_due_date && (
-                          <span className="mt-1 block text-[10px] font-semibold text-orange-300">Due: {p.payment_due_date}</span>
-                        )}
+                        {(() => {
+                          const paidAmt = Number(p.amount_paid || 0);
+                          let displayStatus = p.payment_status || 'unpaid';
+                          if (paidAmt >= lineTotal && lineTotal > 0) displayStatus = 'paid';
+                          else if (paidAmt > 0 && paidAmt < lineTotal) displayStatus = 'partial';
+                          else if (paidAmt === 0) displayStatus = 'unpaid';
+
+                          return (
+                            <>
+                              <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase border ${
+                                displayStatus === 'paid'
+                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                                  : displayStatus === 'partial'
+                                    ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
+                                    : 'bg-rose-500/15 border-rose-500/40 text-rose-400'
+                              }`}>
+                                {displayStatus}
+                              </span>
+                              <div className="mt-2 text-[10px] font-mono leading-tight">
+                                <div className="text-emerald-400">Paid: {paidAmt.toLocaleString('en-PK')}</div>
+                                <div className="text-rose-400">Bal: {Math.max(0, lineTotal - paidAmt).toLocaleString('en-PK')}</div>
+                              </div>
+                              {p.payment_due_date && displayStatus !== 'paid' && (
+                                <span className="mt-1 block text-[10px] font-semibold text-orange-300">Due: {p.payment_due_date}</span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </td>
 
                       {/* Date */}
@@ -868,8 +908,10 @@ export default function VendorPurchasesPage() {
                       </td>
                     </tr>
                   );
-                })
-              )}
+                });
+              });
+            })()
+          )}
             </tbody>
           </table>
         </div>
@@ -1253,11 +1295,25 @@ export default function VendorPurchasesPage() {
               )}
 
               {/* Total Calculation Display */}
-              <div className="flex items-center justify-between rounded-xl border border-orange-400/35 bg-[linear-gradient(100deg,rgba(251,146,60,0.14),rgba(253,224,71,0.07))] p-3 text-xs font-bold text-orange-300">
-                <span>Total Voltix Purchase Cost:</span>
-                <span className="font-mono text-sm font-black text-white">
-                  PKR {totalPurchaseCost.toLocaleString('en-PK')}
-                </span>
+              <div className="flex flex-col gap-2 rounded-xl border border-orange-400/35 bg-[linear-gradient(100deg,rgba(251,146,60,0.14),rgba(253,224,71,0.07))] p-3 text-xs font-bold text-orange-300">
+                <div className="flex items-center justify-between">
+                  <span>Total Bill Cost:</span>
+                  <span className="font-mono text-sm font-black text-white">
+                    PKR {totalPurchaseCost.toLocaleString('en-PK')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-orange-400/20 pt-2">
+                  <span className="text-emerald-400">Total Amount Paid:</span>
+                  <span className="font-mono text-sm font-black text-emerald-400">
+                    - PKR {(formAmountPaid || 0).toLocaleString('en-PK')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-orange-400/20 pt-2">
+                  <span className="text-rose-400">Pending Balance:</span>
+                  <span className="font-mono text-sm font-black text-rose-400">
+                    PKR {Math.max(0, totalPurchaseCost - (formAmountPaid || 0)).toLocaleString('en-PK')}
+                  </span>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
