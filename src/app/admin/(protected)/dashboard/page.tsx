@@ -302,7 +302,7 @@ export default async function AdminDashboardPage() {
       <div className="rounded-2xl border border-blue-500/30 bg-[#0C1420] p-6 shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
           <h2 className="font-display text-lg font-bold text-blue-400">COD Settlement & Reconciliation</h2>
-          <Link href="/admin/cod-settlement" className="text-sm text-blue-500 hover:underline">View COD Orders -></Link>
+          <Link href="/admin/cod-settlement" className="text-sm text-blue-500 hover:underline">View COD Orders &rarr;</Link>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
