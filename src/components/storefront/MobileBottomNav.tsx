@@ -121,6 +121,7 @@ export default function MobileBottomNav({ whatsappNumber }: { whatsappNumber?: s
 
         {/* Cart */}
         <button
+          id="cart-icon-mobile"
           type="button"
           onClick={openCart}
           className="relative flex flex-col items-center gap-0.5 text-[10.5px] font-bold hover:text-white transition duration-200 cursor-pointer"

@@ -399,7 +399,10 @@ export default function ProductDetailClient({
                 
                 // Fly animation
                 const imgElement = document.getElementById('main-product-image') as HTMLImageElement;
-                const cartIcon = document.getElementById('cart-icon-nav');
+                const isMobile = window.innerWidth < 1024;
+                const cartIcon = isMobile 
+                  ? (document.getElementById('cart-icon-mobile') || document.getElementById('cart-icon-nav'))
+                  : document.getElementById('cart-icon-nav');
                 
                 if (imgElement && cartIcon) {
                   const imgRect = imgElement.getBoundingClientRect();
