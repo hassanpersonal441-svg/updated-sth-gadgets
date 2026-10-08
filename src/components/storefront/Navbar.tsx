@@ -313,6 +313,7 @@ export default function Navbar({ categories, settings }: NavbarProps) {
 
             {/* Shopping Cart Button */}
             <button
+              id="cart-icon-nav"
               type="button"
               onClick={openCart}
               className={`relative flex items-center gap-1.5 rounded-full border px-2 sm:px-3.5 py-1.5 sm:py-2 transition duration-200 hover:scale-105 active:scale-95 shadow-sm ${

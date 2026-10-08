@@ -244,6 +244,9 @@ export interface Order {
   settlement_amount_received?: number;
   settlement_status?: 'pending' | 'received' | 'reconciled';
   settlement_date?: string | null;
+  tracking_number?: string | null;
+  tracking_url?: string | null;
+  courier_name?: string | null;
 }
 
 export interface Payment {

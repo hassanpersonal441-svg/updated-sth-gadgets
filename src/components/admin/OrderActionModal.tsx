@@ -8,6 +8,7 @@ import { formatOrderDateTime } from '@/lib/utils';
 import { createWhatsAppUrl } from '@/lib/whatsapp';
 import { renderWhatsAppTemplate } from '@/lib/whatsapp-templates';
 import ShippingSlipModal from '@/components/admin/ShippingSlipModal';
+import QRCode from 'react-qr-code';
 
 interface OrderActionModalProps {
   order: Order | null;
@@ -29,8 +30,9 @@ export default function OrderActionModal({
   const [confirmationUrl, setConfirmationUrl] = useState<string | null>(null);
   const [showCustomerWhatsApp, setShowCustomerWhatsApp] = useState(false);
   const [customerMessageType, setCustomerMessageType] = useState<'approved' | 'processing' | 'shipped' | 'delivered' | 'address_confirmation' | 'thank_you' | 'custom'>('approved');
-  const [courierName, setCourierName] = useState('');
-  const [trackingNumber, setTrackingNumber] = useState('');
+  const [courierName, setCourierName] = useState(order?.courier_name || 'Leopards Courier');
+  const [trackingNumber, setTrackingNumber] = useState(order?.tracking_number || '');
+  const [trackingUrl, setTrackingUrl] = useState(order?.tracking_url || '');
   const [customCustomerMessage, setCustomCustomerMessage] = useState('');
   const [whatsappTemplates, setWhatsAppTemplates] = useState<Record<string, string>>({});
 
@@ -41,6 +43,9 @@ export default function OrderActionModal({
   const [editCity, setEditCity] = useState(order?.city || '');
   const [editAddress, setEditAddress] = useState(order?.address || '');
   const [editOrderNumber, setEditOrderNumber] = useState(order?.order_number || '');
+  const [editTrackingNumber, setEditTrackingNumber] = useState(order?.tracking_number || '');
+  const [editTrackingUrl, setEditTrackingUrl] = useState(order?.tracking_url || '');
+  const [editCourierName, setEditCourierName] = useState(order?.courier_name || 'Leopards Courier');
 
   // VIP / Known Customer Custom Rate & Discount State
   const initialBaseDiscount = (Number(order?.coupon_discount) || 0) + (Number(order?.bundle_discount) || 0);
@@ -74,6 +79,13 @@ export default function OrderActionModal({
       setEditCity(order.city || '');
       setEditAddress(order.address || '');
       setEditOrderNumber(order.order_number || '');
+      setEditTrackingNumber(order.tracking_number || '');
+      setEditTrackingUrl(order.tracking_url || '');
+      setEditCourierName(order.courier_name || 'Leopards Courier');
+      
+      setCourierName(order.courier_name || 'Leopards Courier');
+      setTrackingNumber(order.tracking_number || '');
+      setTrackingUrl(order.tracking_url || '');
       const baseDiscount = (Number(order.coupon_discount) || 0) + (Number(order.bundle_discount) || 0);
       setVipDiscountAmount(baseDiscount);
       setVipDiscountPercent(
@@ -284,10 +296,14 @@ export default function OrderActionModal({
       .join(', ');
     const orderRef = order.order_number || order.id;
     const total = Number(order.total_amount || 0).toLocaleString('en-PK');
+    const trackingLinkText = trackingUrl.trim() 
+      ? `\nTracking Link: ${trackingUrl.trim()}\nClick the link above to track your parcel live.` 
+      : `\nYou can use the tracking number to follow your parcel.`;
+
     const messages = {
       approved: `Hello ${order.customer_name},\n\nYour order *${orderRef}* has been approved by STH Gadgets.\n\nItems: ${itemsText}\nTotal: PKR ${total}\nDelivery: ${order.city}\n\nWe are preparing your order for dispatch. Thank you for shopping with us!`,
       processing: `Hello ${order.customer_name},\n\nYour order *${orderRef}* is now being processed by STH Gadgets.\n\nItems: ${itemsText}\nTotal: PKR ${total}\nDelivery City: ${order.city}\n\nWe will share the courier details once it is dispatched.`,
-      shipped: `Hello ${order.customer_name},\n\nYour order *${orderRef}* has been shipped through courier.\n\nCourier: ${courierName.trim()}\nTracking Number: ${trackingNumber.trim()}\nDelivery City: ${order.city}\nItems: ${itemsText}\nTotal: PKR ${total}\n\nYou can use the tracking number to follow your parcel. Thank you!`,
+      shipped: `Hello ${order.customer_name},\n\nYour order *${orderRef}* has been shipped through courier.\n\nCourier: ${courierName.trim()}\nTracking Number: ${trackingNumber.trim()}${trackingLinkText}\n\nDelivery City: ${order.city}\nItems: ${itemsText}\nTotal: PKR ${total}\n\nThank you for shopping with STH Gadgets!`,
       delivered: `Hello ${order.customer_name},\n\nYour order *${orderRef}* has been marked as delivered.\n\nItems: ${itemsText}\nTotal: PKR ${total}\nDelivery City: ${order.city}\n\nThank you for shopping with STH Gadgets! Please contact us if you need any assistance.`,
     };
 
@@ -353,6 +369,9 @@ export default function OrderActionModal({
           city: editCity.trim(),
           address: editAddress.trim(),
           order_number: editOrderNumber.trim() ? editOrderNumber.trim() : null,
+          tracking_number: editTrackingNumber.trim() ? editTrackingNumber.trim() : null,
+          tracking_url: editTrackingUrl.trim() ? editTrackingUrl.trim() : null,
+          courier_name: editCourierName,
           admin_notes: notes,
           coupon_discount: currentDiscount,
           bundle_discount: 0,
@@ -457,6 +476,9 @@ export default function OrderActionModal({
                     setEditCity(order.city);
                     setEditAddress(order.address);
                     setEditOrderNumber(order.order_number || '');
+                    setEditTrackingNumber(order.tracking_number || '');
+                    setEditTrackingUrl(order.tracking_url || '');
+                    setEditCourierName(order.courier_name || 'Leopards Courier');
                   }
                   setIsEditing(!isEditing);
                 }}
@@ -579,6 +601,47 @@ export default function OrderActionModal({
 
                   <div>
                     <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                      Courier Selected
+                    </label>
+                    <select
+                      value={editCourierName}
+                      onChange={(e) => setEditCourierName(e.target.value)}
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-3 py-1.5 text-xs text-white focus:border-[#00C4CC] focus:outline-none"
+                    >
+                      <option value="Leopards Courier">Leopards Courier</option>
+                      <option value="PostEx">PostEx</option>
+                      <option value="TCS Express">TCS Express</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                      Courier Tracking Number
+                    </label>
+                    <input
+                      type="text"
+                      value={editTrackingNumber}
+                      onChange={(e) => setEditTrackingNumber(e.target.value)}
+                      placeholder="e.g. PX-..."
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-3 py-1.5 text-xs font-mono text-[#00C4CC] placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-silver-dim mb-1">
+                      Tracking Link (Website URL)
+                    </label>
+                    <input
+                      type="text"
+                      value={editTrackingUrl}
+                      onChange={(e) => setEditTrackingUrl(e.target.value)}
+                      placeholder="e.g. https://postex.pk/tracking?..."
+                      className="w-full rounded-lg border border-slate-700 bg-[#0C1420] px-3 py-1.5 text-xs text-[#00C4CC] placeholder:text-silver-dim/40 focus:border-[#00C4CC] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-silver-dim mb-1">
                       Total Order Amount (PKR) <span className="text-emerald-400 font-bold">(Sale Price Billed to Customer)</span>
                     </label>
                     <input
@@ -663,17 +726,7 @@ export default function OrderActionModal({
                           <option value="reconciled">Reconciled</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Settlement Date</label>
-                        <input
-                          type="date"
-                          value={editSettlementDate}
-                          onChange={(e) => setEditSettlementDate(e.target.value)}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-silver-bright focus:border-[#00C4CC] focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2">
+                      <div className="sm:col-span-1">
                         <label className="block text-[11px] font-semibold text-emerald-400 mb-1">Actual Amount Received to Bank (PKR)</label>
                         <input
                           type="number"
@@ -790,6 +843,35 @@ export default function OrderActionModal({
                   <span className="text-silver-dim">Address: </span>
                   <span className="text-silver-bright">{order.address}</span>
                 </div>
+                {(order.tracking_number || order.tracking_url) && (
+                  <div className="sm:col-span-2 flex items-start justify-between bg-[#080D15] p-3 rounded-lg border border-slate-800">
+                    <div>
+                      <span className="text-silver-dim block mb-1">Courier details</span>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-white font-bold">{order.courier_name || 'Leopards Courier'}</span>
+                        {order.tracking_number && (
+                          <span className="bg-slate-800 px-2 py-0.5 rounded text-emerald-400 font-mono font-bold text-xs">{order.tracking_number}</span>
+                        )}
+                      </div>
+                      
+                      {order.tracking_url && (
+                        <div>
+                          <span className="text-silver-dim text-[10px] uppercase tracking-wide block mb-0.5">Tracking Link</span>
+                          <a href={order.tracking_url} target="_blank" rel="noreferrer" className="text-blue-400 underline hover:text-blue-300 break-all text-xs">
+                            {order.tracking_url}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {order.tracking_url && (
+                      <div className="flex flex-col items-center gap-1 bg-white p-1.5 rounded-md ml-3 shrink-0">
+                        <QRCode value={order.tracking_url} size={64} level="L" />
+                        <span className="text-[7px] font-bold text-[#0a192f] uppercase tracking-tighter">Scan to Track</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1383,6 +1465,10 @@ export default function OrderActionModal({
                   <div>
                     <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-indigo-300">Tracking Number *</label>
                     <input value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="Enter courier tracking number" className="w-full rounded-lg border border-slate-700 bg-[#080D15] px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-indigo-300">Tracking Link (URL)</label>
+                    <input value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} placeholder="e.g. https://postex.pk/tracking?..." className="w-full rounded-lg border border-slate-700 bg-[#080D15] px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none" />
                   </div>
                 </div>
               )}

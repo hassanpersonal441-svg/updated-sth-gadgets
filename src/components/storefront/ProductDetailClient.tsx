@@ -203,6 +203,7 @@ export default function ProductDetailClient({
             }`}
           >
             <Image
+              id="main-product-image"
               src={currentImg}
               alt={product.name}
               fill
@@ -389,25 +390,98 @@ export default function ProductDetailClient({
           <div>
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
                 if (activeVariants.length > 0 && !selectedVariant) {
                   setColorError('Please select a color.');
                   return;
                 }
                 setColorError(null);
-                addToCart(
-                  product,
-                  quantity,
-                  selectedVariant?.variant_name,
-                  selectedVariant
-                    ? {
-                        colorName: selectedVariant.variant_name,
-                        colorValue: selectedVariant.color_value || undefined,
-                        imageUrl: selectedVariant.image_url || undefined,
-                      }
-                    : undefined
-                );
-                openCart();
+                
+                // Fly animation
+                const imgElement = document.getElementById('main-product-image') as HTMLImageElement;
+                const cartIcon = document.getElementById('cart-icon-nav');
+                
+                if (imgElement && cartIcon) {
+                  const imgRect = imgElement.getBoundingClientRect();
+                  const cartRect = cartIcon.getBoundingClientRect();
+                  
+                  // Wrap in a div to create a perfect arc (Parabola)
+                  // The outer div moves Y-axis, inner image moves X-axis if we wanted, 
+                  // but we can achieve a great curve by combining different easing for top and left.
+                  const flyer = document.createElement('div');
+                  flyer.style.position = 'fixed';
+                  flyer.style.left = `${imgRect.left}px`;
+                  flyer.style.top = `${imgRect.top}px`;
+                  flyer.style.width = `${imgRect.width}px`;
+                  flyer.style.height = `${imgRect.height}px`;
+                  flyer.style.zIndex = '9999';
+                  flyer.style.pointerEvents = 'none';
+                  
+                  // Easing for a nice arc: X moves linearly, Y starts fast and slows down (ease-out)
+                  flyer.style.transition = 'top 0.75s cubic-bezier(0.17, 0.84, 0.44, 1), left 0.75s linear, width 0.75s ease-in-out, height 0.75s ease-in-out, opacity 0.75s ease-in';
+                  
+                  const flyerImg = document.createElement('img');
+                  flyerImg.src = currentImg;
+                  flyerImg.style.width = '100%';
+                  flyerImg.style.height = '100%';
+                  flyerImg.style.objectFit = 'contain';
+                  flyerImg.style.transition = 'transform 0.75s ease-in-out';
+                  flyer.appendChild(flyerImg);
+                  
+                  document.body.appendChild(flyer);
+                  
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      flyer.style.left = `${cartRect.left - 10}px`;
+                      flyer.style.top = `${cartRect.top - 10}px`;
+                      flyer.style.width = '45px';
+                      flyer.style.height = '45px';
+                      flyer.style.opacity = '0.5';
+                      flyerImg.style.transform = 'scale(0.8) rotate(15deg)'; // Adds a subtle premium spin
+                    });
+                  });
+                  
+                  setTimeout(() => {
+                    if (document.body.contains(flyer)) {
+                      document.body.removeChild(flyer);
+                    }
+                    // Add a tiny bump animation to the cart icon
+                    cartIcon.style.transition = 'transform 0.15s ease-in-out';
+                    cartIcon.style.transform = 'scale(1.3) rotate(-5deg)';
+                    setTimeout(() => {
+                      cartIcon.style.transform = 'scale(1) rotate(0deg)';
+                    }, 150);
+                    
+                    addToCart(
+                      product,
+                      quantity,
+                      selectedVariant?.variant_name,
+                      selectedVariant
+                        ? {
+                            colorName: selectedVariant.variant_name,
+                            colorValue: selectedVariant.color_value || undefined,
+                            imageUrl: selectedVariant.image_url || undefined,
+                          }
+                        : undefined
+                    );
+                    openCart();
+                  }, 750);
+                } else {
+                  // Fallback if elements not found
+                  addToCart(
+                    product,
+                    quantity,
+                    selectedVariant?.variant_name,
+                    selectedVariant
+                      ? {
+                          colorName: selectedVariant.variant_name,
+                          colorValue: selectedVariant.color_value || undefined,
+                          imageUrl: selectedVariant.image_url || undefined,
+                        }
+                      : undefined
+                  );
+                  openCart();
+                }
               }}
               className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#00C4CC] via-[#00E5FF] to-[#00C4CC] hover:brightness-110 text-[#04080F] py-3.5 px-4 font-display text-sm font-black shadow-[0_0_25px_rgba(0,196,204,0.4)] transition duration-200 hover:scale-[1.01] active:scale-98 cursor-pointer"
             >

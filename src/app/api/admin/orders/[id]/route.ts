@@ -83,6 +83,9 @@ const updateOrderSchema = z.object({
   address: z.string().min(1, 'Address is required').max(300).optional(),
   admin_notes: z.string().nullable().optional(),
   order_number: z.string().nullable().optional(),
+  tracking_number: z.string().nullable().optional(),
+  tracking_url: z.string().nullable().optional(),
+  courier_name: z.string().nullable().optional(),
   subtotal: z.number().min(0).optional(),
   coupon_discount: z.number().min(0).optional(),
   bundle_discount: z.number().min(0).optional(),
@@ -146,6 +149,9 @@ export async function PATCH(
     if (parsed.data.city !== undefined) updateData.city = parsed.data.city.trim();
     if (parsed.data.address !== undefined) updateData.address = parsed.data.address.trim();
     if (parsed.data.admin_notes !== undefined) updateData.admin_notes = parsed.data.admin_notes;
+    if (parsed.data.tracking_number !== undefined) updateData.tracking_number = parsed.data.tracking_number;
+    if (parsed.data.tracking_url !== undefined) updateData.tracking_url = parsed.data.tracking_url;
+    if (parsed.data.courier_name !== undefined) updateData.courier_name = parsed.data.courier_name;
 
     if (parsed.data.subtotal !== undefined) updateData.subtotal = parsed.data.subtotal;
     if (parsed.data.coupon_discount !== undefined) updateData.coupon_discount = parsed.data.coupon_discount;

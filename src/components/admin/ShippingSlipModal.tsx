@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { Order } from '@/types/database';
+import QRCode from 'react-qr-code';
 
 interface ShippingSlipModalProps {
   order?: Order | null;
@@ -19,11 +20,8 @@ const DEFAULT_SENDER = {
 
 const COURIER_OPTIONS = [
   'Leopards Courier',
-  'TCS Express',
-  'Trax Logistics',
   'PostEx',
-  'M&P Courier',
-  'Call Courier',
+  'TCS Express',
 ];
 
 // Single Slip Card Component matching the exact original screenshot proportions
@@ -604,30 +602,33 @@ function SingleSlipCard({
           </div>
         </div>
 
-        {/* Thank You Note */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', textAlign: 'right' }}>
-          <span
-            style={{
-              fontFamily: "'Caveat', cursive, sans-serif",
-              fontSize: '24px',
-              fontWeight: 700,
-              color: '#0284c7',
-              lineHeight: 1,
-            }}
-          >
-            Thank You!
-          </span>
-          <span style={{ fontSize: '8px', color: '#64748b', marginTop: '1px' }}>For Shopping With</span>
-          <span
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '10px',
-              fontWeight: 900,
-              color: '#0a192f',
-            }}
-          >
-            {sender.name} ♡
-          </span>
+        {/* Thank You Note & Customer QR */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', textAlign: 'right' }}>
+            <span
+              style={{
+                fontFamily: "'Caveat', cursive, sans-serif",
+                fontSize: '24px',
+                fontWeight: 700,
+                color: '#0284c7',
+                lineHeight: 1,
+              }}
+            >
+              Thank You!
+            </span>
+            <span style={{ fontSize: '8px', color: '#64748b', marginTop: '1px' }}>For Shopping With</span>
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '10px',
+                fontWeight: 900,
+                color: '#0a192f',
+              }}
+            >
+              {sender.name} ♡
+            </span>
+          </div>
         </div>
       </div>
 
@@ -1972,7 +1973,7 @@ export default function ShippingSlipModal({ order, orders, allOrders, onClose }:
                 <SingleSlipCard
                   order={currentPairOrders[0]}
                   sender={sender}
-                  courier={courier}
+                  courier={currentPairOrders[0].courier_name || courier}
                   showWeight={showWeight}
                   weightValue={weightValue}
                   getItemImage={getItemImage}
@@ -2013,7 +2014,7 @@ export default function ShippingSlipModal({ order, orders, allOrders, onClose }:
                 <SingleSlipCard
                   order={currentPairOrders[1]}
                   sender={sender}
-                  courier={courier}
+                  courier={currentPairOrders[1].courier_name || courier}
                   showWeight={showWeight}
                   weightValue={weightValue}
                   getItemImage={getItemImage}
@@ -2056,7 +2057,7 @@ export default function ShippingSlipModal({ order, orders, allOrders, onClose }:
               <SingleSlipCard
                 order={currentPairOrders[0] || activeOrders[0]}
                 sender={sender}
-                courier={courier}
+                courier={(currentPairOrders[0] || activeOrders[0]).courier_name || courier}
                 showWeight={showWeight}
                 weightValue={weightValue}
                 getItemImage={getItemImage}
