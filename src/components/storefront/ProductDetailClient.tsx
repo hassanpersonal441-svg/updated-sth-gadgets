@@ -28,17 +28,27 @@ export default function ProductDetailClient({
     ? product.product_images
     : [{ id: '0', image_url: '/images/logo.png' } as any];
   const primaryIndex = Math.max(0, images.findIndex((i) => i.is_primary));
-  const [activeImage, setActiveImage] = useState(primaryIndex === -1 ? 0 : primaryIndex);
-
+  
   // Active Color Variants
   const activeVariants = (product.product_variants || []).filter((v) => v.is_active !== false);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    activeVariants.length > 0 ? activeVariants[0] : null
-  );
+  const initialVariant = activeVariants.length > 0 ? activeVariants[0] : null;
+  
+  let initialActive = primaryIndex === -1 ? 0 : primaryIndex;
+  let initialOverride = null;
+  
+  if (initialVariant?.image_url) {
+    const foundIdx = images.findIndex((img) => img.image_url === initialVariant.image_url);
+    if (foundIdx !== -1) {
+      initialActive = foundIdx;
+    } else {
+      initialOverride = initialVariant.image_url;
+    }
+  }
+
+  const [activeImage, setActiveImage] = useState(initialActive);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(initialVariant);
   const [colorError, setColorError] = useState<string | null>(null);
-  const [colorImageOverride, setColorImageOverride] = useState<string | null>(
-    activeVariants.length > 0 && activeVariants[0].image_url ? activeVariants[0].image_url : null
-  );
+  const [colorImageOverride, setColorImageOverride] = useState<string | null>(initialOverride);
 
   function handleSelectVariant(variant: ProductVariant) {
     setSelectedVariant(variant);
@@ -203,6 +213,7 @@ export default function ProductDetailClient({
             }`}
           >
             <Image
+              key={currentImg}
               id="main-product-image"
               src={currentImg}
               alt={product.name}
